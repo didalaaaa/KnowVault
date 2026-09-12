@@ -1,0 +1,18 @@
+<Solution>
+    <Folder Name="/aspire/">
+        <Project Path="aspire/KnowVault.AppHost/KnowVault.AppHost.csproj" />
+    </Folder>
+    <Folder Name="/src/">
+        <Project Path="src/KnowVault.Domain/KnowVault.Domain.csproj" />
+        <Project Path="src/KnowVault.Application/KnowVault.Application.csproj" />
+        <Project Path="src/KnowVault.EntityFrameworkCore/KnowVault.EntityFrameworkCore.csproj" />
+        <Project Path="src/KnowVault.Domain.Shared/KnowVault.Domain.Shared.csproj" />
+        <Project Path="src/KnowVault.Ai/KnowVault.Ai.csproj" />
+        <Project Path="src/KnowVault.Application.Contracts/KnowVault.Application.Contracts.csproj" />
+        <Project Path="src/KnowVault.HttpApi/KnowVault.HttpApi.csproj" />
+        <Project Path="src/KnowVault.HttpApi.Client/KnowVault.HttpApi.Client.csproj" />
+        <Project Path="src/KnowVault.HttpApi.Host/KnowVault.HttpApi.Host.csproj" />
+        <Project Path="src/KnowVault.DbMigrator/KnowVault.DbMigrator.csproj" />
+        <Project Path="src/KnowVault.Ingest/KnowVault.Ingest.csproj" />
+    </Folder>
+</Solution>

@@ -1,0 +1,37 @@
+# 编码规范（root 级，作用于整个仓库）
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# --------------- C# / .NET ---------------
+[*.cs]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+csharp_new_line_before_open_brace = all
+csharp_style_namespace_declarations = block_scoped:error
+csharp_style_expression_bodied_methods = false:warning
+csharp_style_var_when_type_is_apparent = true:warning
+dotnet_sort_system_directives_first = true
+
+# --------------- 前端（JS / Vue / HTML / CSS）--------------
+[*.{js,jsx,vue}]
+indent_style = space
+indent_size = 2
+
+[*.{html,css,scss,json}]
+indent_style = space
+indent_size = 2
+
+[vue]
+indent_style = space
+indent_size = 2
+
+# --------------- Markdown / 其它文本 ---------------
+[*.{md,yml,yaml,toml}]
+indent_style = space
+indent_size = 2

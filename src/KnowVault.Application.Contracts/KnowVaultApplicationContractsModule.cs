@@ -1,0 +1,30 @@
+using Volo.Abp.Account;
+using KnowVault.Domain.Shared;
+using Volo.Abp.Modularity;
+using Volo.Abp.PermissionManagement;
+using Volo.Abp.SettingManagement;
+using Volo.Abp.FeatureManagement;
+using Volo.Abp.Identity;
+using Volo.Abp.TenantManagement;
+
+namespace KnowVault.Application.Contracts
+{
+
+	[DependsOn(
+	    typeof(KnowVaultDomainSharedModule),
+	    typeof(AbpFeatureManagementApplicationContractsModule),
+	    typeof(AbpSettingManagementApplicationContractsModule),
+	    typeof(AbpIdentityApplicationContractsModule),
+	    typeof(AbpAccountApplicationContractsModule),
+	    typeof(AbpTenantManagementApplicationContractsModule),
+	    typeof(AbpPermissionManagementApplicationContractsModule)
+	)]
+	public class KnowVaultApplicationContractsModule : AbpModule
+	{
+	    public override void PreConfigureServices(ServiceConfigurationContext context)
+	    {
+	        KnowVaultDtoExtensions.Configure();
+	    }
+	}
+
+}

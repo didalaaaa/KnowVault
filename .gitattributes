@@ -1,0 +1,15 @@
+# 文本文件统一以 LF 存入库中，与根 .editorconfig 的 end_of_line = lf 保持一致
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.docx binary
+*.zip binary
+
+**/wwwroot/libs/** linguist-vendored

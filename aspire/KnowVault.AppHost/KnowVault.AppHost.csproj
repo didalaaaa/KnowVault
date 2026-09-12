@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 编排：Postgres / Redis / Qdrant / RabbitMQ / Seq（官方 Aspire 集成） -->
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.Redis" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.Qdrant" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.5.3" />
+    <PackageReference Include="Aspire.Hosting.Seq" Version="13.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 被编排的应用：API 主宿主 -->
+    <ProjectReference Include="..\..\src\KnowVault.HttpApi.Host\KnowVault.HttpApi.Host.csproj" />
+  </ItemGroup>
+
+</Project>

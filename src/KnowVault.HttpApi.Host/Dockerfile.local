@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/dotnet/sdk:10.0  AS base
+USER $APP_UID
+EXPOSE 8080
+EXPOSE 8081
+
+COPY bin/Release/net10.0/publish/ app/
+WORKDIR /app
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# 生成 OpenIddict 签名证书（非 Development 环境由此文件提供 openiddict.pfx）。
+# 口令必须与运行时配置 AuthServer:CertificatePassPhrase 保持一致，
+# 因此改由构建参数注入，严禁把口令写死进仓库。
+# 构建示例：docker build -f Dockerfile.local --build-arg CERT_PASS=<口令> -t knowvault-api .
+# 注意：build-arg 可能残留在镜像元数据中，正式环境建议改为挂载证书文件。
+ARG CERT_PASS
+RUN test -n "${CERT_PASS}" || (echo "必须通过 --build-arg CERT_PASS=<证书口令> 提供口令" >&2; exit 1)
+RUN dotnet dev-certs https -v -ep openiddict.pfx -p "${CERT_PASS}"
+RUN chmod 644 openiddict.pfx
+
+FROM base AS final
+WORKDIR /app
+COPY --from=build /src .
+
+ENTRYPOINT ["dotnet", "KnowVault.HttpApi.Host.dll"]

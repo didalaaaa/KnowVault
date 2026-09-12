@@ -1,0 +1,93 @@
+# ---------- .NET / C# ----------
+bin/
+obj/
+/bld/
+/artifacts/
+# 以下三个锚定根目录：避免误伤名为 Build/Debug/Release 的源码目录
+/[Bb]uild/
+/[Dd]ebug/
+/[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.pdb
+*.nupkg
+*.snupkg
+TestResults/
+*.trx
+[Ll]ogs/
+*.binlog
+project.lock.json
+project.fragment.lock.json
+.idea/           # Rider/IntelliJ
+
+# ---------- 测试覆盖率（P3 CI 用）----------
+coverage/
+*.coverage
+*.coveragexml
+coverage.*.xml
+*.cobertura.xml
+.sonarqube/
+*.received.*
+
+# ---------- Visual Studio / 编辑器 ----------
+.vs/
+.vscode/
+*.swp
+*~
+.history/        # VS Code 本地历史
+
+# ---------- 前端 (Vue3 / Vite) ----------
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.local
+frontend/.env.local
+frontend/.env.*.local
+frontend/.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ---------- 环境变量 / 密钥（严禁提交真实 Key）----------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.secrets
+appsettings.secrets.json
+appsettings.Production.json
+*.pfx
+*.cer
+
+# ---------- Qdrant / 容器本地数据卷（锚定仓库根，避免误伤源码目录）----------
+/data/
+/qdrant_storage/
+seq_data/
+minio_data/
+postgres_data/
+redis_data/
+rabbitmq_data/
+
+# ---------- Aspire 本地状态 ----------
+.aspire/
+aspire-manifest.json
+
+# ---------- 临时 / 备份文件 ----------
+*.tmp
+*.bak
+*.orig
+*.rej
+*.cache
+
+# ---------- 操作系统 ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- 日志 ----------
+*.log
+logs/
