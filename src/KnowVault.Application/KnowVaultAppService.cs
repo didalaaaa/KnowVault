@@ -1,4 +1,4 @@
-using KnowVault.Domain.Shared.Localization;
+using KnowVault.Domain.Shared;
 using Volo.Abp.Application.Services;
 
 namespace KnowVault.Application
@@ -8,10 +8,10 @@ namespace KnowVault.Application
 	 */
 	public abstract class KnowVaultAppService : ApplicationService
 	{
-	    protected KnowVaultAppService()
-	    {
-	        LocalizationResource = typeof(KnowVaultResource);
-	    }
+		protected KnowVaultAppService()
+		{
+			LocalizationResource = typeof(KnowVaultResource);
+		}
 	}
 
 }

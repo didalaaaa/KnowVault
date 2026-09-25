@@ -61,11 +61,13 @@ KnowVault.slnx
 ### 后端（C# / .NET / ABP）
 - 语言版本随 .NET 10（C# 14），`Nullable` 开启。
 - 遵循 **ABP 约定**：应用服务命名以 `AppService` 结尾；实体继承 `Entity` / `AggregateRoot`；公共方法遵循 .NET 异步命名（`XXXAsync`）。
+- **枚举命名必须带 `Enum` 后缀（强制执行）**：所有 `enum` 类型名一律以 `Enum` 结尾，**文件名与类型名保持一致**（一个 `.cs` 文件一个枚举），引用处同样使用带后缀的类型名。例如 `src/KnowVault.Domain.Shared/Chat/MessageRoleEnum.cs` → `public enum MessageRoleEnum`，使用处写 `MessageRoleEnum.User`；`DocumentStatusEnum` / `DocumentSourceTypeEnum` 同理。`.editorconfig` 已对 `enum` 声明启用命名规则（`required_suffix = Enum`），违规命中 **IDE1006**：VS 会实时提示，`dotnet format style --verify-no-changes --diagnostics IDE1006` 可检出（注意命名规则**不参与 `dotnet build`**，即使开了 `EnforceCodeStyleInBuild`，所以别指望构建帮你拦），不要写 `public enum MessageRole` 这类无后缀枚举。
 - **分层职责清晰**：Domain 不放 EF/DTO；Application 做用例编排，不含 SQL；EF Core 只做持久化；AI 逻辑只放 `KnowVault.Ai`。
 - 所有业务实体**预留多租户**：表带 `TenantId`（ABP 一等公民，先单租户运行不用强制隔离，但结构保留）。
 - 主键用 GUID（ABP 默认 `Guid`），需要仓储接口定义于 Domain、实现于 EF Core。
 - **namespace 规则（强制执行）**：namespace 首段必须等于**项目名**，子目录再在项目名后逐级追加。例如 `src/KnowVault.HttpApi.Host/Program.cs` → `KnowVault.HttpApi.Host`；`src/KnowVault.HttpApi.Host/HealthChecks/X.cs` → `KnowVault.HttpApi.Host.HealthChecks`；`src/KnowVault.Domain/Documents/Document.cs` → `KnowVault.Domain.Documents`。**禁止**用统一根命名空间 `KnowVault` 平铺（如 `namespace KnowVault;`）。
 - **namespace 一律使用块级（block-scoped）声明**：`.editorconfig` 已强制 `csharp_style_namespace_declarations = block_scoped:error`；禁用 file-scoped（`namespace X;`），否则触发 IDE0160。
+- **方法偏好表达式主体（`=> ...`）**：`.editorconfig` 设 `csharp_style_expression_bodied_methods = true:silent`，所以 `public void MarkProcessing() => Status = DocumentStatusEnum.Processing;` 这类写法是**首选风格**，不会再报"使用方法的程序块主体"（IDE0022）。级别 `silent`（VS 里显示为 Refactoring Only）的含义：反向的"改用表达式主体"只以灯泡建议形式出现，**不进错误列表、不参与 Code Cleanup / `dotnet format`**，因此**不强制**改写 ABP 样板里可转的块体方法（实测 18 处，改不改都合规）；多语句方法照旧用 `{ }` 程序块。
 - 不写无意义的 `Common`/`Utils` 命名空间；一个 `.cs` 文件对应一个命名空间。
 
 ### 前端（Vue 3 / JavaScript）
@@ -95,19 +97,29 @@ KnowVault.slnx
 - **注释与代码同源**：改动代码时同步更新其注释；新增文件按此规范书写。
 
 ### 行尾与换行规范（强制执行）
-- **统一使用 LF（`\n`）**：仓库根 `.editorconfig`（`root = true`）对 `[*]` 已声明 `end_of_line = lf`。所有文本文件（`.cs` / `.cshtml` / `.json` / `.js` / `.vue` / `.md` / `.props` / `.slnx` 等）一律 LF。
-- **禁止单个文件混用行尾**：同一个文件若同时含 `CRLF`（`\r\n`）与 `LF`（`\n`），VS2026 会弹「不一致的行尾，是否将行尾标准化？」提示，且与 `.editorconfig` 的 `lf` 约定冲突。
-- **已知根因（曾发生）**：P0 用 `abp new`（ABP Studio CLI 在 Windows 生成，倾向 CRLF）搭建后，又被多种工具轮番改写——某个 PowerShell 脚本用 `[IO.File]::WriteAllText(...-join "\n"...)` 整文件重写成 LF，后续补丁式编辑工具又把少数结构性行（namespace 开括号、个别方法收尾 `}` 与空行）局部回写为 CRLF，最终一个文件两种换行，触发该提示。
+- **统一使用 CRLF（`\r\n`）**：仓库根 `.editorconfig`（`root = true`）对 `[*]` 声明 `end_of_line = crlf`，`.gitattributes` 声明 `* text=auto eol=crlf`。所有文本文件（`.cs` / `.cshtml` / `.json` / `.js` / `.vue` / `.md` / `.props` / `.slnx` 等）一律 **Windows CRLF**，与 VS2026 类模板、`dotnet new`、`abp new` 在 Windows 上的默认产出保持一致。
+  - 实测依据：VS2026 模板 `ItemTemplates\CSharp\...\Class.cs` 是纯 CRLF；`dotnet new` 即使 `.editorconfig` 写 `end_of_line = lf` 也照样产出 CRLF（模板引擎不读该键）。
+- **例外（保持 LF）**：`Dockerfile` / `Dockerfile.local` 与 `*.sh`——CRLF 会破坏行继续符，`.gitattributes` 与 `.editorconfig` 已单独钉为 LF。
+- **例外（保持 LF）：规范文件自身**——`.editorconfig` 与本文档 `AGENTS.md` 目前都是**纯 LF、无 BOM**，且没有格式化流程会去改写它们；**不要**为了"全仓统一 CRLF"而对这两份文件做行尾归一化（只会产生无意义 diff）。其余新增/改动的文本文件仍按上面的 CRLF 规则执行。
+- **禁止单个文件混用行尾**：同一文件同时含 `CRLF` 与 `LF`，是**唯一**会触发 VS2026「不一致的行尾，是否将行尾标准化？」弹窗的条件（整文件统一 CRLF 或统一 LF 都不会弹）。弹窗只是症状，成因永远是"某个写入方只改写了文件的一部分"。
+- **不要相信 git**：`.gitattributes` 的 `text` 属性会让 git 在写库时把 CRLF 归一化成 LF，`eol` 只作用于工作区。因此**行尾问题在 `git status` / `git diff` 里完全看不出来**，必须逐字节自查（见下）。
+- **已知根因（曾发生，且会复发）**：Windows 侧写入方（VS 模板、`dotnet new`、`abp new`、从聊天窗口/网页粘贴的代码块）默认产出 CRLF，而此前 `.editorconfig` 要求 LF；两套标准相遇时，只要有一次改写是**局部**的（补丁式编辑、局部粘贴、格式化只碰了改动的行），就留下"少数 CRLF 行 + 多数 LF 行"的混合文件。历史指纹：混进去的往往是结构性行（namespace 开括号、方法收尾 `}`）与空行。
 - **预防（生成/改动代码后必做）**：
-  1. 用脚手架/工具生成产物（`abp new`、`dotnet new`、`npm` 等）后，**立刻将产物统一规范到 LF**。
-  2. 人工或工具编辑文件时，保持与文件现有换行一致（即 LF）；**不要在同一文件里混用 CRLF 与 LF**。
-  3. 提交/交付前检测：任一文本文件同时含 CRLF 与 LF 即视为不合规，须归一化；若某文件仅整体 CRLF（未混合），也应统一为 LF 以匹配 `.editorconfig`。
-  4. 归一化手段（无需 git 即可用）：
+  1. 写入前先看该文件当前的行尾，**整文件保持一致**；改既有文件时先匹配它现有行尾。
+  2. 用脚手架/工具生成产物（`abp new`、`dotnet new`、`npm` 等）后，立刻检查产物行尾并与本规范对齐。
+  3. 粘贴代码后必须检查——粘贴内容会保留来源的行尾字符。
+  4. 提交/交付前逐文件检测：任一文本文件同时含 CRLF 与 LF 即视为不合规，须整文件归一化。
+  5. 归一化手段（统一转 CRLF；`Dockerfile*` / `*.sh` 除外）：
      ```powershell
-     $p='<文件路径>'; [IO.File]::WriteAllText($p, ([IO.File]::ReadAllText($p) -replace "`r`n","`n") -replace "`r","`n")
+     $p='<文件路径>'; [IO.File]::WriteAllText($p, ([IO.File]::ReadAllText($p) -replace "`r`n","`n") -replace "`n","`r`n")
      ```
-     或对整目录批量处理；本仓库未初始化 git，不用依赖 `.gitattributes`。
-- **例外**：无。全部文本文件统一 LF。
+     或对整目录批量处理。
+  6. 自查命令（判据：两个数字必须有一个为 0）：
+     ```powershell
+     $p='<文件路径>'; $t=[IO.File]::ReadAllText($p)
+     "CRLF=$(([regex]::Matches($t,"`r`n")).Count) loneLF=$(([regex]::Matches($t,"(?<!`r)`n")).Count)"
+     ```
+- **编码**：`charset = utf-8`（**不带 BOM**）。注意 VS2026 的类模板自带 UTF-8 BOM，新建文件后按本规范去掉 BOM。
 
 ---
 

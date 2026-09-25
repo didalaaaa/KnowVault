@@ -1,9 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 
-namespace KnowVault.Application.Contracts.Documents
+namespace KnowVault.Application.Contracts
 {
 
 	/// <summary>
@@ -12,9 +9,9 @@ namespace KnowVault.Application.Contracts.Documents
 	/// </summary>
 	public interface IDocumentAppService : IApplicationService
 	{
-	    Task<DocumentDto> CreateAsync(CreateDocumentInput input);
+		Task<DocumentDto> CreateAsync(CreateDocumentInput input);
 
-	    Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId);
+		Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId);
 	}
 
 }

@@ -1,13 +1,10 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using KnowVault.Domain.Documents;
-using KnowVault.Domain.Shared.Documents;
+using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 
-namespace KnowVault.Ingest.Processing
+namespace KnowVault.Ingest
 {
 
 	/// <summary>
@@ -15,27 +12,27 @@ namespace KnowVault.Ingest.Processing
 	/// </summary>
 	public class DocumentProcessor : IDocumentProcessor, ITransientDependency
 	{
-	    private readonly IRepository<Document, Guid> _documentRepository;
-	    private readonly ILogger<DocumentProcessor> _logger;
+		private readonly IRepository<Document, Guid> _documentRepository;
+		private readonly ILogger<DocumentProcessor> _logger;
 
-	    public DocumentProcessor(
-	        IRepository<Document, Guid> documentRepository,
-	        ILogger<DocumentProcessor> logger)
-	    {
-	        _documentRepository = documentRepository;
-	        _logger = logger;
-	    }
+		public DocumentProcessor(
+			IRepository<Document, Guid> documentRepository,
+			ILogger<DocumentProcessor> logger)
+		{
+			_documentRepository = documentRepository;
+			_logger = logger;
+		}
 
-	    public async Task ProcessPendingDocumentsAsync(CancellationToken cancellationToken = default)
-	    {
-	        var pending = await _documentRepository.CountAsync(
-	            x => x.Status == DocumentStatus.Pending,
-	            cancellationToken: cancellationToken);
+		public async Task ProcessPendingDocumentsAsync(CancellationToken cancellationToken = default)
+		{
+			var pending = await _documentRepository.CountAsync(
+				x => x.Status == DocumentStatusEnum.Pending,
+				cancellationToken: cancellationToken);
 
-	        _logger.LogInformation(
-	            "Ingest 心跳：待处理文档 {Pending} 个（P1 将经 RabbitMQ 消费队列完成解析/切片/向量化）",
-	            pending);
-	    }
+			_logger.LogInformation(
+				"Ingest 心跳：待处理文档 {Pending} 个（P1 将经 RabbitMQ 消费队列完成解析/切片/向量化）",
+				pending);
+		}
 	}
 
 }

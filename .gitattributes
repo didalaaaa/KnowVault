@@ -1,5 +1,12 @@
-# 文本文件统一以 LF 存入库中，与根 .editorconfig 的 end_of_line = lf 保持一致
-* text=auto eol=lf
+# 工作区统一 CRLF，与根 .editorconfig 的 end_of_line = crlf 保持一致。
+# 注意：text 属性会让 git 在写库时把 CRLF 归一化成 LF，eol 只作用于工作区，
+# 因此行尾变更在 git status / git diff 里完全看不出来。
+* text=auto eol=crlf
+
+# Dockerfile / shell 脚本惯例保持 LF（Docker 与 shell 对 CRLF 的行继续符敏感）
+Dockerfile text eol=lf
+Dockerfile.* text eol=lf
+*.sh text eol=lf
 
 # 二进制文件不做换行转换
 *.png binary

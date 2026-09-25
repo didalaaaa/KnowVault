@@ -1,14 +1,14 @@
-namespace KnowVault.Application.Contracts.Permissions
+namespace KnowVault.Application.Contracts
 {
 
 	public static class KnowVaultPermissions
 	{
-	    public const string GroupName = "KnowVault";
+		public const string GroupName = "KnowVault";
 
 
 
-	    //Add your own permission names. Example:
-	    //public const string MyPermission1 = GroupName + ".MyPermission1";
+		//Add your own permission names. Example:
+		//public const string MyPermission1 = GroupName + ".MyPermission1";
 	}
 
 }

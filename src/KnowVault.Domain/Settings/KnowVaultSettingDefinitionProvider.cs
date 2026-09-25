@@ -1,15 +1,15 @@
 using Volo.Abp.Settings;
 
-namespace KnowVault.Domain.Settings
+namespace KnowVault.Domain
 {
 
 	public class KnowVaultSettingDefinitionProvider : SettingDefinitionProvider
 	{
-	    public override void Define(ISettingDefinitionContext context)
-	    {
-	        //Define your own settings here. Example:
-	        //context.Add(new SettingDefinition(KnowVaultSettings.MySetting1));
-	    }
+		public override void Define(ISettingDefinitionContext context)
+		{
+			//Define your own settings here. Example:
+			//context.Add(new SettingDefinition(KnowVaultSettings.MySetting1));
+		}
 	}
 
 }

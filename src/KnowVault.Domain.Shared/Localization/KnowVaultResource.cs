@@ -1,6 +1,6 @@
 using Volo.Abp.Localization;
 
-namespace KnowVault.Domain.Shared.Localization
+namespace KnowVault.Domain.Shared
 {
 
 	[LocalizationResourceName("KnowVault")]

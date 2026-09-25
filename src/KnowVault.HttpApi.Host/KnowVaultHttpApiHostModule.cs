@@ -2,9 +2,7 @@ using KnowVault.Application;
 using KnowVault.Application.Contracts;
 using KnowVault.Domain;
 using KnowVault.Domain.Shared;
-using KnowVault.Domain.Shared.MultiTenancy;
 using KnowVault.EntityFrameworkCore;
-using KnowVault.HttpApi.Host.HealthChecks;
 using KnowVault.Ingest;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
@@ -74,7 +72,9 @@ namespace KnowVault.HttpApi.Host
 
 				PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
 				{
+					// 加载 openiddict.pfx 证书文件，密码从 AuthServer:CertificatePassPhrase 读取
 					serverBuilder.AddProductionEncryptionAndSigningCertificate("openiddict.pfx", configuration["AuthServer:CertificatePassPhrase"]!);
+					// 设置令牌的签发者 URL
 					serverBuilder.SetIssuer(new Uri(configuration["AuthServer:Authority"]!));
 				});
 			}
@@ -145,9 +145,16 @@ namespace KnowVault.HttpApi.Host
 
 		private void ConfigureAuthentication(ServiceConfigurationContext context)
 		{
+			// 配置ABP扩展的 Bearer Token 认证；OpenIddictValidationAspNetCoreDefaults 默认验证行为
 			context.Services.ForwardIdentityAuthenticationForBearer(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
 			context.Services.Configure<AbpClaimsPrincipalFactoryOptions>(options =>
 			{
+				/*
+				 * 启用动态 Claims，AbpClaimsPrincipalFactoryOptions 控制如何构建 ClaimsPrincipal（即当前用户的身份对象）；
+				 * 动态 Claims 解决：
+				 * 1、用户角色、权限变更后立即生效，无需重新登录
+				 * 2、每次请求都会重新从数据库/缓存中构建 ClaimsPrincipal，而不是完全依赖 Token 里的内容
+				 */
 				options.IsDynamicClaimsEnabled = true;
 			});
 		}
@@ -156,7 +163,9 @@ namespace KnowVault.HttpApi.Host
 		{
 			Configure<AppUrlOptions>(options =>
 			{
+				// 设置 MVC 应用的根 URL
 				options.Applications["MVC"].RootUrl = configuration["App:SelfUrl"];
+				// 配置重定向 URL 白名单，防止重定向到名单以外的钓鱼网站
 				options.RedirectAllowedUrls.AddRange(configuration["App:RedirectAllowedUrls"]?.Split(',') ?? Array.Empty<string>());
 			});
 		}
@@ -165,6 +174,11 @@ namespace KnowVault.HttpApi.Host
 		{
 			Configure<AbpBundlingOptions>(options =>
 			{
+				/*
+				 * 配置全局样式包
+				 * 将项目根目录下的 /global-styles.css 加入到主题的全局样式包中
+				 * 所有使用该主题的页面都会自动加载这个 CSS，无需手动在布局页中引用
+				 */
 				options.StyleBundles.Configure(
 					LeptonXLiteThemeBundles.Styles.Global,
 					bundle =>
@@ -173,6 +187,11 @@ namespace KnowVault.HttpApi.Host
 					}
 				);
 
+				/*
+				 * 配置全局脚本包
+				 * /global-scripts.js：所有环境都会加载，用于放置自定义前端逻辑
+				 * /dev-login-helper.js：仅在开发环境加载
+				 */
 				options.ScriptBundles.Configure(
 					LeptonXLiteThemeBundles.Scripts.Global,
 					bundle =>
@@ -193,6 +212,8 @@ namespace KnowVault.HttpApi.Host
 
 			if (hostingEnvironment.IsDevelopment())
 			{
+				// 虚拟文件系统，由于ABP中的.cshtml、.js、.css 等资源文件是嵌套在DLL中，修改后，需要重新编译才能生效；
+				// ReplaceEmbeddedByPhysical —— 在开发环境下，告诉 ABP："不要从 DLL 里读这些文件，去磁盘上的源码目录读。"
 				Configure<AbpVirtualFileSystemOptions>(options =>
 				{
 					options.FileSets.ReplaceEmbeddedByPhysical<KnowVaultDomainSharedModule>(Path.Combine(hostingEnvironment.ContentRootPath, $"..{Path.DirectorySeparatorChar}KnowVault.Domain.Shared"));
@@ -207,6 +228,7 @@ namespace KnowVault.HttpApi.Host
 		{
 			Configure<AbpAspNetCoreMvcOptions>(options =>
 			{
+				// 根据应用服务自动生成RESTful风格的API
 				options.ConventionalControllers.Create(typeof(KnowVaultApplicationModule).Assembly);
 			});
 		}
@@ -258,35 +280,56 @@ namespace KnowVault.HttpApi.Host
 			var app = context.GetApplicationBuilder();
 			var env = context.GetEnvironment();
 
+			// 转发头处理，确保程序拿到客户端真实IP
 			app.UseForwardedHeaders();
 
 			if (env.IsDevelopment())
 			{
+				// 发生异常时，显示详细的堆栈跟踪和源码片段
 				app.UseDeveloperExceptionPage();
 			}
 
+			// 根据请求头 Accept-Language 或 URL 参数，自动切换语言
 			app.UseAbpRequestLocalization();
 
 			if (!env.IsDevelopment())
 			{
+				// 生产环境下，发生未处理异常时显示友好的错误页面（不含堆栈信息）
 				app.UseErrorPage();
 			}
 
+			// 解析请求 URL，匹配到对应的端点（Endpoint），但不执行端点
 			app.UseRouting();
+
+			// 映射 ABP 的静态资源（如 LeptonXLite 主题的 css/js）
 			app.MapAbpStaticAssets();
+
+			// ABP Studio 链路追踪（前面 IsLinkEnabled = false 已在生产禁用）
 			app.UseAbpStudioLink();
+
+			// 添加安全响应头（X-Frame-Options、X-Content-Type-Options 等）
 			app.UseAbpSecurityHeaders();
 			app.UseCors();
+
+			// 解析请求中的凭证（Bearer Token、Cookie），构建 HttpContext.User
 			app.UseAuthentication();
+
+			// ABP 封装的 OpenIddict 验证中间件，验证 JWT Token 的签名、有效期、受众
 			app.UseAbpOpenIddictValidation();
 
 			if (MultiTenancyConsts.IsEnabled)
 			{
+				// 从请求中解析租户标识（如 __tenant 请求头或子域名），切换当前租户上下文
 				app.UseMultiTenancy();
 			}
 
+			// 开启工作单元，请求结束时自动提交/回滚数据库事务
 			app.UseUnitOfWork();
+
+			// 配合前面的 IsDynamicClaimsEnabled = true，动态构建最新的 Claims（权限实时生效）
 			app.UseDynamicClaims();
+
+			// 检查当前用户是否有权限访问匹配的端点，无权限则返回 401/403
 			app.UseAuthorization();
 
 			app.UseSwagger();
@@ -297,7 +340,11 @@ namespace KnowVault.HttpApi.Host
 				var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
 				options.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
 			});
+
+			// 记录审计日志（谁在什么时候调用了哪个 API，参数和结果是什么）
 			app.UseAuditing();
+
+			// 给 Serilog 日志添加上下文信息（如当前用户、租户、请求 ID）
 			app.UseAbpSerilogEnrichers();
 			app.UseConfiguredEndpoints();
 		}

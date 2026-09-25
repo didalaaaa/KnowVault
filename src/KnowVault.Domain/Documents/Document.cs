@@ -1,7 +1,6 @@
-using System;
+using KnowVault.Domain.Shared;
 using Volo.Abp.Domain.Entities.Auditing;
 using Volo.Abp.MultiTenancy;
-using KnowVault.Domain.Shared.Documents;
 
 namespace KnowVault.Domain.Documents
 {
@@ -11,47 +10,47 @@ namespace KnowVault.Domain.Documents
 	/// </summary>
 	public class Document : CreationAuditedAggregateRoot<Guid>, IMultiTenant
 	{
-	    public Guid KnowledgeBaseId { get; set; }
+		public Guid KnowledgeBaseId { get; set; }
 
-	    public string Title { get; set; } = default!;
+		public string Title { get; set; } = default!;
 
-	    public DocumentSourceType SourceType { get; set; }
+		public DocumentSourceTypeEnum SourceType { get; set; }
 
-	    /// <summary>MinIO 中的对象存储 Key / object name。</summary>
-	    public string? ObjectStorageKey { get; set; }
+		/// <summary>MinIO 中的对象存储 Key / object name。</summary>
+		public string? ObjectStorageKey { get; set; }
 
-	    public DocumentStatus Status { get; set; } = DocumentStatus.Pending;
+		public DocumentStatusEnum Status { get; set; } = DocumentStatusEnum.Pending;
 
-	    public string? ErrorMessage { get; set; }
+		public string? ErrorMessage { get; set; }
 
-	    public Guid? TenantId { get; set; }
+		public Guid? TenantId { get; set; }
 
-	    protected Document()
-	    {
-	    }
+		protected Document()
+		{
+		}
 
-	    public Document(
-	        Guid id,
-	        Guid knowledgeBaseId,
-	        string title,
-	        DocumentSourceType sourceType,
-	        Guid? tenantId = null) : base(id)
-	    {
-	        KnowledgeBaseId = knowledgeBaseId;
-	        Title = title;
-	        SourceType = sourceType;
-	        TenantId = tenantId;
-	    }
+		public Document(
+			Guid id,
+			Guid knowledgeBaseId,
+			string title,
+			DocumentSourceTypeEnum sourceType,
+			Guid? tenantId = null) : base(id)
+		{
+			KnowledgeBaseId = knowledgeBaseId;
+			Title = title;
+			SourceType = sourceType;
+			TenantId = tenantId;
+		}
 
-	    public void MarkProcessing() => Status = DocumentStatus.Processing;
+		public void MarkProcessing() => Status = DocumentStatusEnum.Processing;
 
-	    public void MarkReady() => Status = DocumentStatus.Ready;
+		public void MarkReady() => Status = DocumentStatusEnum.Ready;
 
-	    public void MarkFailed(string error)
-	    {
-	        Status = DocumentStatus.Failed;
-	        ErrorMessage = error;
-	    }
+		public void MarkFailed(string error)
+		{
+			Status = DocumentStatusEnum.Failed;
+			ErrorMessage = error;
+		}
 	}
 
 }

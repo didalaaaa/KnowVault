@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using KnowVault.Application.Contracts.Documents;
+using KnowVault.Application.Contracts;
 using KnowVault.Domain.Documents;
 using Volo.Abp.Domain.Repositories;
 
-namespace KnowVault.Application.Documents
+namespace KnowVault.Application
 {
 
 	/// <summary>
@@ -15,46 +11,46 @@ namespace KnowVault.Application.Documents
 	/// </summary>
 	public class DocumentAppService : KnowVaultAppService, IDocumentAppService
 	{
-	    private readonly IRepository<Document, Guid> _documentRepository;
+		private readonly IRepository<Document, Guid> _documentRepository;
 
-	    public DocumentAppService(IRepository<Document, Guid> documentRepository)
-	    {
-	        _documentRepository = documentRepository;
-	    }
+		public DocumentAppService(IRepository<Document, Guid> documentRepository)
+		{
+			_documentRepository = documentRepository;
+		}
 
-	    public async Task<DocumentDto> CreateAsync(CreateDocumentInput input)
-	    {
-	        var doc = await _documentRepository.InsertAsync(
-	            new Document(GuidGenerator.Create(), input.KnowledgeBaseId, input.Title, input.SourceType),
-	            autoSave: true);
+		public async Task<DocumentDto> CreateAsync(CreateDocumentInput input)
+		{
+			var doc = await _documentRepository.InsertAsync(
+				new Document(GuidGenerator.Create(), input.KnowledgeBaseId, input.Title, input.SourceType),
+				autoSave: true);
 
-	        return new DocumentDto
-	        {
-	            Id = doc.Id,
-	            KnowledgeBaseId = doc.KnowledgeBaseId,
-	            Title = doc.Title,
-	            SourceType = doc.SourceType,
-	            Status = doc.Status,
-	            CreationTime = doc.CreationTime
-	        };
-	    }
+			return new DocumentDto
+			{
+				Id = doc.Id,
+				KnowledgeBaseId = doc.KnowledgeBaseId,
+				Title = doc.Title,
+				SourceType = doc.SourceType,
+				Status = doc.Status,
+				CreationTime = doc.CreationTime
+			};
+		}
 
-	    public async Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId)
-	    {
-	        var docs = await _documentRepository.GetListAsync(x => x.KnowledgeBaseId == knowledgeBaseId);
-	        return docs
-	            .Select(d => new DocumentDto
-	            {
-	                Id = d.Id,
-	                KnowledgeBaseId = d.KnowledgeBaseId,
-	                Title = d.Title,
-	                SourceType = d.SourceType,
-	                Status = d.Status,
-	                ErrorMessage = d.ErrorMessage,
-	                CreationTime = d.CreationTime
-	            })
-	            .ToList();
-	    }
+		public async Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId)
+		{
+			var docs = await _documentRepository.GetListAsync(x => x.KnowledgeBaseId == knowledgeBaseId);
+			return docs
+				.Select(d => new DocumentDto
+				{
+					Id = d.Id,
+					KnowledgeBaseId = d.KnowledgeBaseId,
+					Title = d.Title,
+					SourceType = d.SourceType,
+					Status = d.Status,
+					ErrorMessage = d.ErrorMessage,
+					CreationTime = d.CreationTime
+				})
+				.ToList();
+		}
 	}
 
 }

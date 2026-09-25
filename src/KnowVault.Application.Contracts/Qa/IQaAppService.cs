@@ -1,7 +1,6 @@
-using System.Threading.Tasks;
 using Volo.Abp.Application.Services;
 
-namespace KnowVault.Application.Contracts.Qa
+namespace KnowVault.Application.Contracts
 {
 
 	/// <summary>
@@ -10,7 +9,7 @@ namespace KnowVault.Application.Contracts.Qa
 	/// </summary>
 	public interface IQaAppService : IApplicationService
 	{
-	    Task<QaAnswerDto> AskAsync(AskQuestionInput input);
+		Task<QaAnswerDto> AskAsync(AskQuestionInput input);
 	}
 
 }

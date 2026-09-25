@@ -1,9 +1,7 @@
-using System;
 using Volo.Abp.Domain.Entities.Auditing;
 using Volo.Abp.MultiTenancy;
-using KnowVault.Domain.Shared.Chat;
 
-namespace KnowVault.Domain.Chat
+namespace KnowVault.Domain
 {
 
 	/// <summary>
@@ -11,24 +9,24 @@ namespace KnowVault.Domain.Chat
 	/// </summary>
 	public class Conversation : CreationAuditedAggregateRoot<Guid>, IMultiTenant
 	{
-	    public string Title { get; set; } = default!;
+		public string Title { get; set; } = default!;
 
-	    public Guid? TenantId { get; set; }
+		public Guid? TenantId { get; set; }
 
-	    protected Conversation()
-	    {
-	    }
+		protected Conversation()
+		{
+		}
 
-	    public Conversation(
-	        Guid id,
-	        string title,
-	        Guid? tenantId = null) : base(id)
-	    {
-	        Title = title;
-	        TenantId = tenantId;
-	    }
+		public Conversation(
+			Guid id,
+			string title,
+			Guid? tenantId = null) : base(id)
+		{
+			Title = title;
+			TenantId = tenantId;
+		}
 
-	    public void Rename(string title) => Title = title;
+		public void Rename(string title) => Title = title;
 	}
 
 }

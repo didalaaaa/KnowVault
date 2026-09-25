@@ -7,9 +7,9 @@ namespace KnowVault.DbMigrator
 {
 
 	[DependsOn(
-	    typeof(AbpAutofacModule),
-	    typeof(KnowVaultEntityFrameworkCoreModule),
-	    typeof(KnowVaultApplicationContractsModule)
+		typeof(AbpAutofacModule),
+		typeof(KnowVaultEntityFrameworkCoreModule),
+		typeof(KnowVaultApplicationContractsModule)
 	)]
 	public class KnowVaultDbMigratorModule : AbpModule
 	{

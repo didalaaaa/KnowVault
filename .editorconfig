@@ -3,7 +3,9 @@ root = true
 
 [*]
 charset = utf-8
-end_of_line = lf
+# Windows 工具链（VS2026 类模板 / dotnet new / abp new）默认产出 CRLF。
+# 这里统一为 CRLF，避免"规则要 LF、工具写 CRLF"造成的单文件行尾混用。
+end_of_line = crlf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
@@ -14,9 +16,23 @@ indent_size = 4
 tab_width = 4
 csharp_new_line_before_open_brace = all
 csharp_style_namespace_declarations = block_scoped:error
-csharp_style_expression_bodied_methods = false:warning
+# 方法偏好表达式主体（=> ...）：IDE0022 不再对 `void X() => ...;` 报"使用方法的程序块主体"。
+# 级别用 silent（= Refactoring Only）：只在灯泡里提供"改用表达式主体"的建议，
+# 不进错误列表、不参与 Code Cleanup / dotnet format，避免 ABP 样板代码产生大量提示。
+csharp_style_expression_bodied_methods = true:silent
 csharp_style_var_when_type_is_apparent = true:warning
 dotnet_sort_system_directives_first = true
+
+# 枚举类型一律带 Enum 后缀（AGENTS.md 第三节；违规则 IDE1006）
+dotnet_naming_rule.enum_types_should_end_with_enum.severity = warning
+dotnet_naming_rule.enum_types_should_end_with_enum.symbols = enum_types
+dotnet_naming_rule.enum_types_should_end_with_enum.style = enum_suffix_style
+
+dotnet_naming_symbols.enum_types.applicable_kinds = enum
+dotnet_naming_symbols.enum_types.applicable_accessibilities = *
+
+dotnet_naming_style.enum_suffix_style.capitalization = pascal_case
+dotnet_naming_style.enum_suffix_style.required_suffix = Enum
 
 # --------------- 前端（JS / Vue / HTML / CSS）--------------
 [*.{js,jsx,vue}]
@@ -35,3 +51,11 @@ indent_size = 2
 [*.{md,yml,yaml,toml}]
 indent_style = space
 indent_size = 2
+
+# --------------- Docker / shell：惯例保持 LF ---------------
+# CRLF 会破坏行继续符（\），Dockerfile 与 shell 脚本必须保持 LF
+[Dockerfile*]
+end_of_line = lf
+
+[*.sh]
+end_of_line = lf

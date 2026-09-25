@@ -1,11 +1,7 @@
-using System.Threading.Tasks;
-
-namespace KnowVault.Domain.Data
+namespace KnowVault.Domain
 {
-
 	public interface IKnowVaultDbSchemaMigrator
 	{
-	    Task MigrateAsync();
+		Task MigrateAsync();
 	}
-
 }

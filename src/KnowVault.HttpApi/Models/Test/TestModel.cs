@@ -1,13 +1,11 @@
-using System;
-
-namespace KnowVault.HttpApi.Models.Test
+namespace KnowVault.HttpApi
 {
 
 	public class TestModel
 	{
-	    public string? Name { get; set; }
+		public string? Name { get; set; }
 
-	    public DateTime BirthDate { get; set; }
+		public DateTime BirthDate { get; set; }
 	}
 
 }

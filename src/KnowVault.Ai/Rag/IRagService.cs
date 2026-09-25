@@ -1,8 +1,4 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace KnowVault.Ai.Rag
+namespace KnowVault.Ai
 {
 
 	/// <summary>
@@ -11,7 +7,7 @@ namespace KnowVault.Ai.Rag
 	/// </summary>
 	public interface IRagService
 	{
-	    Task<RagAnswer> AnswerAsync(RagRequest request, CancellationToken cancellationToken = default);
+		Task<RagAnswer> AnswerAsync(RagRequest request, CancellationToken cancellationToken = default);
 	}
 
 }

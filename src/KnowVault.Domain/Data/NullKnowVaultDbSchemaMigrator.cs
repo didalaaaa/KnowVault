@@ -1,7 +1,6 @@
-using System.Threading.Tasks;
 using Volo.Abp.DependencyInjection;
 
-namespace KnowVault.Domain.Data
+namespace KnowVault.Domain
 {
 
 	/* This is used if database provider does't define
@@ -9,10 +8,10 @@ namespace KnowVault.Domain.Data
 	 */
 	public class NullKnowVaultDbSchemaMigrator : IKnowVaultDbSchemaMigrator, ITransientDependency
 	{
-	    public Task MigrateAsync()
-	    {
-	        return Task.CompletedTask;
-	    }
+		public Task MigrateAsync()
+		{
+			return Task.CompletedTask;
+		}
 	}
 
 }

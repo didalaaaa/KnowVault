@@ -1,12 +1,12 @@
-namespace KnowVault.Domain.Settings
+namespace KnowVault.Domain
 {
 
 	public static class KnowVaultSettings
 	{
-	    private const string Prefix = "KnowVault";
+		private const string Prefix = "KnowVault";
 
-	    //Add your own setting names here. Example:
-	    //public const string MySetting1 = Prefix + ".MySetting1";
+		//Add your own setting names here. Example:
+		//public const string MySetting1 = Prefix + ".MySetting1";
 	}
 
 }

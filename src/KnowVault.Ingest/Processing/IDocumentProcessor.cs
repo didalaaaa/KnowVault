@@ -1,7 +1,4 @@
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace KnowVault.Ingest.Processing
+namespace KnowVault.Ingest
 {
 
 	/// <summary>
@@ -10,7 +7,7 @@ namespace KnowVault.Ingest.Processing
 	/// </summary>
 	public interface IDocumentProcessor
 	{
-	    Task ProcessPendingDocumentsAsync(CancellationToken cancellationToken = default);
+		Task ProcessPendingDocumentsAsync(CancellationToken cancellationToken = default);
 	}
 
 }
