@@ -61,11 +61,30 @@ KnowVault.slnx
 ### 后端（C# / .NET / ABP）
 - 语言版本随 .NET 10（C# 14），`Nullable` 开启。
 - 遵循 **ABP 约定**：应用服务命名以 `AppService` 结尾；实体继承 `Entity` / `AggregateRoot`；公共方法遵循 .NET 异步命名（`XXXAsync`）。
-- **枚举命名必须带 `Enum` 后缀（强制执行）**：所有 `enum` 类型名一律以 `Enum` 结尾，**文件名与类型名保持一致**（一个 `.cs` 文件一个枚举），引用处同样使用带后缀的类型名。例如 `src/KnowVault.Domain.Shared/Chat/MessageRoleEnum.cs` → `public enum MessageRoleEnum`，使用处写 `MessageRoleEnum.User`；`DocumentStatusEnum` / `DocumentSourceTypeEnum` 同理。`.editorconfig` 已对 `enum` 声明启用命名规则（`required_suffix = Enum`），违规命中 **IDE1006**：VS 会实时提示，`dotnet format style --verify-no-changes --diagnostics IDE1006` 可检出（注意命名规则**不参与 `dotnet build`**，即使开了 `EnforceCodeStyleInBuild`，所以别指望构建帮你拦），不要写 `public enum MessageRole` 这类无后缀枚举。
+- **枚举命名必须带 `Enum` 后缀（强制执行）**：所有 `enum` 类型名一律以 `Enum` 结尾，**文件名与类型名保持一致**（一个 `.cs` 文件一个枚举），引用处同样使用带后缀的类型名。例如 `src/KnowVault.Domain.Shared/Enum/Chat/MessageRoleEnum.cs` → `public enum MessageRoleEnum`，使用处写 `MessageRoleEnum.User`；`DocumentStatusEnum` / `DocumentSourceTypeEnum` 同理。`.editorconfig` 已对 `enum` 声明启用命名规则（`required_suffix = Enum`），违规命中 **IDE1006**：VS 会实时提示，`dotnet format style --verify-no-changes --diagnostics IDE1006` 可检出（注意命名规则**不参与 `dotnet build`**，即使开了 `EnforceCodeStyleInBuild`，所以别指望构建帮你拦），不要写 `public enum MessageRole` 这类无后缀枚举。
 - **分层职责清晰**：Domain 不放 EF/DTO；Application 做用例编排，不含 SQL；EF Core 只做持久化；AI 逻辑只放 `KnowVault.Ai`。
 - 所有业务实体**预留多租户**：表带 `TenantId`（ABP 一等公民，先单租户运行不用强制隔离，但结构保留）。
 - 主键用 GUID（ABP 默认 `Guid`），需要仓储接口定义于 Domain、实现于 EF Core。
-- **namespace 规则（强制执行）**：namespace 首段必须等于**项目名**，子目录再在项目名后逐级追加。例如 `src/KnowVault.HttpApi.Host/Program.cs` → `KnowVault.HttpApi.Host`；`src/KnowVault.HttpApi.Host/HealthChecks/X.cs` → `KnowVault.HttpApi.Host.HealthChecks`；`src/KnowVault.Domain/Documents/Document.cs` → `KnowVault.Domain.Documents`。**禁止**用统一根命名空间 `KnowVault` 平铺（如 `namespace KnowVault;`）。
+- **namespace 规则（强制执行，扁平根命名空间）**：namespace **一律只写项目名，不再追加子目录层级**——同一项目内所有 `.cs` 共用同一个命名空间，与文件落在哪个子目录无关（`Rag/`、`Documents/`、`HealthChecks/`、`Pages/` 等一律不体现在命名空间里）。对照示例：
+
+  | 文件路径 | namespace |
+  |---|---|
+  | `src/KnowVault.Ai/Rag/RagService.cs` | `KnowVault.Ai` |
+  | `src/KnowVault.Application/Qa/QaAppService.cs` | `KnowVault.Application` |
+  | `src/KnowVault.Application.Contracts/Qa/IQaAppService.cs` | `KnowVault.Application.Contracts` |
+  | `src/KnowVault.Domain/Chat/Message.cs` | `KnowVault.Domain` |
+  | `src/KnowVault.Domain.Shared/Enum/Documents/DocumentStatusEnum.cs` | `KnowVault.Domain.Shared` |
+  | `src/KnowVault.Domain.Shared/Localization/KnowVaultResource.cs` | `KnowVault.Domain.Shared` |
+  | `src/KnowVault.HttpApi/Controllers/KnowVaultController.cs` | `KnowVault.HttpApi` |
+  | `src/KnowVault.HttpApi.Host/HealthChecks/KnowVaultDatabaseCheck.cs` | `KnowVault.HttpApi.Host` |
+  | `src/KnowVault.Ingest/Processing/DocumentProcessor.cs` | `KnowVault.Ingest` |
+  | `src/KnowVault.DbMigrator/Program.cs` | `KnowVault.DbMigrator` |
+
+  **禁止**省略项目名退化到解决方案级单命名空间（如 `namespace KnowVault;`）——扁平指的是"项目名 + 不追加子目录"，不是所有项目共用一个命名空间。
+- **namespace 现存例外（既有现状，不要求专门改动，顺手碰到该文件时再收敛）**：
+  - `KnowVault.EntityFrameworkCore`：`.NET/ABP` 约定 `EntityFrameworkCore/` 目录不参与命名空间，故 `src/KnowVault.EntityFrameworkCore/EntityFrameworkCore/KnowVaultDbContext.cs` → `KnowVault.EntityFrameworkCore`；该目录下的 `Configurations/` 目前是 `KnowVault.EntityFrameworkCore.Configurations`（扁平规则的候选收敛对象，非强制）。
+  - `src/KnowVault.EntityFrameworkCore/Migrations/*`（EF 自动生成）→ `KnowVault.Migrations`，**属生成物，勿手改命名空间**。
+  - `src/KnowVault.Domain/Documents/Document.cs` → 目前仍是 `KnowVault.Domain.Documents`（历史遗留；同目录 `DocumentChunk.cs` 已是 `KnowVault.Domain`）。
 - **namespace 一律使用块级（block-scoped）声明**：`.editorconfig` 已强制 `csharp_style_namespace_declarations = block_scoped:error`；禁用 file-scoped（`namespace X;`），否则触发 IDE0160。
 - **方法偏好表达式主体（`=> ...`）**：`.editorconfig` 设 `csharp_style_expression_bodied_methods = true:silent`，所以 `public void MarkProcessing() => Status = DocumentStatusEnum.Processing;` 这类写法是**首选风格**，不会再报"使用方法的程序块主体"（IDE0022）。级别 `silent`（VS 里显示为 Refactoring Only）的含义：反向的"改用表达式主体"只以灯泡建议形式出现，**不进错误列表、不参与 Code Cleanup / `dotnet format`**，因此**不强制**改写 ABP 样板里可转的块体方法（实测 18 处，改不改都合规）；多语句方法照旧用 `{ }` 程序块。
 - 不写无意义的 `Common`/`Utils` 命名空间；一个 `.cs` 文件对应一个命名空间。
