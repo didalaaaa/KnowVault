@@ -20,7 +20,7 @@ namespace KnowVault.DbMigrator
 #else
 	                .MinimumLevel.Override("KnowVault", LogEventLevel.Information)
 #endif
-					.Enrich.FromLogContext()
+					.Enrich.FromLogContext() // 从日志上下文中提取属性（如 UserId、TenantId）加入日志
 				.WriteTo.Async(c => c.File("Logs/logs.txt"))
 				.WriteTo.Async(c => c.Console())
 				.CreateLogger();
@@ -30,8 +30,8 @@ namespace KnowVault.DbMigrator
 
 		public static IHostBuilder CreateHostBuilder(string[] args)
 		{
-			return Host.CreateDefaultBuilder(args)
-				.AddAppSettingsSecretsJson()
+			return Host.CreateDefaultBuilder(args) // .NET 通用主机构建器，默认加载配置、控制台日志等
+				.AddAppSettingsSecretsJson() // 加载 User Secrets（用户机密）；开发环境下，敏感配置（如数据库密码）可以放在 secrets.json 中，不提交到 Git
 				.ConfigureLogging((context, logging) => logging.ClearProviders())
 				.ConfigureServices((hostContext, services) =>
 				{

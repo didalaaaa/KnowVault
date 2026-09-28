@@ -1,5 +1,5 @@
 using KnowVault.Application.Contracts;
-using KnowVault.Domain.Documents;
+using KnowVault.Domain;
 using Volo.Abp.Domain.Repositories;
 
 namespace KnowVault.Application

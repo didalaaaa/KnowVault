@@ -57,7 +57,6 @@ namespace KnowVault.Domain
 
 
 			// Console Test / Angular Client
-
 			var appClientId = configurationSection["KnowVault_App:ClientId"];
 			if (!appClientId.IsNullOrWhiteSpace())
 			{

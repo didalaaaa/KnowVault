@@ -1,4 +1,4 @@
-using KnowVault.Domain.Documents;
+using KnowVault.Domain;
 using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
@@ -29,9 +29,7 @@ namespace KnowVault.Ingest
 				x => x.Status == DocumentStatusEnum.Pending,
 				cancellationToken: cancellationToken);
 
-			_logger.LogInformation(
-				"Ingest 心跳：待处理文档 {Pending} 个（P1 将经 RabbitMQ 消费队列完成解析/切片/向量化）",
-				pending);
+			_logger.LogInformation("Ingest 心跳：待处理文档 {Pending} 个（P1 将经 RabbitMQ 消费队列完成解析/切片/向量化）", pending);
 		}
 	}
 

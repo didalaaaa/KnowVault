@@ -1,5 +1,4 @@
 using KnowVault.Domain;
-using KnowVault.Domain.Documents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Volo.Abp.EntityFrameworkCore.Modeling;

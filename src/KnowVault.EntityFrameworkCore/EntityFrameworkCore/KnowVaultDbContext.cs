@@ -1,5 +1,4 @@
 using KnowVault.Domain;
-using KnowVault.Domain.Documents;
 using Microsoft.EntityFrameworkCore;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;

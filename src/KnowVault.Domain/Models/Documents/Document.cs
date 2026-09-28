@@ -2,7 +2,7 @@ using KnowVault.Domain.Shared;
 using Volo.Abp.Domain.Entities.Auditing;
 using Volo.Abp.MultiTenancy;
 
-namespace KnowVault.Domain.Documents
+namespace KnowVault.Domain
 {
 
 	/// <summary>
