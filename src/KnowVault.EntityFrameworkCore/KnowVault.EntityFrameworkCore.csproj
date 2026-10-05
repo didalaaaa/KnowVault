@@ -31,6 +31,7 @@
   <ItemGroup>
     <!-- 向量库（gRPC 客户端）与对象存储：作为 Infrastructure 实现层，接口定义在 KnowVault.Domain -->
     <PackageReference Include="Qdrant.Client" Version="1.19.0" />
+    <PackageReference Include="Minio" Version="6.0.5" />
   </ItemGroup>
 
   <ItemGroup>
