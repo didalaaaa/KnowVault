@@ -1,5 +1,8 @@
 using KnowVault.Domain;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Qdrant.Client;
+using Qdrant.Client.Grpc;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.BlobStoring.Database.EntityFrameworkCore;
@@ -57,6 +60,20 @@ namespace KnowVault.EntityFrameworkCore
 			var configuration = context.Services.GetConfiguration();
 			Configure<QdrantOptions>(configuration.GetSection("Qdrant"));
 			Configure<MinioOptions>(configuration.GetSection("Minio"));
+
+			// Qdrant 官方 gRPC 客户端（单例，内部持有 channel）
+			context.Services.AddSingleton(sp =>
+			{
+				var qdrant = sp.GetRequiredService<IOptions<QdrantOptions>>().Value;
+				var clientConfiguration = new ClientConfiguration();
+				if (!string.IsNullOrWhiteSpace(qdrant.ApiKey))
+				{
+					clientConfiguration.ApiKey = qdrant.ApiKey!;
+				}
+
+				var channel = QdrantChannel.ForAddress(qdrant.Endpoint, clientConfiguration);
+				return new QdrantClient(new QdrantGrpcClient(channel));
+			});
 
 			// ABP Studio 是一个可视化开发工具，它在"分析模式"下会扫描项目结构，但不需要真正连接数据库
 			if (AbpStudioAnalyzeHelper.IsInAnalyzeMode)

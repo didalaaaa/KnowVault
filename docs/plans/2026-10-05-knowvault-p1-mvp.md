@@ -1009,12 +1009,13 @@ namespace KnowVault.EntityFrameworkCore
 			await EnsureCollectionAsync(cancellationToken);
 
 			// 单租户运行时 filter.TenantId 为 Guid.Empty，与写入侧归一化保持一致
+			// 注意：GUID 以 keyword（字符串）落 payload，因此必须用 MatchKeyword 而不是数值型 Match
 			var qdrantFilter = new Filter
 			{
 				Must =
 				{
-					Match(ChunkPayload.TenantId, filter.TenantId.ToString()),
-					Match(ChunkPayload.KnowledgeBaseId, filter.KnowledgeBaseId.ToString())
+					MatchKeyword(ChunkPayload.TenantId, filter.TenantId.ToString()),
+					MatchKeyword(ChunkPayload.KnowledgeBaseId, filter.KnowledgeBaseId.ToString())
 				}
 			};
 
