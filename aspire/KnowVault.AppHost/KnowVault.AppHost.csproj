@@ -1,11 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Aspire 9+ 的 AppHost 必须用该 MSBuild SDK：它负责解析 DCP（编排进程）与 Dashboard 二进制的路径。
+       只引 Aspire.Hosting.AppHost 包时，运行会报 "CliPath ... is required / DashboardPath ... is missing"。 -->
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.5.3" />
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 被编排的应用：API 主宿主 + 迁移器 -->
+    <ProjectReference Include="..\..\src\KnowVault.HttpApi.Host\KnowVault.HttpApi.Host.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.DbMigrator\KnowVault.DbMigrator.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- 编排：Postgres / Redis / Qdrant / RabbitMQ / Seq（官方 Aspire 集成） -->
@@ -15,11 +25,6 @@
     <PackageReference Include="Aspire.Hosting.Qdrant" Version="13.5.3" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.5.3" />
     <PackageReference Include="Aspire.Hosting.Seq" Version="13.5.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- 被编排的应用：API 主宿主 -->
-    <ProjectReference Include="..\..\src\KnowVault.HttpApi.Host\KnowVault.HttpApi.Host.csproj" />
   </ItemGroup>
 
 </Project>

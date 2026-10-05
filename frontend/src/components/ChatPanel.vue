@@ -2,7 +2,7 @@
   <div class="chat-panel">
     <div class="messages" ref="listRef">
       <p v-if="chat.messages.length === 0" class="empty">
-        上传知识库文档后，向它提问，它会按你的资料作答并标注出处（P0 骨架为占位回答）。
+        左侧上传文档，等状态变为「已就绪」后提问：它会按你的资料作答并标注出处。
       </p>
       <div v-for="(m, i) in chat.messages" :key="i" class="msg" :class="'msg-' + m.role">
         <n-card size="small" :bordered="false" class="bubble">
@@ -15,16 +15,16 @@
                 :key="j"
                 size="small"
                 type="info"
-                style="margin-right: 6px"
+                style="margin: 0 6px 6px 0"
               >
-                {{ c.title }} · 片段 {{ c.chunkIndex }}
+                {{ c.title }} · 片段 {{ c.chunkIndex }} · {{ c.score.toFixed(3) }}
               </n-tag>
             </div>
           </template>
         </n-card>
       </div>
       <div v-if="chat.loading" class="msg msg-assistant">
-        <n-card size="small" :bordered="false" class="bubble">正在检索资料…</n-card>
+        <n-card size="small" :bordered="false" class="bubble">正在检索资料并生成回答…</n-card>
       </div>
     </div>
 
@@ -46,16 +46,19 @@
 import { ref, nextTick } from 'vue'
 import { NCard, NInput, NButton, NTag } from 'naive-ui'
 import { useChatStore } from '../stores/chat'
+import { useDocumentStore } from '../stores/documents'
 
 const chat = useChatStore()
+const documents = useDocumentStore()
 const question = ref('')
 const listRef = ref(null)
 
+// 发送问题：带上当前选中的知识库（检索按 knowledgeBaseId 过滤）
 async function send() {
   const q = question.value.trim()
   if (!q || chat.loading) return
   question.value = ''
-  await chat.ask(q)
+  await chat.ask(q, documents.knowledgeBaseId)
   await nextTick()
   listRef.value?.scrollTo({ top: listRef.value.scrollHeight, behavior: 'smooth' })
 }
@@ -68,7 +71,7 @@ async function send() {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: calc(100vh - 140px);
+  height: 100%;
 }
 .messages {
   flex: 1;
