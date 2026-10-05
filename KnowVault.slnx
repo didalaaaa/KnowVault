@@ -15,4 +15,7 @@
         <Project Path="src/KnowVault.DbMigrator/KnowVault.DbMigrator.csproj" />
         <Project Path="src/KnowVault.Ingest/KnowVault.Ingest.csproj" />
     </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/KnowVault.Tests/KnowVault.Tests.csproj" />
+    </Folder>
 </Solution>
