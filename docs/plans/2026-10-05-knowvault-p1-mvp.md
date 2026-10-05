@@ -3883,3 +3883,35 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 - 新增/改动文本文件行尾合规（CRLF，`AGENTS.md` 例外）；
 - `TECH_STACK.md` 与 `AGENTS.md` 已按 Task 0/14 回写，且与实际实现一致；
 - 每个 Task 一个 Conventional Commits 提交，历史可读。
+
+---
+
+## §4 执行记录（实测偏差，边做边记）
+
+> 原则：**代码以仓库实际实现为准，本节记录计划与实现的差异及原因**，避免后来者照抄计划里已过时的代码。
+
+### Task 4 —— Qdrant.Client 1.19 的实际 API
+
+1. **`Conditions.Match(field, keyword)` 不存在**：1.19 的 keyword 匹配是 `Conditions.MatchKeyword(string, string)`；`Match` 只接受 `bool` / `long` / 列表。
+   - GUID 以字符串落 payload，因此过滤必须用 `MatchKeyword`（编译错误 CS1503 暴露）。
+2. **`SearchAsync` 已标记过时**（CS0618：`Use QueryAsync instead.`）：改用 `QueryAsync(collection, query: float[]（有隐式转换）, filter:, limit:, payloadSelector: new WithPayloadSelector { Enable = true })`。
+   - 显式开启 `payloadSelector`：Query API 不像旧 Search 那样默认回传 payload。
+3. `QueryAsync` 的完整可选参数顺序（来自 1.19 XML 文档）：`prefetch, usingVector, filter, scoreThreshold, searchParams, limit, offset, payloadSelector, vectorsSelector, readConsistency, shardKeySelector, lookupFrom, timeout, cancellationToken` —— 全部用具名参数调用。
+
+### Task 6 —— 解析器的两处健壮性修正
+
+1. **Markdown 不再单独处理 `ListBlock`**：`Descendants()` 是前序遍历，`ListBlock` 与其内部 `ParagraphBlock` 都会被枚举到，按计划原样实现会**把列表项重复产出两遍**。改为「标题 + 段落」两类节点，列表项本身即段落，逐个产出。
+   - 已补测试 `Markdown_parser_does_not_duplicate_list_items` 防回归。
+2. **Word 标题级别兼容中文模板**：除 `Heading1..6`，额外接受样式 id 为 `"1".."6"` 的内置标题样式（zh-CN Word 模板常见）。
+3. `OpenXmlElement` 需要 `using DocumentFormat.OpenXml;`（`DocumentFormat.OpenXml.Wordprocessing` 里没有这个类型）。
+
+### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
+
+对全仓（排除 `obj/bin/node_modules`）统计：`.cs` = 65 CRLF / 16 LF / **1 MIXED**（`src/KnowVault.Application.Contracts/KnowVaultDtoExtensions.cs`，**既有违规，非本次引入**）；`.csproj` / `.json` / `.js` / `.vue` / `.html` / `.props` / `.slnx` 基本是 LF；`.md` 2 CRLF + `AGENTS.md` LF。
+
+本次执行策略（兼顾 `AGENTS.md` 规则与「不制造无意义 diff」）：
+
+- **新增文件**：按规则写 **CRLF**（`.cs` / `.csproj` / `.md`）。
+- **改动既有文件**：沿用其**原有行尾**（`.csproj` / `.json` / `.js` / `.vue` 保持 LF），不做全文件归一化。
+- 每步提交前逐文件自查，**保证不出现 MIXED**。
+- 全仓归一化（连同上表那个既有 MIXED 文件）建议作为**独立的一次 `chore` 提交**，等你确认后再做。
