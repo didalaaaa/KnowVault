@@ -3030,7 +3030,8 @@ namespace KnowVault.Tests
 
 			var (system, user) = RagPromptBuilder.Build("怎么部署？", chunks);
 
-			Assert.Contains("只依据", system);
+			// 断言系统提示词的硬约束：只允许依据资料作答（别写成语义相近但实际不存在的子串）
+			Assert.Contains("只使用资料片段中的信息作答", system);
 			Assert.Contains("[1] 文档《架构说明》 · 第三章 > 3.2", user);
 			Assert.Contains("[2] 文档《运维手册》", user);
 			Assert.Contains("第一段资料", user);
@@ -3917,6 +3918,26 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 2. **重叠测试的数据要选对**：计划里用 90 字符段落 + 容量 100，此时「重叠 20 + 本段 90」= 111 超容量，实现会**主动放弃重叠**以保证切片不超长 —— 于是断言必然失败。测试数据改为 50 字符段落（50+20+1 ≤ 100），重叠才真正生效。
    - 该行为本身是**有意设计**：宁可断开也不产生超长切片，已在实现注释中说明。
 3. 结果：`DocumentChunkerTests` 7 个用例全绿；全量 17 个测试通过。
+
+### Task 8/9 —— 两处分层契约下沉（计划未预见，但不做就编不过）
+
+计划的 Task 8/9 让 `KnowVault.Ingest` 用 `IEmbeddingService`、让 `KnowVault.Application` 用 `IngestOptions`，但这两个项目之间**并没有引用关系**，而且也不该有：
+
+1. **`IEmbeddingService` 从 `KnowVault.Ai` 下沉到 `KnowVault.Domain`**：Ingest 需要它做向量化，但 Ingest 一旦引用 Ai 就会把 Semantic Kernel 拖进摄入层。与冻结决策 #5（`IVectorStore` 接口在 Domain、实现在 Infrastructure）保持同一原则 —— **契约在 Domain，实现在 Ai**。
+2. **`IngestOptions` 拆分**：上传白名单/大小上限抽到 `KnowVault.Domain.DocumentUploadOptions`（应用层校验用），扩展名→来源格式的映射抽成 `KnowVault.Domain.DocumentSourceTypeResolver`；`IngestOptions` 只留切片参数。原因：Application 一旦引用 Ingest，就会把 MassTransit + 5 个解析库拖进应用层，违背「应用层不耦合具体 MQ 框架」。
+3. 配置节相应拆分为 `Documents`（白名单/上限）与 `Ingest`（切片参数）。
+
+### Task 9 —— ABP `IRemoteStreamContent` 的实际成员
+
+- 实际成员是 `FileName` / `ContentType` / `ContentLength` / `GetStream()`：**没有** `Length`，也**没有** `GetStreamAsync`（计划里的写法编译不过，已按实际 API 修正）。
+- `ContentLength` 可能为 null（分块上传），拿不到就跳过大小校验。
+- 上传流可能不可定位：`MinioDocumentStorage.PutAsync` 对 `!CanSeek` 的流先落内存（文档 ≤50MB，可接受）。
+- `[Authorize]` 可用：`Microsoft.AspNetCore.Authorization` 10.0.7 已由 ABP 传递引入 Application 项目，无需额外加包。
+
+### Task 10 —— 断言写错（被测试抓出来）
+
+- `RagPromptBuilderTests` 里 `Assert.Contains("只依据", system)` **失败**：系统提示词的实际措辞是「你**只能依据**用户提供的…」「**只使用**资料片段中的信息作答」，"只依据" 并不是子串。改为断言 `"只使用资料片段中的信息作答"`。
+- 教训：断言要写**实际存在的完整子串**，别写语义相近的简写。
 
 ### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
 

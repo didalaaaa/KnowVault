@@ -44,12 +44,14 @@ namespace KnowVault.Application
 				new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question),
 				autoSave: true);
 
-			// RAG 编排
+			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
 			var rag = await _ragService.AnswerAsync(new RagRequest
 			{
-				KnowledgeBaseId = input.KnowledgeBaseId ?? Guid.Empty,
+				KnowledgeBaseId = input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId,
+				TenantId = CurrentTenant.Id ?? Guid.Empty,
 				ConversationId = conversation.Id,
-				Question = input.Question
+				Question = input.Question,
+				TopK = input.TopK ?? 0
 			});
 
 			var citations = rag.Citations

@@ -42,6 +42,11 @@ namespace KnowVault.Application
 		public async Task<DocumentDto> UploadAsync(UploadDocumentInput input)
 		{
 			var fileName = input.File.FileName;
+			if (string.IsNullOrWhiteSpace(fileName))
+			{
+				throw new UserFriendlyException("上传文件缺少文件名。");
+			}
+
 			var extension = Path.GetExtension(fileName).ToLowerInvariant();
 			var options = _uploadOptions.Value;
 
@@ -62,10 +67,14 @@ namespace KnowVault.Application
 			var sourceType = DocumentSourceTypeResolver.FromExtension(extension)
 							 ?? throw new UserFriendlyException($"无法识别文件类型：{extension}");
 
+			var title = string.IsNullOrWhiteSpace(input.Title)
+				? Path.GetFileNameWithoutExtension(fileName) ?? "未命名文档"
+				: input.Title!;
+
 			var document = new Document(
 				GuidGenerator.Create(),
 				input.KnowledgeBaseId,
-				string.IsNullOrWhiteSpace(input.Title) ? Path.GetFileNameWithoutExtension(fileName) : input.Title!,
+				title,
 				sourceType,
 				CurrentTenant.Id);
 
