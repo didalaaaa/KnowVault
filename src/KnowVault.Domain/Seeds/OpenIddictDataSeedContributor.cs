@@ -56,11 +56,17 @@ namespace KnowVault.Domain
 			var configurationSection = Configuration.GetSection("OpenIddict:Applications");
 
 
-			// Console Test / Angular Client
+			// Console Test / Angular Client（同时作为 Vue SPA 的密码模式客户端）
 			var appClientId = configurationSection["KnowVault_App:ClientId"];
 			if (!appClientId.IsNullOrWhiteSpace())
 			{
+				// RootUrl 未配置时不能把 null 塞进 redirectUris：OpenIddict 会把它当非法绝对 URI 处理，
+				// 导致种子失败、KnowVault_App 客户端缺失（密码模式登录必然 401）
 				var appClientRootUrl = configurationSection["KnowVault_App:RootUrl"]?.TrimEnd('/');
+				var appRedirectUris = appClientRootUrl.IsNullOrWhiteSpace()
+					? new List<string>()
+					: new List<string> { appClientRootUrl! };
+
 				await CreateOrUpdateApplicationAsync(
 					applicationType: OpenIddictConstants.ApplicationTypes.Web,
 					name: appClientId!,
@@ -77,8 +83,8 @@ namespace KnowVault.Domain
 						"Impersonation"
 					},
 					scopes: commonScopes,
-					redirectUris: new List<string> { appClientRootUrl },
-					postLogoutRedirectUris: new List<string> { appClientRootUrl },
+					redirectUris: appRedirectUris,
+					postLogoutRedirectUris: appRedirectUris,
 					clientUri: appClientRootUrl,
 					logoUri: "/images/clients/angular.svg"
 				);
@@ -92,10 +98,9 @@ namespace KnowVault.Domain
 
 			// Swagger Client
 			var swaggerClientId = configurationSection["KnowVault_Swagger:ClientId"];
-			if (!swaggerClientId.IsNullOrWhiteSpace())
+			var swaggerRootUrl = configurationSection["KnowVault_Swagger:RootUrl"]?.TrimEnd('/');
+			if (!swaggerClientId.IsNullOrWhiteSpace() && !swaggerRootUrl.IsNullOrWhiteSpace())
 			{
-				var swaggerRootUrl = configurationSection["KnowVault_Swagger:RootUrl"]?.TrimEnd('/');
-
 				await CreateOrUpdateApplicationAsync(
 					applicationType: OpenIddictConstants.ApplicationTypes.Web,
 					name: swaggerClientId!,
@@ -106,7 +111,7 @@ namespace KnowVault.Domain
 					grantTypes: new List<string> { OpenIddictConstants.GrantTypes.AuthorizationCode, },
 					scopes: commonScopes,
 					redirectUris: new List<string> { $"{swaggerRootUrl}/swagger/oauth2-redirect.html" },
-					clientUri: swaggerRootUrl.EnsureEndsWith('/') + "swagger",
+					clientUri: swaggerRootUrl!.EnsureEndsWith('/') + "swagger",
 					logoUri: "/images/clients/swagger.svg"
 				);
 			}

@@ -3961,10 +3961,20 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 2. `ConnectionStrings__rabbitmq`：Ingest 模块在 `ConfigureServices` 里对空连接串直接抛 `AbpInitializationException`。
 3. `Minio__Endpoint / Minio__AccessKey / Minio__SecretKey`：为空时 `IMinioClient` 工厂抛错（在请求解析 AppService 时触发）。
 
-### 尚未消除的既有告警（非本次引入）
+### OpenIddict 客户端种子加固（验收前主动排雷，顺带清零警告）
 
-- `OpenIddictDataSeedContributor.cs(80,109)` 两条 **CS8604**：`KnowVault_App` 未配 `RootUrl`，`redirectUris` 收到 null
-  —— 这正是 Task 12 Step 0 提示要核实的风险点，验收时若 `KnowVault_App` 不存在就要补 `RootUrl` 重跑 DbMigrator。
+`KnowVault_App` 的 `RootUrl` 原本没配，导致 `null` 被塞进 `redirectUris` / `postLogoutRedirectUris`
+（两条 **CS8604** 就是它的症状）。OpenIddict 会把 null 当非法绝对 URI 处理 → **DbMigrator 播种可能直接失败**，
+于是密码模式登录必然 401，验收第 1 步就断。已处理：
+
+1. `OpenIddictDataSeedContributor`：`RootUrl` 为空时不再往 `redirectUris` 塞 null（密码模式客户端本就不需要 redirect URI）；
+   Swagger 客户端同样加了 `RootUrl` 非空判断。
+2. `src/KnowVault.DbMigrator/appsettings.json`：给 `KnowVault_App` 补 `"RootUrl": "https://localhost:44300/"`。
+
+结果：`dotnet build` **0 warning / 0 error**（两条既有 CS8604 一并消除）。
+
+### 尚未消除的既有问题（非本次引入）
+
 - `KnowVaultApplicationContractsModule` / `KnowVaultHttpApiClientModule` / `KnowVaultApplicationModule` 三处
   `dotnet format` 的 **IMPORTS（导入顺序）**：P0 既有文件，本次未触碰其 using 块。IDE1006（枚举后缀）**零违规**。
 
