@@ -39,6 +39,13 @@ namespace KnowVault.Application
 		}
 
 		/// <inheritdoc />
+		/// <remarks>
+		/// 用 <c>[RemoteService(IsEnabled = false)]</c> 把本方法移出 ABP 动态 API：
+		/// DTO 里嵌套 <c>IRemoteStreamContent</c> 时，约定生成的 action 只接受 application/json，
+		/// multipart 请求会被拒为 415；上传改由 <c>KnowVault.HttpApi.DocumentUploadController</c> 显式暴露。
+		/// 注意：该特性必须标在**实现类的方法**上（标在接口上不生效，会与显式控制器产生路由冲突）。
+		/// </remarks>
+		[RemoteService(IsEnabled = false)]
 		public async Task<DocumentDto> UploadAsync(UploadDocumentInput input)
 		{
 			var fileName = input.File.FileName;

@@ -4,11 +4,13 @@ namespace KnowVault.Application.Contracts
 {
 	/// <summary>
 	/// 文档应用服务（上传/查文档）。
-	/// ABP 动态生成 POST /api/app/documents/upload、GET /api/app/documents、GET /api/app/documents/{id}。
+	/// 路由（已用 Swagger 核对）：服务名去掉 AppService 后缀为**单数** →
+	/// GET /api/app/document?knowledgeBaseId=...、GET /api/app/document/{id}；
+	/// 上传走显式控制器 <c>DocumentUploadController</c>：POST /api/app/document/upload（multipart/form-data）。
 	/// </summary>
 	public interface IDocumentAppService : IApplicationService
 	{
-		/// <summary>上传文档并触发异步摄入。</summary>
+		/// <summary>上传文档并触发异步摄入（不暴露为动态 API：实现类方法上标了 RemoteService(false)，改由显式控制器暴露）。</summary>
 		/// <param name="input">上传入参（含文件流）。</param>
 		/// <returns>新建的文档 DTO（状态为 Pending）。</returns>
 		Task<DocumentDto> UploadAsync(UploadDocumentInput input);

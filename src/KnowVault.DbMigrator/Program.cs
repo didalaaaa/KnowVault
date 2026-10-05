@@ -31,6 +31,11 @@ namespace KnowVault.DbMigrator
 		public static IHostBuilder CreateHostBuilder(string[] args)
 		{
 			return Host.CreateDefaultBuilder(args) // .NET 通用主机构建器，默认加载配置、控制台日志等
+				// 关键：DbMigrator 没有 launchSettings.json，从解决方案根执行 `dotnet run --project src/KnowVault.DbMigrator`
+				// 时工作目录会停在根目录，导致 appsettings.json 加载不到 —— OpenIddict 的应用客户端会被静默跳过
+				// （表现为：scope 种子成功，但 OpenIddictApplications 0 行 → 登录报 invalid_client）。
+				// 这里把内容根固定到输出目录，使行为不依赖启动时的工作目录。
+				.UseContentRoot(AppContext.BaseDirectory)
 				.AddAppSettingsSecretsJson() // 加载 User Secrets（用户机密）；开发环境下，敏感配置（如数据库密码）可以放在 secrets.json 中，不提交到 Git
 				.ConfigureLogging((context, logging) => logging.ClearProviders())
 				.ConfigureServices((hostContext, services) =>

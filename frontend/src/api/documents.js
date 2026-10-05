@@ -1,6 +1,6 @@
 import { http } from './http'
 
-// 文档接口（ABP 动态 API：/api/app/documents）
+// 文档接口（ABP 动态 API：服务名去掉 AppService 后缀 → 单数 /api/app/document）
 export const documentApi = {
   /**
    * 上传文档。
@@ -12,7 +12,7 @@ export const documentApi = {
     form.append('knowledgeBaseId', knowledgeBaseId)
     if (title) form.append('title', title)
     form.append('file', file)
-    return http.post('/app/documents/upload', form, {
+    return http.post('/app/document/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
@@ -22,5 +22,5 @@ export const documentApi = {
    * @param {string} knowledgeBaseId 知识库 ID
    * @returns {Promise<object[]>} 文档列表
    */
-  list: (knowledgeBaseId) => http.get('/app/documents', { params: { knowledgeBaseId } }),
+  list: (knowledgeBaseId) => http.get('/app/document', { params: { knowledgeBaseId } }),
 }
