@@ -21,12 +21,12 @@
 |---|---|
 | 后端 | .NET 10 (LTS) + ABP.VNext + Semantic Kernel |
 | 数据 | PostgreSQL + EF Core ｜ Redis ｜ MinIO ｜ Qdrant |
-| 异步 | RabbitMQ / MassTransit |
+| 异步 | RabbitMQ / MassTransit 8.5.7（Apache-2.0；**9.x 为商业许可，勿用**） |
 | AI 模型 | **DeepSeek**（生成） + **Qwen**（Embedding + Rerank，跨厂商路由） |
 | 前端 | Vue 3 + Vite + **JavaScript**（不用 TS）+ Naive UI + Pinia |
 | 本地编排 | .NET Aspire｜Docker Compose |
 | 可观测 | OpenTelemetry + Seq + Serilog |
-| 测试 | xUnit + Testcontainers + FluentAssertions |
+| 测试 | xUnit + Testcontainers + FluentAssertions（**必须钉 7.x**；8.x 已改为商业许可） |
 
 ---
 
@@ -39,9 +39,9 @@ KnowVault.slnx
 │  ├─ KnowVault.Domain                // 实体 / 聚合 / 仓储接口（多租户预留）
 │  ├─ KnowVault.Application.Contracts // AppService 契约 + DTO
 │  ├─ KnowVault.Application           // AppService 用例编排 + AI 编排入口
-│  ├─ KnowVault.EntityFrameworkCore   // EF Core(PostgreSQL) + 迁移；Qdrant 访问封装
+│  ├─ KnowVault.EntityFrameworkCore   // EF Core(PostgreSQL) + 迁移；Qdrant 与 MinIO 访问实现（接口定义在 Domain）
 │  ├─ KnowVault.Ai                   // Semantic Kernel：Prompt / RAG / 向量检索 / 重排 / 流式
-│  ├─ KnowVault.Ingest               // 文档解析后台 Worker（消费 RabbitMQ，产出切片+向量）
+│  ├─ KnowVault.Ingest               // 文档解析与摄入（P1：进程内 MassTransit consumer，消费 RabbitMQ，产出切片+向量；P3 可拆独立 Worker）
 │  ├─ KnowVault.HttpApi              // 动态 API 控制器（ABP 自动生成）
 │  ├─ KnowVault.HttpApi.Client       // HttpClient 强类型代理（供外部调用方使用）
 │  ├─ KnowVault.HttpApi.Host         // 主宿主（OpenIddict/健康检查/Swagger），Aspire 编排入口
@@ -49,10 +49,10 @@ KnowVault.slnx
 ├─ aspire/
 │  └─ KnowVault.AppHost              // Aspire 编排：Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq + API
 ├─ frontend/                          // Vue3 + Vite + JS + Naive UI
-└─ tests/                             // （待建）Testcontainers 集成测试
+└─ tests/                             // P1：KnowVault.Tests（纯函数单测）；Testcontainers 集成测试待建（P3）
 ```
 
-> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层；`tests/` 尚未创建。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`。
+> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测），Testcontainers 集成测试仍留 P3。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`。
 
 ---
 
@@ -144,11 +144,13 @@ KnowVault.slnx
 
 ## 四、数据与 AI 层约定（红线）
 
-- **Qdrant**：**单一 collection + payload 过滤**。每个向量的 payload 必须带 `tenantId / knowledgeBaseId / documentId / chunkIndex`；禁止为每个知识库各建一个 collection。
-- **切片 Chunking**：按段落/标题层级 + 固定长度；默认 chunk≈500–800 token、overlap≈50–100；参数可配置（走设置），并保留段落/标题 metadata 供引用溯源。
+- **Qdrant**：**单一 collection（`knowvault_chunks`，1024 维 Cosine）+ payload 过滤**。每个向量的 payload 必须带 `tenantId / knowledgeBaseId / documentId / chunkIndex`，另带 `content / documentTitle / headingPath / sourceType`（见 `TECH_STACK.md` §9.1）；禁止为每个知识库各建一个 collection。
+  - ⚠️ 租户为 null 时（单租户运行），payload 的 `tenantId` 必须**归一化为 `Guid.Empty`**——Qdrant 无法对 null 做 match，否则过滤条件恒不命中。
+- **切片 Chunking**：按段落/标题层级 + 固定长度；默认 chunk≈500–800 token、overlap≈50–100；参数可配置，并保留段落/标题 metadata 供引用溯源。
+  - P1 以**字符数近似 token**（默认 1000 字符 / overlap 120）：中文没有可靠 .NET tokenizer，不为此引入 tiktoken 类依赖；超长单段按句子边界硬切、此时不叠加 overlap。
 - **检索 + 组装**：按 `tenantId + knowledgeBaseId` 做 payload 过滤，top-k≈5–8；System prompt 规定「只根据资料回答、资料不足就说不知道、标注来源」；把 top-k 切片 + 问题交给 DeepSeek，返回 `answer + citations`。
 - **模型路由**：生成=DeepSeek，向量化/重排=Qwen。统一封装成 OpenAI 兼容调用层，便于日后换厂商。
-- **文档解析库**：PDF=`PdfPig`、Word=`DocumentFormat.OpenXml`、Excel=`NPOI`/`ClosedXML`、Markdown=`Markdig`、HTML=`HtmlAgilityPack`。
+- **文档解析库**：PDF=`PdfPig`、Word=`DocumentFormat.OpenXml`、Excel=`.xlsx`→**`ClosedXML`**（弃 NPOI）、Markdown=`Markdig`、HTML=`HtmlAgilityPack`。P1 的「网页」指**上传 .html 文件**，不做 URL 抓取。
   - ⚠️ **禁止用 iTextSharp（AGPL 许可，会污染整个项目的开源许可）。**
 - 会话/消息：**从第一天就持久化 `Conversation` + `Message`（含 `CitationsJson`）**。
 
@@ -187,5 +189,6 @@ dotnet test
 
 ## 七、待办/注意
 
-- DeepSeek / Qwen 的 API Key 尚未配置（搭骨架时可先用 Mock / 占位注入，不阻塞）。
-- `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）；`tests/`（Testcontainers 集成测试）尚未创建，按 `TECH_STACK.md` §3 / §5 的范围补齐。
+- DeepSeek / Qwen 的 API Key：**P1 已确认会配置**（端到端真跑）。Key 一律走环境变量 `Ai__DeepSeekApiKey` / `Ai__QwenApiKey`（由 `aspire/KnowVault.AppHost` 从本地 `.env`/进程环境映射），严禁进仓库或硬编码。
+- `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）。**P1** 新增 `tests/KnowVault.Tests`（切片/解析/payload/Prompt 的**纯函数单测**）；Testcontainers 集成测试仍按 `TECH_STACK.md` §6 留 P3。
+- **P1 冻结规格与执行计划**：`docs/plans/2026-10-05-knowvault-p1-mvp.md`（含 14 个任务的文件级改动、代码与逐项验收命令）。规格变更必须先改该文档的 §0 再改代码。

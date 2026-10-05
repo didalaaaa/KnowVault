@@ -17,7 +17,7 @@
 | 主库 / ORM | **PostgreSQL** + EF Core |
 | 缓存 | **Redis** |
 | 对象存储 | **MinIO**（原始上传文档，S3 兼容） |
-| 异步队列 | **RabbitMQ** / MassTransit（文档解析消费队列） |
+| 异步队列 | **RabbitMQ** / **MassTransit 8.5.7（Apache-2.0）**（9.x 为 Massient 商业许可，勿用） |
 | 可观测 | **OpenTelemetry** + **Seq** + Serilog |
 | 实时输出 | **SignalR**（AI 流式"打字机"效果） |
 | 本地编排 | **.NET Aspire** |
@@ -47,7 +47,7 @@ KnowVault.slnx
 │  ├─ KnowVault.Domain                // 实体 / 聚合 / DomainEvent / 仓储接口（多租户预留）
 │  ├─ KnowVault.Application.Contracts // AppService 契约 + DTO（上传/问答等入参出参）
 │  ├─ KnowVault.Application           // AppService 用例编排 + AI 编排入口
-│  ├─ KnowVault.EntityFrameworkCore   // EF Core(PostgreSQL) + DbContext / EF 迁移；Qdrant 访问封装
+│  ├─ KnowVault.EntityFrameworkCore   // EF Core(PostgreSQL) + DbContext / EF 迁移；Qdrant 与 MinIO 访问实现（接口定义在 KnowVault.Domain）
 │  ├─ KnowVault.Ai                   // Semantic Kernel：Prompt / RAG / 向量检索 / 重排 / 流式
 │  ├─ KnowVault.Ingest               // 文档解析后台 Worker（消费 RabbitMQ，产出切片+向量）
 │  ├─ KnowVault.HttpApi              // 动态 API 控制器（ABP 自动生成）
@@ -60,7 +60,7 @@ KnowVault.slnx
 └─ tests/                             // （待建）Testcontainers 集成测试
 ```
 
-> **说明（当前实现）**：以上是 P0 用 ABP 分层模板**实际落地**的结构（`KnowVault.slnx`）。相比早期设想，主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（而非 `KnowVault.Web`），并多出 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层；`tests/` 尚未创建。
+> **说明（当前实现）**：以上是 P0 用 ABP 分层模板**实际落地**的结构（`KnowVault.slnx`）。相比早期设想，主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（而非 `KnowVault.Web`），并多出 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层；`tests/` 在 **P1** 先落 `KnowVault.Tests`（纯函数单测），Testcontainers 集成测试仍留 P3。
 
 ---
 
@@ -122,7 +122,7 @@ KnowVault.slnx
 
 ## 8. 待确认的开放项
 
-- [ ] DeepSeek / Qwen 的 API Key 是否已备好（先各申请一个即用；搭骨架不需要，可先占位）
+- [x] DeepSeek / Qwen 的 Key 已确认会配置（P1 端到端真跑；Key 走环境变量 `Ai__*`，严禁进仓库）
 - [ ] 前端首期用 `Naive UI` 的中文主题模板，还是从零写
 
 ---
@@ -136,3 +136,23 @@ KnowVault.slnx
 - **检索 + 组装**：按 `tenantId + knowledgeBaseId` 做 payload 过滤，top-k≈5–8，二期加 rerank；System prompt 规定「只根据资料回答、不足就说不知道、标注来源」，top-k 切片 + 问题 → DeepSeek → answer + citations
 - **认证**：MVP 纳入 ABP 开箱登录（用户名/密码）
 - **会话存储**：从第一天存 `Conversation` + `Message`（含 `CitationsJson`），为二期多轮/历史打底
+
+### 9.1 P1 实现细节定稿（2026-10-05）
+
+- **消息**：`MassTransit 8.5.7`（Apache-2.0）+ `MassTransit.RabbitMQ`；**进程内 consumer**（Host 内消费，队列仍走 RabbitMQ），consumer/processor 写在 `KnowVault.Ingest` 且保持宿主无关，P3 可平移为独立 Worker。
+  - ⚠️ **禁止升到 9.x**：9.2.3 的 nuspec 无 license 表达式、只有 `licenseUrl=https://massient.com/license`（Massient 商业产品）；8.5.7 为 Apache-2.0 且带 `net10.0` 目标组。
+- **向量库**：官方 `Qdrant.Client 1.19`；接口 `IVectorStore` 在 `KnowVault.Domain`，实现 `QdrantVectorStore` 在 `KnowVault.EntityFrameworkCore`；单一 collection `knowvault_chunks`，1024 维（`text-embedding-v3`）、Cosine；gRPC 端口 **6334**（不是 REST 的 6333）。
+- **payload 字段**：`tenantId / knowledgeBaseId / documentId / chunkIndex / content / documentTitle / headingPath / sourceType`；**`tenantId` 为 null 时归一化为 `Guid.Empty`**（Qdrant 无法 match null，单租户运行时必然命中这一条）；pointId = `DocumentChunk.Id`（UUID 字符串）。
+- **对象存储**：`Minio` SDK 自封装 `IDocumentStorage`（接口在 Domain，实现在 EntityFrameworkCore），bucket `knowvault`，对象键 `{tenantId|host}/{knowledgeBaseId}/{documentId}{ext}`；**不用** ABP BlobStoring 的 S3 兼容 provider。
+  - 说明：MinIO 服务端是 AGPL-3.0，但仓库只通过 Docker 运行**未修改的官方镜像**、用自己 Apache-2.0 的 SDK 调用，不构成对仓库代码的许可传染。
+- **解析库**：PDF=`PdfPig`、Word=`.docx`→`DocumentFormat.OpenXml`、Excel=`.xlsx`→**`ClosedXML`（弃 NPOI）**、Markdown=`Markdig`、HTML=`HtmlAgilityPack`；P1 只支持**上传 .html 文件**，**不做 URL 抓取**。
+- **切片单位**：以**字符数近似 token**（默认 1000 字符 / overlap 120，≈600 / 70 token 量级）——中文没有可靠 .NET tokenizer，不引 tiktoken 类依赖；超长单段按句子边界硬切、此时不叠加 overlap。
+- **知识库**：P1 不做管理界面，由 DbMigrator 种子固定 ID 的「默认知识库」，并提供最小列表 API 供前端下拉。
+- **认证**：SPA 走 Resource Owner Password grant，复用已种子的公开客户端 `KnowVault_App`；API 侧类级 `[Authorize]`，权限细分留二期。
+- **P1 不做**：rerank、多轮历史加载、混合检索(BM25)、删除文档与 Qdrant points 清理、失败自动重试/"重新处理"、流式输出、URL 抓取、权限细分。
+- **测试**：P1 只加 `tests/KnowVault.Tests` 的**纯函数单测**（切片/解析/payload/Prompt），Testcontainers 集成测试仍留 P3；PDF 解析因缺可复现二进制夹具改手工验收。
+  - ⚠️ `FluentAssertions` 若引入**必须钉 7.x**（7.2.0 为 Apache-2.0；8.11.0 已改为许可文件即 Xceed 商业 EULA）。
+
+## 10. P1 执行计划
+
+- 详见 [`docs/plans/2026-10-05-knowvault-p1-mvp.md`](docs/plans/2026-10-05-knowvault-p1-mvp.md)：含冻结规格、14 个任务的文件级改动、完整代码与逐项验证命令、风险登记与完成定义。
