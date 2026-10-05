@@ -3939,13 +3939,37 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 - `RagPromptBuilderTests` 里 `Assert.Contains("只依据", system)` **失败**：系统提示词的实际措辞是「你**只能依据**用户提供的…」「**只使用**资料片段中的信息作答」，"只依据" 并不是子串。改为断言 `"只使用资料片段中的信息作答"`。
 - 教训：断言要写**实际存在的完整子串**，别写语义相近的简写。
 
-### Task 11 / 14 —— Aspire 与宿主的四个实测坑（都已修）
+### Task 11 / 14 —— Aspire 与宿主的实测坑（都已修 / 已记录）
+
+#### A. 本机（Windows + Docker Desktop）特有的环境坑
+
+1. **9001 落在 Windows 的 TCP 保留端口段**（`netsh interface ipv4 show excludedportrange protocol=tcp` 可见 `9001 9001`）：
+   原来把 MinIO 控制台钉在宿主 9001，DCP 日志里会疯狂重试
+   `Could not use the same port for all addresses ... AttemptedCommonPort: 9001`。
+   已改为**控制台端口动态分配**（`WithEndpoint(targetPort: 9001, name: "console")`），S3 API 仍钉宿主 9000
+   ——因为 AppHost 给 API 注入的是 `Minio__Endpoint=localhost:9000`。
+2. **宿主机 5432 已被用户自己的 `postgres` 容器占用**：不影响编排（Aspire 用动态宿主端口，并把连接串注入 API），
+   但**脱离 Aspire 单独跑宿主时要注意**，`appsettings.json` 里的 `localhost:5432` 会打到别的库上。
+3. **DCP 冷启动可能超过其内部 20s 超时**：首次运行报
+   `Polly.Timeout.TimeoutRejectedException: The operation didn't complete within the allowed timeout of '00:00:20'`
+   （`KubernetesService.EnsureKubernetesAsync`）。**直接重试一次即可**（第二次 DCP 正常起来并开始创建容器）。
+4. **不要并发跑 `dotnet build`/`dotnet test`**：DCP 会自己去构建被编排的项目，与手动构建抢 `obj/bin` 文件锁，
+   DCP 日志里会出现 "生成失败。请修复生成错误并重新运行。"（构建失败会让编排卡住）。
+5. **失败的 AppHost 可能残留进程**（编排进程 + 多个 `dcp.exe`），会和新实例抢 DCP 资源、把端口代理挂住。
+   重试前先清理：结束所有 `KnowVault.AppHost` 与 `dcp` 进程、并 `docker rm -f` 掉本次创建的容器。
+   - 本机实测：某个残留 `KnowVault.AppHost`（父进程是用户自己的 dotnet 进程）**无法终止（Access denied）**，
+     但它已不占端口、DCP 子进程已退出，不影响后续单实例运行。
+6. **建议先 `docker pull` 再编排**：首次编排时逐个拉镜像（postgres:16 / rabbitmq:3-management /
+   minio\/minio / datalust\/seq / redis）非常慢，预拉可把等待时间从"很久"降到"启动即用"。
+
+#### B. 代码/工程侧的四个坑
 
 1. **Aspire 9+ 的 AppHost 必须有 `Aspire.AppHost.Sdk`**：只引 `Aspire.Hosting.AppHost` 包时，`dotnet run` 直接抛
    `Property CliPath: The path to the DCP executable ... is required.; Property DashboardPath: ... is missing.`
    已在 csproj 加 `<Sdk Name="Aspire.AppHost.Sdk" Version="13.5.3" />`。
 2. **CLI bundle 不是必需的**：设 `AspireUseCliBundle=true` 会要求安装 Aspire CLI（构建期自动 setup 在本机 120s 超时，
-   报 `ASPIRE009`）；保持默认 `false` + 静音 `ASPIRE010` 走兼容路径即可正常编排（已实测 DCP 能起来）。
+   报 `ASPIRE009`）；保持默认 `false` + 静音 `ASPIRE010` 走兼容路径即可正常编排
+   （DCP 实际来自 `aspire.hosting.orchestration.win-x64/13.5.3/tools/dcp.exe`）。
 3. **迁移必须进编排**：`AddProject(dbmigrator).WithReference(database, "ConnectionStrings:Default")` + API 上
    `.WaitForCompletion(dbMigrator)`；否则 API 先起来而表还不存在，任何请求都 500。
 4. **ABP 的 MVC Libs 检查会拦下所有请求**（包括 `/api/*` 与 `/connect/token`，返回 "The Libs Folder is Missing" 错误页）：
