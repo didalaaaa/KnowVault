@@ -106,11 +106,13 @@ namespace KnowVault.EntityFrameworkCore
 				}
 			};
 
-			var points = await _client.SearchAsync(
+			// 用新版 Query API（1.19 起 SearchAsync 已标记过时）；显式开启 payload 回传
+			var points = await _client.QueryAsync(
 				_options.CollectionName,
-				queryVector,
+				query: queryVector,
 				filter: qdrantFilter,
 				limit: (ulong)topK,
+				payloadSelector: new WithPayloadSelector { Enable = true },
 				cancellationToken: cancellationToken);
 
 			return points.Select(point => new VectorSearchHit
