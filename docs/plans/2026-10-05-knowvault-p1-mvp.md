@@ -1958,8 +1958,10 @@ namespace KnowVault.Tests
 		[Fact]
 		public void Consecutive_chunks_overlap()
 		{
-			var first = new string('甲', 90);
-			var second = new string('乙', 90);
+			// 取 50 字符的段落：容量 100、重叠 20 时「重叠段 + 本段」正好放得下，重叠才会真正生效
+			// （若段落长到「重叠 + 本段」超容量，实现会主动放弃重叠以保证切片不超长）
+			var first = new string('甲', 50);
+			var second = new string('乙', 50);
 			var chunks = CreateChunker(size: 100, overlap: 20).Chunk(Document(("", $"{first}\n\n{second}")));
 
 			Assert.Equal(2, chunks.Count);
@@ -2129,9 +2131,13 @@ namespace KnowVault.Ingest
 		/// <summary>取尾部若干字符作为重叠内容。</summary>
 		/// <param name="text">文本。</param>
 		/// <param name="overlap">重叠长度。</param>
-		/// <returns>尾部片段；不足时返回空串。</returns>
+		/// <returns>尾部片段；文本本身不比重叠长时返回空串。</returns>
 		private static string TakeTail(string text, int overlap)
-			=> overlap <= 0 || text.Length <= overlap ? string.Empty : text[^overlap..].Trim();
+		{
+			// 先去掉尾部空白再取：否则换行符会占掉一个重叠字符位
+			var trimmed = text.TrimEnd();
+			return overlap <= 0 || trimmed.Length <= overlap ? string.Empty : trimmed[^overlap..];
+		}
 	}
 }
 ```
@@ -3904,6 +3910,13 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
    - 已补测试 `Markdown_parser_does_not_duplicate_list_items` 防回归。
 2. **Word 标题级别兼容中文模板**：除 `Heading1..6`，额外接受样式 id 为 `"1".."6"` 的内置标题样式（zh-CN Word 模板常见）。
 3. `OpenXmlElement` 需要 `using DocumentFormat.OpenXml;`（`DocumentFormat.OpenXml.Wordprocessing` 里没有这个类型）。
+
+### Task 7 —— 切片器的两处修正（TDD 红灯暴露）
+
+1. **`TakeTail` 必须先去尾部空白再取尾**：计划原写法 `text[^overlap..].Trim()` 会让末尾的 `\n` 占掉一个重叠字符位（overlap=20 实际只带过去 19 个字符），断言 `Contains(new string('甲', 20))` 会失败。改为 `text.TrimEnd()[^overlap..]`。
+2. **重叠测试的数据要选对**：计划里用 90 字符段落 + 容量 100，此时「重叠 20 + 本段 90」= 111 超容量，实现会**主动放弃重叠**以保证切片不超长 —— 于是断言必然失败。测试数据改为 50 字符段落（50+20+1 ≤ 100），重叠才真正生效。
+   - 该行为本身是**有意设计**：宁可断开也不产生超长切片，已在实现注释中说明。
+3. 结果：`DocumentChunkerTests` 7 个用例全绿；全量 17 个测试通过。
 
 ### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
 
