@@ -3,6 +3,7 @@ using KnowVault.Ai;
 using KnowVault.Application.Contracts;
 using KnowVault.Domain;
 using KnowVault.Domain.Shared;
+using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Domain.Repositories;
 
 namespace KnowVault.Application
@@ -10,8 +11,8 @@ namespace KnowVault.Application
 
 	/// <summary>
 	/// 问答应用服务：持久化会话/消息（含引用），并调用 Ai 层做 RAG。
-	/// P0 的 Ai 层返回占位回答，真实检索/生成在 P1 接入。
 	/// </summary>
+	[Authorize]
 	public class QaAppService : KnowVaultAppService, IQaAppService
 	{
 		private readonly IRagService _ragService;

@@ -69,14 +69,37 @@ namespace KnowVault.EntityFrameworkCore
 		{
 			await EnsureBucketAsync(cancellationToken);
 
-			await _client.PutObjectAsync(new PutObjectArgs()
-				.WithBucket(_options.BucketName)
-				.WithObject(objectKey)
-				.WithStreamData(content)
-				.WithObjectSize(content.Length)
-				.WithContentType(contentType), cancellationToken);
+			// MinIO 的 WithStreamData/WithObjectSize 需要长度已知的流：
+			// 表单上传流通常可定位，但保险起见对不可定位流先落到内存（文档有 50MB 上限，可接受）
+			Stream payload = content;
+			var shouldDisposePayload = false;
+			if (!content.CanSeek)
+			{
+				var buffer = new MemoryStream();
+				await content.CopyToAsync(buffer, cancellationToken);
+				buffer.Position = 0;
+				payload = buffer;
+				shouldDisposePayload = true;
+			}
 
-			return objectKey;
+			try
+			{
+				await _client.PutObjectAsync(new PutObjectArgs()
+					.WithBucket(_options.BucketName)
+					.WithObject(objectKey)
+					.WithStreamData(payload)
+					.WithObjectSize(payload.Length)
+					.WithContentType(contentType), cancellationToken);
+
+				return objectKey;
+			}
+			finally
+			{
+				if (shouldDisposePayload)
+				{
+					await payload.DisposeAsync();
+				}
+			}
 		}
 
 		/// <inheritdoc />

@@ -12,6 +12,10 @@ namespace KnowVault.Application.Contracts
 		public DocumentSourceTypeEnum SourceType { get; set; }
 		public DocumentStatusEnum Status { get; set; }
 		public string? ErrorMessage { get; set; }
+
+		/// <summary>对象存储（MinIO）中的对象键；上传成功后才会有值。</summary>
+		public string? ObjectStorageKey { get; set; }
+
 		public DateTime CreationTime { get; set; }
 	}
 

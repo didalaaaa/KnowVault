@@ -27,7 +27,13 @@ namespace KnowVault.Application
 	    )]
 	public class KnowVaultApplicationModule : AbpModule
 	{
+		public override void ConfigureServices(ServiceConfigurationContext context)
+		{
+			var configuration = context.Services.GetConfiguration();
 
+			// 上传约束（白名单 / 大小上限）：应用层校验用，Ingest 只关心切片参数
+			Configure<DocumentUploadOptions>(configuration.GetSection("Documents"));
+		}
 	}
 
 }

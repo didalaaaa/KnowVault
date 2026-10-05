@@ -12,6 +12,9 @@ namespace KnowVault.Application.Contracts
 		/// <summary>可选：已有会话；为空则新建会话。</summary>
 		public Guid? ConversationId { get; set; }
 
+		/// <summary>可选：覆盖检索条数（top-k）；为空或 0 时用服务端配置（上限 8）。</summary>
+		public int? TopK { get; set; }
+
 		[Required]
 		[StringLength(2000)]
 		public string Question { get; set; } = string.Empty;
