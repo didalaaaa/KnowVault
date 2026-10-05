@@ -14,6 +14,7 @@ using Volo.Abp;
 using Volo.Abp.Account.Web;
 using Volo.Abp.AspNetCore.MultiTenancy;
 using Volo.Abp.AspNetCore.Mvc;
+using Volo.Abp.AspNetCore.Mvc.Libs;
 using Volo.Abp.AspNetCore.Mvc.UI.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
@@ -129,6 +130,7 @@ namespace KnowVault.HttpApi.Host
 			ConfigureSwagger(context, configuration);
 			ConfigureVirtualFileSystem(context);
 			ConfigureCors(context, configuration);
+			ConfigureMvcLibs();
 		}
 
 		private void ConfigureStudio(IHostEnvironment hostingEnvironment)
@@ -273,6 +275,20 @@ namespace KnowVault.HttpApi.Host
 		private void ConfigureHealthChecks(ServiceConfigurationContext context)
 		{
 			context.Services.AddKnowVaultHealthChecks();
+		}
+
+		/// <summary>
+		/// 关闭 ABP MVC 主题的客户端资源（libs）检查。
+		/// 本项目 UI 是 Vue SPA，不需要 bootstrap/jquery/select2 这些资源；
+		/// 若不关闭，所有请求（含 /api 与 /connect/token）都会被 "The Libs Folder is Missing" 错误页拦下，
+		/// 而 <c>abp install-libs</c> 又要求 node ≥ 24（本机 node 22 被 select2 的引擎校验拦住）。
+		/// </summary>
+		private void ConfigureMvcLibs()
+		{
+			Configure<AbpMvcLibsOptions>(options =>
+			{
+				options.CheckLibs = false;
+			});
 		}
 
 		public override void OnApplicationInitialization(ApplicationInitializationContext context)

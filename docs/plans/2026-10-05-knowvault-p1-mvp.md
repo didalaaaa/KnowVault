@@ -3939,6 +3939,35 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 - `RagPromptBuilderTests` 里 `Assert.Contains("只依据", system)` **失败**：系统提示词的实际措辞是「你**只能依据**用户提供的…」「**只使用**资料片段中的信息作答」，"只依据" 并不是子串。改为断言 `"只使用资料片段中的信息作答"`。
 - 教训：断言要写**实际存在的完整子串**，别写语义相近的简写。
 
+### Task 11 / 14 —— Aspire 与宿主的四个实测坑（都已修）
+
+1. **Aspire 9+ 的 AppHost 必须有 `Aspire.AppHost.Sdk`**：只引 `Aspire.Hosting.AppHost` 包时，`dotnet run` 直接抛
+   `Property CliPath: The path to the DCP executable ... is required.; Property DashboardPath: ... is missing.`
+   已在 csproj 加 `<Sdk Name="Aspire.AppHost.Sdk" Version="13.5.3" />`。
+2. **CLI bundle 不是必需的**：设 `AspireUseCliBundle=true` 会要求安装 Aspire CLI（构建期自动 setup 在本机 120s 超时，
+   报 `ASPIRE009`）；保持默认 `false` + 静音 `ASPIRE010` 走兼容路径即可正常编排（已实测 DCP 能起来）。
+3. **迁移必须进编排**：`AddProject(dbmigrator).WithReference(database, "ConnectionStrings:Default")` + API 上
+   `.WaitForCompletion(dbMigrator)`；否则 API 先起来而表还不存在，任何请求都 500。
+4. **ABP 的 MVC Libs 检查会拦下所有请求**（包括 `/api/*` 与 `/connect/token`，返回 "The Libs Folder is Missing" 错误页）：
+   Host 必须在 `ConfigureServices` 里 `Configure<AbpMvcLibsOptions>(o => o.CheckLibs = false)`（类型在
+   `Volo.Abp.AspNetCore.Mvc.Libs`）。
+   - 没有走 `abp install-libs`：它调 yarn 安装主题前端包时被 `select2@4.1.0` 的 `engines` 校验拦住（要求 node ≥ 24，本机 22.22.2）。
+   - 本项目 UI 是 Vue SPA，本就不需要 bootstrap/jquery/select2，关闭检查是符合架构的选择。
+
+### 宿主脱离 Aspire 单独运行的三个前置（排查时踩到，记下来）
+
+1. `ASPNETCORE_ENVIRONMENT=Development`：否则走生产分支要求 `openiddict.pfx`，启动即失败
+   （`FileNotFoundException: Signing Certificate couldn't found: openiddict.pfx`）。
+2. `ConnectionStrings__rabbitmq`：Ingest 模块在 `ConfigureServices` 里对空连接串直接抛 `AbpInitializationException`。
+3. `Minio__Endpoint / Minio__AccessKey / Minio__SecretKey`：为空时 `IMinioClient` 工厂抛错（在请求解析 AppService 时触发）。
+
+### 尚未消除的既有告警（非本次引入）
+
+- `OpenIddictDataSeedContributor.cs(80,109)` 两条 **CS8604**：`KnowVault_App` 未配 `RootUrl`，`redirectUris` 收到 null
+  —— 这正是 Task 12 Step 0 提示要核实的风险点，验收时若 `KnowVault_App` 不存在就要补 `RootUrl` 重跑 DbMigrator。
+- `KnowVaultApplicationContractsModule` / `KnowVaultHttpApiClientModule` / `KnowVaultApplicationModule` 三处
+  `dotnet format` 的 **IMPORTS（导入顺序）**：P0 既有文件，本次未触碰其 using 块。IDE1006（枚举后缀）**零违规**。
+
 ### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
 
 对全仓（排除 `obj/bin/node_modules`）统计：`.cs` = 65 CRLF / 16 LF / **1 MIXED**（`src/KnowVault.Application.Contracts/KnowVaultDtoExtensions.cs`，**既有违规，非本次引入**）；`.csproj` / `.json` / `.js` / `.vue` / `.html` / `.props` / `.slnx` 基本是 LF；`.md` 2 CRLF + `AGENTS.md` LF。

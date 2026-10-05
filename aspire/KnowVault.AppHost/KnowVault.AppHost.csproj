@@ -9,6 +9,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- 本机未安装 Aspire CLI bundle（构建期自动 setup 超时 120s），走不依赖 bundle 的兼容路径；
+         该提示不影响编排运行，显式静音以保持构建干净 -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
