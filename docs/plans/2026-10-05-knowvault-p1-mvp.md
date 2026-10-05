@@ -4002,6 +4002,81 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 - `KnowVaultApplicationContractsModule` / `KnowVaultHttpApiClientModule` / `KnowVaultApplicationModule` 三处
   `dotnet format` 的 **IMPORTS（导入顺序）**：P0 既有文件，本次未触碰其 using 块。IDE1006（枚举后缀）**零违规**。
 
+### 首次端到端联调发现的 4 个真实 bug（都已修，含根因与证据）
+
+#### 1. DbMigrator 读不到 appsettings.json → OpenIddict 客户端种子被静默跳过（**登录必失败**）
+
+- **症状**：`OpenIddictScopes` 有 `KnowVault` 一行（说明种子跑了），但 `OpenIddictApplications` **0 行**
+  → `POST /connect/token` 返回 `invalid_client: The specified 'client_id' is invalid.`
+- **根因**：DbMigrator **没有 `Properties/launchSettings.json`**（Host 有），所以从解决方案根执行
+  `dotnet run --project src/KnowVault.DbMigrator` 时进程工作目录停在根目录 → `Host.CreateDefaultBuilder`
+  以该目录为内容根 → **appsettings.json 根本没加载** → `OpenIddict:Applications` 为空 → 两个客户端都被 `if` 跳过
+  （`CreateScopesAsync` 不依赖配置，所以 scope 照样建出来了，掩盖了问题）。
+- **证据**：在种子里临时打印 `Configuration.AsEnumerable()` 中所有 OpenIddict 键 → **空**；加 `RootUrl` 也没用。
+- **修复**：`src/KnowVault.DbMigrator/Program.cs` 加 `.UseContentRoot(AppContext.BaseDirectory)`
+  —— 让配置加载不依赖启动时的工作目录。修后诊断打印出全部键，`KnowVault_App` / `KnowVault_Swagger` 均入库，**登录成功**。
+- ⚠️ **不要**给 `KnowVault.HttpApi.Host` 做同样改动：它的 `ConfigureVirtualFileSystem` 用
+  `ContentRootPath + "..\KnowVault.Domain"` 定位源码目录（开发期热替换），改了会破坏。
+
+#### 2. ABP 约定路由是**单数** `/api/app/document`（不是 `/api/app/documents`）
+
+- **症状**：`POST /api/app/documents/upload` 返回 **405**（该 URL 命中了 `GET /api/app/document/{id}` 模板）。
+- **根因**：ABP 用「服务名去掉 `AppService` 后缀」生成路由，`DocumentAppService` → `document`（单数）。
+- **核对方式**：Swagger 输出 `/api/app/document`、`/api/app/document/{id}`、`/api/app/knowledge-base`。
+- **修复**：前端 `frontend/src/api/documents.js` 改为 `/app/document`、`/app/document/upload`；接口 XML 注释同步写明。
+
+#### 3. 上传端点：动态 API 只接受 `application/json` → multipart 被拒为 415
+
+- **症状**：正确路由上 `POST` + `multipart/form-data` → **415**；Swagger 显示该 action 只声明
+  `application/json / text/json / application/*+json`。
+- **根因**：`IRemoteStreamContent` **嵌在 DTO 属性里**时，MVC 的 `[ApiController]` 把复杂参数推断为 `[FromBody]`，
+  于是一律按 JSON 消费（ABP 虽然提供了 `RemoteStreamContentModelBinder`，但没有改消费类型）。
+- **修复**：新增显式控制器 `src/KnowVault.HttpApi/Controllers/DocumentUploadController.cs`
+  （`[Route("api/app/document")]` + `[HttpPost("upload")]` + `[Consumes("multipart/form-data")]` + `[FromForm]`），
+  并把 AppService 的 `UploadAsync` 用 `[RemoteService(IsEnabled = false)]` 移出动态 API。
+  - ⚠️ **坑中坑**：该特性标在**接口**上**不生效**（动态端点照旧生成）→ 与显式控制器同路由冲突 →
+    Swagger 生成直接 500（`Conflicting method/path combination "POST api/app/document/upload"`）。
+    **必须标在实现类的方法上**。
+- **修后证据**：Swagger `/api/app/document/upload [post]` 的 content type 变为 **`multipart/form-data`** ✓。
+
+#### 4. 匿名访问 API 返回 302（重定向到 MVC 登录页），不是 401
+
+- **现象**：匿名 `GET /api/app/knowledge-base` → `302 Location: /Account/Login?ReturnUrl=...`。
+- **影响**：`[Authorize]` 确实生效（业务逻辑未执行），但 SPA 的「401 → 回登录页」拦截器不会触发；
+  axios 会跟随重定向拿到 HTML。
+- **状态**：**未修**。属 P1 之后的打磨项（给 API 端点指定 OpenIddict 校验 scheme 作为 challenge，
+  或在前端按最终 URL 判定未登录）。已记入下方待办。
+
+### 本机环境补充记录（MinIO 镜像与 DCP）
+
+- **Docker Hub 不可达**（`registry-1.docker.io` 超时）。已配置的 6 个加速器中：
+  `docker.1ms.run` 只代理 `library/*`；**`docker.1panel.live` 可代理完整命名空间**（MinIO 就是从这里拿到的）；
+  `quay.io/minio/minio`、`registry.min.io` 需要鉴权；`dl.min.io` 已下线社区二进制（410）。
+- **DCP 中途失稳**：k8s watch 连接被对端重置（`远程连接被强迫关闭`），之后编排不再创建应用资源
+  （这也是 DbMigrator 一直没被启动的原因）。最终改用**固定端口手工容器 + 直接跑迁移/API**完成验收，
+  组件镜像与版本和编排完全一致（postgres:16 / redis / qdrant / rabbitmq:3-management / minio）。
+
+### 首次端到端验收实测结果（本机，无模型 Key）
+
+| # | 验收项 | 结果 |
+|---|---|---|
+| 1 | `dotnet build` / `dotnet test` / 前端构建 | ✅ 0 error；19/19 测试通过；前端构建通过 |
+| 2 | 迁移 + 种子（默认知识库 / `KnowVault_App` / admin） | ✅ 全部入库 |
+| 3 | 登录（password grant） | ✅ 拿到 token（长度 1586） |
+| 4 | 知识库列表 API | ✅ 返回「默认知识库」（固定 ID `...0001`） |
+| 5 | Qdrant collection 初始化 | ✅ `knowvault_chunks`，**size=1024 / distance=Cosine** |
+| 6 | RabbitMQ consumer 注册 | ✅ 队列 `DocumentIngest` 存在，消息 `0 / unacked 0`（已消费） |
+| 7 | 上传 → MinIO 原件 | ✅ 对象键 `knowvault/host/{kbId}/{docId}.md` 落盘；`objectStorageKey` 回写正确 |
+| 8 | 异步摄入链路（消费 → 取回 → 解析 → 切片 → 向量化） | ✅ 10s 内状态 Pending→**Failed**，错误为「未配置 Qwen API Key…」 |
+| 9 | 负向验收（Key 缺失/错误 → 落 Failed 且错误可见） | ✅ 即第 8 项 |
+| 10 | 5 种格式全走到「已就绪」、Qdrant points、Postgres 切片数、问答+引用、资料外提问 | ⏳ **待配 Key 后验证**（缺 `QWEN_API_KEY` / `DEEPSEEK_API_KEY`） |
+
+### 待办（P1 收尾 / P2）
+
+- [ ] 配好 Key 后补齐上表第 10 行的 5 项验收。
+- [ ] API 匿名/过期令牌应返回 **401** 而不是 302（见上文第 4 条）。
+- [ ] 本机验收期间使用的固定端口容器（`kv-postgres:5433` 等）只是权宜手段；DCP 恢复后仍以 Aspire 编排为准。
+
 ### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
 
 对全仓（排除 `obj/bin/node_modules`）统计：`.cs` = 65 CRLF / 16 LF / **1 MIXED**（`src/KnowVault.Application.Contracts/KnowVaultDtoExtensions.cs`，**既有违规，非本次引入**）；`.csproj` / `.json` / `.js` / `.vue` / `.html` / `.props` / `.slnx` 基本是 LF；`.md` 2 CRLF + `AGENTS.md` LF。
