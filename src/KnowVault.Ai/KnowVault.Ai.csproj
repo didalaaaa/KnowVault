@@ -16,6 +16,8 @@
     <!-- Semantic Kernel（P1 用 Qwen 做 embedding/rerank，DeepSeek 做生成） -->
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.80.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.80.0" />
+    <!-- IHttpClientFactory：Qwen Embedding 走 HttpClient 直调 OpenAI 兼容端点 -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
   </ItemGroup>
 
 </Project>

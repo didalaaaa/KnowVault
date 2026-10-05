@@ -1,6 +1,7 @@
 using Volo.Abp.Modularity;
 using KnowVault.Domain;
 using KnowVault.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace KnowVault.Ingest
 {
@@ -14,5 +15,10 @@ namespace KnowVault.Ingest
 		)]
 	public class KnowVaultIngestModule : AbpModule
 	{
+		public override void ConfigureServices(ServiceConfigurationContext context)
+		{
+			var configuration = context.Services.GetConfiguration();
+			Configure<IngestOptions>(configuration.GetSection("Ingest"));
+		}
 	}
 }

@@ -53,6 +53,11 @@ namespace KnowVault.EntityFrameworkCore
 				options.AddDefaultRepositories(includeAllEntities: false);
 			});
 
+			// Qdrant（向量库）与 MinIO（对象存储）的连接参数；密钥由 AppHost 注入
+			var configuration = context.Services.GetConfiguration();
+			Configure<QdrantOptions>(configuration.GetSection("Qdrant"));
+			Configure<MinioOptions>(configuration.GetSection("Minio"));
+
 			// ABP Studio 是一个可视化开发工具，它在"分析模式"下会扫描项目结构，但不需要真正连接数据库
 			if (AbpStudioAnalyzeHelper.IsInAnalyzeMode)
 			{
