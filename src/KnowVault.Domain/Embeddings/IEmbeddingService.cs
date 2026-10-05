@@ -1,6 +1,9 @@
-namespace KnowVault.Ai
+namespace KnowVault.Domain
 {
-	/// <summary>文本向量化（Embedding）。</summary>
+	/// <summary>
+	/// 文本向量化（Embedding）契约。
+	/// 接口放 Domain（Ingest 与 Ai 都要用），实现放 <c>KnowVault.Ai</c>（Qwen）。
+	/// </summary>
 	public interface IEmbeddingService
 	{
 		/// <summary>把一批文本转成向量，返回顺序与输入严格一致。</summary>
