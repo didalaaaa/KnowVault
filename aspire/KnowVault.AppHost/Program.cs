@@ -1,3 +1,5 @@
+using Aspire.Hosting.ApplicationModel;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // 环境变量读取：模型 Key 与 MinIO 口令一律来自本地 .env / 进程环境，严禁写进仓库
@@ -37,30 +39,34 @@ var minio = builder.AddContainer("minio", "minio/minio", "latest")
     .WithEnvironment("MINIO_ROOT_USER", Env("MINIO_ROOT_USER") ?? "minioadmin")
     .WithEnvironment("MINIO_ROOT_PASSWORD", Env("MINIO_ROOT_PASSWORD") ?? "minioadmin")
     .WithVolume("kv-minio-data", "/data")
-    .WithEndpoint(9000, 9000, "http")   // S3 API
-    .WithEndpoint(9001, 9001, "http");  // 控制台 UI
+    .WithEndpoint(9000, 9000, "http")   // S3 API：宿主 9000，与注入给 API 的 Minio__Endpoint 对齐
+    // 控制台：宿主端口动态分配 —— 本机 9001 落在 Windows 的 TCP 保留端口段（netsh 可见），钉死会导致容器发布端口失败
+    .WithEndpoint(targetPort: 9001, name: "console");
 
 // ---------- 应用 ----------
 
-// 迁移 + 种子（含默认知识库）：作为编排的一部分先跑完，避免 API 起来时表还不存在。
-// 它自己 appsettings 里的连接串会被下面 WithReference 注入的值覆盖。
+// 迁移 + 种子（含默认知识库）：先跑完再启动 API，避免 API 起来时表还不存在。
+// ⚠️ 不要写 WithReference(database, "ConnectionStrings:Default")：Aspire 会自己加 ConnectionStrings__ 前缀，
+//    结果注入成 ConnectionStrings__ConnectionStrings:Default，ABP 读不到就回落到 appsettings 的 localhost:5432
+//    （实测会连到宿主机上别的 Postgres 并报 28P01）。这里显式写 ABP 真正读取的配置键。
 var dbMigrator = builder.AddProject("knowvault-dbmigrator", "../../src/KnowVault.DbMigrator/KnowVault.DbMigrator.csproj")
-    .WithReference(database, "ConnectionStrings:Default")
-    .WithReference(redis);
+    .WithEnvironment("ConnectionStrings__Default", database)
+    .WaitFor(database);
 
 var api = builder.AddProject("knowvault-api", "../../src/KnowVault.HttpApi.Host/KnowVault.HttpApi.Host.csproj")
     .WaitForCompletion(dbMigrator)
     // 端口必须与 appsettings 的 App:SelfUrl / AuthServer:Authority 一致，
     // 否则 OpenIddict 的 issuer 与前端拿到的 authority 不一致，令牌校验必然失败
     .WithHttpsEndpoint(port: 44300, name: "https")
-    .WithReference(database, "ConnectionStrings:Default")
-    .WithReference(redis)
-    .WithReference(rabbitmq)          // 注入 ConnectionStrings:rabbitmq（amqp://...）
+    .WithEnvironment("ConnectionStrings__Default", database)
+    // ABP 读的是 Redis:Configuration（不是 ConnectionStrings:redis），否则会退回内存缓存
+    .WithEnvironment("Redis__Configuration", redis)
+    .WithReference(rabbitmq)          // MassTransit 用 GetConnectionString("rabbitmq")，这个键名是对的
     .WithEnvironment("App:CorsOrigins", "http://localhost:5173")
     // QdrantVectorStore 走 gRPC，必须注入 6334 的 grpc 端点（不是 6333 的 REST 端点）
     .WithEnvironment("Qdrant__Endpoint", qdrant.GetEndpoint("grpc"))
-    // API 是宿主机进程、MinIO 是容器：用发布到宿主机的端口，因此是 localhost 而不是服务名
-    .WithEnvironment("Minio__Endpoint", "localhost:9000")
+    // MinIO 容器端口由 DCP 代理，宿主端口是动态的 → 必须注入 HostAndPort，写死 localhost:9000 会连不上
+    .WithEnvironment("Minio__Endpoint", minio.GetEndpoint("http").Property(EndpointProperty.HostAndPort))
     .WithEnvironment("Minio__AccessKey", Env("MINIO_ROOT_USER") ?? "minioadmin")
     .WithEnvironment("Minio__SecretKey", Env("MINIO_ROOT_PASSWORD") ?? "minioadmin")
     .WithEnvironment("Minio__UseSsl", "false")
