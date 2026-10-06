@@ -1,9 +1,54 @@
 using Aspire.Hosting.ApplicationModel;
 
+// 先把仓库根目录的 .env 载入进程环境，下面的 Env(...) 才能读到模型 Key 与 MinIO 口令。
+// .env 已被 .gitignore 忽略，真实密钥不进仓库；生产/CI 仍走真正的环境变量（本步找不到 .env 就跳过）。
+LoadDotEnv();
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // 环境变量读取：模型 Key 与 MinIO 口令一律来自本地 .env / 进程环境，严禁写进仓库
 static string? Env(string name) => Environment.GetEnvironmentVariable(name);
+
+// 从当前目录与程序目录逐级向上查找 .env，找到即逐行写入进程环境（已存在的环境变量优先，不覆盖）
+static void LoadDotEnv()
+{
+    foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+    {
+        var directory = new DirectoryInfo(start);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, ".env");
+            if (File.Exists(candidate))
+            {
+                foreach (var line in File.ReadAllLines(candidate))
+                {
+                    var trimmed = line.Trim();
+                    if (trimmed.Length == 0 || trimmed.StartsWith('#'))
+                    {
+                        continue;
+                    }
+
+                    var separator = trimmed.IndexOf('=');
+                    if (separator <= 0)
+                    {
+                        continue;
+                    }
+
+                    var key = trimmed[..separator].Trim();
+                    var value = trimmed[(separator + 1)..].Trim().Trim('"');
+                    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+                    {
+                        Environment.SetEnvironmentVariable(key, value);
+                    }
+                }
+
+                return;
+            }
+
+            directory = directory.Parent;
+        }
+    }
+}
 
 // ---------- 依赖服务 ----------
 
