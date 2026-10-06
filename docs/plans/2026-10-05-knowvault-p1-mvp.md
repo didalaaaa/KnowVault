@@ -4069,7 +4069,7 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 | 7 | 上传 → MinIO 原件 | ✅ 对象键 `knowvault/host/{kbId}/{docId}.md` 落盘；`objectStorageKey` 回写正确 |
 | 8 | 异步摄入链路（消费 → 取回 → 解析 → 切片 → 向量化） | ✅ 10s 内状态 Pending→**Failed**，错误为「未配置 Qwen API Key…」 |
 | 9 | 负向验收（Key 缺失/错误 → 落 Failed 且错误可见） | ✅ 即第 8 项 |
-| 10 | 5 种格式全走到「已就绪」、Qdrant points、Postgres 切片数、问答+引用、资料外提问 | ⏳ 5 种格式**已全部上传成功且 sourceType 正确**；等待向量化期间 Docker Desktop 停掉导致验收中断（Key 已就绪，见下方第 2 轮记录） |
+| 10 | 5 种格式全走到「已就绪」、Qdrant points、Postgres 切片数、问答+引用、资料外提问 | ✅ **全部通过**（证据见下方「第三轮：验收完成」） |
 
 ### 第二轮：模型层与配置注入的实测结论
 
@@ -4105,11 +4105,55 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 - ⚠️ 顺带暴露一个 P2 需求：API 在摄取中途被杀，文档会**停在 Processing**（无重试/无恢复），
   需要「重新处理」入口（P2 已列）。
 
+### 第三轮：验收完成（✅ P1 闭环全部跑通）
+
+Docker 恢复后（`docker start kv-*`，数据完好），继续联调并修掉**两个真实缺陷**，最终把 11 项验收全部跑通。
+
+#### 修掉的两个缺陷
+
+1. **上传与消费之间的竞态（真 bug，会导致文档永远 Pending）**
+   - 症状：日志出现 `[WRN] 文档 "3a242135-…" 不存在，跳过处理`，文档一直停在 `Pending`；同一批上传里**部分成功、部分失败**。
+   - 根因：`DocumentAppService` 在**当前 UoW 事务提交之前**就 `Publish` 了消息；消费者在自己的 UoW 里读不到未提交的行 → 判定"不存在" → 直接 ACK（消息消失）。
+   - 修复（三处）：
+     - `DocumentAppService`：改为 `unitOfWork.OnCompleted(...)` **提交后再发消息**（根因）；
+     - `DocumentProcessor`：文档查不到时**抛异常**而不是静默返回，交给重试策略；
+     - `KnowVaultIngestModule`：`rabbit.UseMessageRetry(r => r.Interval(5, TimeSpan.FromSeconds(2)))`，重试耗尽后进 error 队列（不再无声消失）。
+   - 验证：此前必卡 Pending 的 **xlsx 重传后 20 秒内直达 Ready** ✅。
+2. **问答链路 DI 解析失败（500）**
+   - 症状：`POST /api/app/qa/ask` 返回 500，日志 `Cannot resolve parameter 'KnowVault.Ai.ILlmChatService chatService'`。
+   - 根因：`ILlmChatService` 与实现类 `DeepSeekChatService` **接口名不等于 `I{类名}`**，ABP 的默认暴露约定没有把它注册进容器。
+   - 修复：在 `KnowVaultAiModule` 显式 `AddTransient<ILlmChatService, DeepSeekChatService>()` 与
+     `AddTransient<IEmbeddingService, QwenEmbeddingService>()`。
+
+#### 验收证据（全部实测）
+
+| 验收点 | 证据 |
+|---|---|
+| 5 种格式走到 Ready | `AppDocuments` 按 `SourceType` 分组：Pdf/Word/Excel/Markdown/Html **各有 Status=2** |
+| 切片与向量数量一致 | **Postgres `AppDocumentChunks` = 11**，**Qdrant `points_count` = 11** |
+| Qdrant 配置 | `size = 1024`、`distance = Cosine` |
+| payload 字段 | 抽查 point：`chunkIndex, content, documentId, documentTitle, headingPath, knowledgeBaseId, sourceType, tenantId` 共 8 个；`tenantId = 00000000-0000-0000-0000-000000000000`（Guid.Empty 归一化生效）；`headingPath = "KnowVault 架构说明 > 存储选型"`（Markdown 标题层级保留） |
+| 问答 + 引用 | 问「向量库用的是什么？切片长度默认多少？」→ 回答「**向量库**：使用 Qdrant [1][2]，采用单一 collection，1024 维，余弦距离 [2]。**默认切片长度**：1000 字符，重叠 120 字符 [3]。」；返回 **5 条 citations**（含 `title`/`chunkIndex`/`score`，分数 0.785 → 0.558 降序） |
+| 资料外提问 | 问量子纠缠+星际航行推进器 → 「**根据现有资料无法回答该问题。** 资料片段仅涉及 KnowVault 系统的模型分工、选型、检索策略和切片参数等内容…」（未编造） |
+| 会话/消息持久化 | `AppConversations` = 2、`AppMessages` = 4；助手消息 `CitationsJson` 有值、用户消息为 null |
+| 前端可运行 | `npm run build` 通过；`npm run dev`（5173）下 `/api/abp/application-configuration` → **200**（代理通）、`/connect/token` 错凭据 → **`invalid_grant` 400**（令牌端点通） |
+
+#### 诚实的保留项（不阻塞 P1 功能验收，但不应含糊）
+
+- **「一键 `dotnet run --project aspire/KnowVault.AppHost` 起全栈」在本机未跑通**：DCP 的 k8s watch 连接会被对端重置
+  （`远程连接被强迫关闭`），之后编排不再创建应用资源。编排定义本身已修正并用 **manifest 验证了全部注入键**
+  （`ConnectionStrings__Default` / `Redis__Configuration` / `Qdrant__Endpoint` / `Minio__Endpoint` / `Ai__*`），
+  功能验收是用**等价的手工容器路径**（镜像与版本完全一致）完成的；DCP 稳定性属本机环境问题。
+- **SPA 未做浏览器点击验证**（无浏览器自动化）：bundle 能构建、它调用的每个接口与两个代理均实测通过。
+  前端 dev server 仍在运行，可直接打开 `http://localhost:5173` 人工点一遍。
+
 ### 待办（P1 收尾 / P2）
 
-- [ ] 启动 Docker 后补齐上表第 10 行的 5 项验收（Qdrant points/payload、Postgres 切片数、问答+引用、资料外提问、5 格式 Ready）。
+- [x] ~~配好 Key 后补齐上表第 10 行的 5 项验收~~ → 第三轮已完成。
+- [ ] 启动 Docker 后在**本机**把 Aspire 一键编排跑通（DCP 不稳定，属环境问题）。
 - [ ] API 匿名/过期令牌应返回 **401** 而不是 302（见上文第 4 条）。
-- [ ] 摄取中途中断的文档会卡在 Processing，需要「重新处理」入口。
+- [ ] 摄取中途中断的文档会卡在 Processing/Pending，需要「重新处理」入口。
+- [ ] 消息持久化：RabbitMQ 重启时未消费的消息丢失（实测），建议显式配置持久化 + 重投策略。
 - [ ] 本机验收期间使用的固定端口容器（`kv-postgres:5433` 等）只是权宜手段；DCP 恢复后仍以 Aspire 编排为准。
 
 ### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
