@@ -4069,12 +4069,47 @@ git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切�
 | 7 | 上传 → MinIO 原件 | ✅ 对象键 `knowvault/host/{kbId}/{docId}.md` 落盘；`objectStorageKey` 回写正确 |
 | 8 | 异步摄入链路（消费 → 取回 → 解析 → 切片 → 向量化） | ✅ 10s 内状态 Pending→**Failed**，错误为「未配置 Qwen API Key…」 |
 | 9 | 负向验收（Key 缺失/错误 → 落 Failed 且错误可见） | ✅ 即第 8 项 |
-| 10 | 5 种格式全走到「已就绪」、Qdrant points、Postgres 切片数、问答+引用、资料外提问 | ⏳ **待配 Key 后验证**（缺 `QWEN_API_KEY` / `DEEPSEEK_API_KEY`） |
+| 10 | 5 种格式全走到「已就绪」、Qdrant points、Postgres 切片数、问答+引用、资料外提问 | ⏳ 5 种格式**已全部上传成功且 sourceType 正确**；等待向量化期间 Docker Desktop 停掉导致验收中断（Key 已就绪，见下方第 2 轮记录） |
+
+### 第二轮：模型层与配置注入的实测结论
+
+#### 1. `.env` 之前根本没被读取（已修）
+
+用户按 `.env.example` 建好了 `.env`（含 `DEEPSEEK_API_KEY` / `QWEN_API_KEY` / MinIO 口令），但**没有任何代码读它**：
+`AppHost` 只调 `Environment.GetEnvironmentVariable`，而进程环境里并没有这些键 → Key 形同虚设。
+- **修复**：`aspire/KnowVault.AppHost/Program.cs` 增加 `LoadDotEnv()`：从当前目录与程序目录逐级向上找 `.env`，
+  逐行写入进程环境（**已存在的环境变量优先，不覆盖**，便于 CI/生产用真正的环境变量）。
+- **验证**：生成 manifest 检查注入值（只比长度不打印值）→ `Ai__DeepSeekApiKey` 35 字符、`Ai__QwenApiKey` 116 字符、
+  `Ai__DeepSeekModel`、`Ai__QwenEmbeddingModel`、`Minio__AccessKey` 全部非空 ✓。
+
+#### 2. 直接验证两个模型 API（**关键假设被证实/纠正**）
+
+绕开容器，用 curl 直连验证 `QwenEmbeddingService` / `DeepSeekChatService` 依赖的每一个假设：
+
+| 假设（代码里写死的） | 实测结果 |
+|---|---|
+| DashScope 兼容模式 `POST {QWEN_BASE_URL}/embeddings` | ✅ 200 |
+| 响应结构 `data[].index` + `data[].embedding`（按 index 重排） | ✅ 完全匹配 |
+| **向量维度 1024**（`QdrantOptions.VectorSize`） | ✅ **实测 1024**，与 collection 配置一致 |
+| **单请求批大小**（`QwenEmbeddingService.MaxBatchSize = 10`） | ✅ **必需**：10 条 → 200；**25 条 → 400**。不做分批的话，切片数 >10 的文档必然失败 |
+| DeepSeek `POST {DEEPSEEK_BASE_URL}/chat/completions` + `deepseek-chat`（SK 连接器调的就是这个路径） | ✅ 200，返回正常中文回答（响应 `model` 显示为 `deepseek-flash`，是服务端别名，不影响调用） |
+
+#### 3. 本轮未能完成的部分（环境中断）
+
+- 5 种格式已全部**上传成功**且 `sourceType` 推断正确（pdf=0 / word=1 / excel=2 / md=3 / html=4，均 Pending），
+  但在等待向量化期间 **Docker Desktop 整个停掉**（`dockerDesktopLinuxEngine` 管道消失，`Docker Desktop.exe`
+  与 `com.docker.backend` 进程都不在，只剩 WSL 相关进程），容器与 API 全部中断；尝试 `Start-Process "Docker Desktop.exe"`
+  也未能拉起，需要人工启动。
+- 恢复方式（Docker 起来后）：`docker start kv-postgres kv-redis kv-qdrant kv-rabbitmq kv-minio`（数据在容器可写层，不会丢），
+  再重启 API 即可继续；上表第 10 行那 5 项仍未验证。
+- ⚠️ 顺带暴露一个 P2 需求：API 在摄取中途被杀，文档会**停在 Processing**（无重试/无恢复），
+  需要「重新处理」入口（P2 已列）。
 
 ### 待办（P1 收尾 / P2）
 
-- [ ] 配好 Key 后补齐上表第 10 行的 5 项验收。
+- [ ] 启动 Docker 后补齐上表第 10 行的 5 项验收（Qdrant points/payload、Postgres 切片数、问答+引用、资料外提问、5 格式 Ready）。
 - [ ] API 匿名/过期令牌应返回 **401** 而不是 302（见上文第 4 条）。
+- [ ] 摄取中途中断的文档会卡在 Processing，需要「重新处理」入口。
 - [ ] 本机验收期间使用的固定端口容器（`kv-postgres:5433` 等）只是权宜手段；DCP 恢复后仍以 Aspire 编排为准。
 
 ### 行尾实测（与 `AGENTS.md` 的全局 CRLF 规则存在现状差异）
