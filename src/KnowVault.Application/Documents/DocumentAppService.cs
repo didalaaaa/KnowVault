@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Uow;
 
 namespace KnowVault.Application
 {
@@ -16,6 +17,7 @@ namespace KnowVault.Application
 		private readonly IDocumentStorage _documentStorage;
 		private readonly IDocumentIngestPublisher _ingestPublisher;
 		private readonly IOptions<DocumentUploadOptions> _uploadOptions;
+		private readonly IUnitOfWorkManager _unitOfWorkManager;
 		private readonly ILogger<DocumentAppService> _logger;
 
 		/// <summary>构造函数。</summary>
@@ -23,18 +25,21 @@ namespace KnowVault.Application
 		/// <param name="documentStorage">对象存储。</param>
 		/// <param name="ingestPublisher">摄入消息发布者。</param>
 		/// <param name="uploadOptions">上传约束（白名单与大小上限）。</param>
+		/// <param name="unitOfWorkManager">工作单元管理器（用于「提交后再发消息」）。</param>
 		/// <param name="logger">日志。</param>
 		public DocumentAppService(
 			IRepository<Document, Guid> documentRepository,
 			IDocumentStorage documentStorage,
 			IDocumentIngestPublisher ingestPublisher,
 			IOptions<DocumentUploadOptions> uploadOptions,
+			IUnitOfWorkManager unitOfWorkManager,
 			ILogger<DocumentAppService> logger)
 		{
 			_documentRepository = documentRepository;
 			_documentStorage = documentStorage;
 			_ingestPublisher = ingestPublisher;
 			_uploadOptions = uploadOptions;
+			_unitOfWorkManager = unitOfWorkManager;
 			_logger = logger;
 		}
 
@@ -97,8 +102,19 @@ namespace KnowVault.Application
 			document.ObjectStorageKey = objectKey;
 			await _documentRepository.InsertAsync(document, autoSave: true);
 
-			await _ingestPublisher.PublishAsync(document.Id, document.TenantId);
-			_logger.LogInformation("文档 {DocumentId} 已上传并入队：{ObjectKey}", document.Id, objectKey);
+			// 必须等当前 UoW 提交后再发消息：否则消费者可能先于提交去查这行文档，
+			// 读到 null 就把消息白跑一趟（实测症状：文档永远停在 Pending，日志出现「文档 xxx 不存在，跳过处理」）。
+			var unitOfWork = _unitOfWorkManager.Current;
+			if (unitOfWork is not null)
+			{
+				unitOfWork.OnCompleted(async () => await _ingestPublisher.PublishAsync(document.Id, document.TenantId));
+			}
+			else
+			{
+				await _ingestPublisher.PublishAsync(document.Id, document.TenantId);
+			}
+
+			_logger.LogInformation("文档 {DocumentId} 已上传，将在事务提交后入队：{ObjectKey}", document.Id, objectKey);
 
 			return MapToDto(document);
 		}

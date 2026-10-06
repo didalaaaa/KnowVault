@@ -59,8 +59,10 @@ namespace KnowVault.Ingest
 			var document = await _documentRepository.FindAsync(documentId, cancellationToken: cancellationToken);
 			if (document is null)
 			{
-				_logger.LogWarning("文档 {DocumentId} 不存在，跳过处理", documentId);
-				return;
+				// 抛错而不是静默返回：最常见的成因是「消息先于上传事务的提交到达」，
+				// 交给 MassTransit 的重试策略即可在提交后重新投递（重试耗尽会进 error 队列，不会无声消失）。
+				throw new InvalidOperationException(
+					$"文档 {documentId} 当前不可见（可能上传事务尚未提交），交由重试策略重新投递。");
 			}
 
 			try
