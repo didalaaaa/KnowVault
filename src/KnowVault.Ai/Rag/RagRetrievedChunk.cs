@@ -18,7 +18,20 @@ namespace KnowVault.Ai
 		/// <summary>切片正文。</summary>
 		public string Content { get; set; } = string.Empty;
 
-		/// <summary>相似度得分。</summary>
+		/// <summary>相似度得分（重排接入后为相关性得分，见 TECH_STACK §9.2）。</summary>
 		public double Score { get; set; }
+
+		/// <summary>返回替换了得分的新实例（重排分与向量分语义不同，不原地混用）。</summary>
+		/// <param name="score">新的得分。</param>
+		/// <returns>新的切片对象。</returns>
+		public RagRetrievedChunk WithScore(double score) => new()
+		{
+			DocumentId = DocumentId,
+			DocumentTitle = DocumentTitle,
+			ChunkIndex = ChunkIndex,
+			HeadingPath = HeadingPath,
+			Content = Content,
+			Score = score
+		};
 	}
 }

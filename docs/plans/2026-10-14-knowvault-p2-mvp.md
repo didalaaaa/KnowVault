@@ -861,4 +861,12 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 
 - 经典域名 `https://dashscope.aliyuncs.com/api/v1` 仍可用于 rerank，**不需要**文档里给的工作空间域；
 - `qwen3-rerank` 200、`gte-rerank-v2` 200、`gte-rerank` **403 AccessDenied**（已下线）；
-- 响应里没有 `request_id` 之外的额外字段，`results` 已按分数降序返回（客户端仍应自行排序，避免依赖服务端顺序）。
+- 响应除 `output.results` 外还有 `request_id` / `usage`；`results` 当前已按分数降序返回（客户端仍自行排序，不依赖服务端顺序）
+
+### Task 1 —— Rerank 落地（2026-10-14）
+
+- 新增 `src/KnowVault.Ai/Rerank/{RerankResult,IRerankService,QwenRerankResponseParser,QwenRerankService}.cs`；改动 `src/KnowVault.Ai/Configuration/AiOptions.cs`（+`QwenRerankBaseUrl`、默认模型改 `qwen3-rerank`、+`RerankEnabled` / `RerankCandidateCount` / `HistoryMaxMessages`）、`src/KnowVault.Ai/Rag/RagRetrievedChunk.cs`（+`WithScore`）、`src/KnowVault.Ai/Rag/RagService.cs`（宽召回 + 重排 + `Take(topK)` + fail-open）、`src/KnowVault.HttpApi.Host/appsettings.json`（Ai 节同步 5 个键）
+- **不需要**改 `src/KnowVault.Ai/KnowVaultAiModule.cs`：ABP 约定注册按「接口名去掉首字母 I 后是否为类名后缀」匹配，`QwenRerankService` 以 `RerankService` 结尾即命中 `IRerankService`（P1 的 `QwenEmbeddingService` → `IEmbeddingService` 同理，模块里从来没有显式 `AddTransient`）；类上仍加 `[ExposeServices(typeof(IRerankService))]` 自我声明
+- 重排失败用 `catch (Exception ex) when (ex is not OperationCanceledException)` → 记 warning 后退回向量分顺序（取消仍照常向上传播）
+- 新增测试 `tests/KnowVault.Tests/QwenRerankResponseParserTests.cs`（4 条）、`tests/KnowVault.Tests/RagServiceRerankTests.cs`（4 条，手写 fake 替身）；`dotnet test` **27/27 通过**（P1 19 + 新增 8）
+- ⚠️ **IDE1006 检查命令的现实偏差**：`dotnet format style KnowVault.slnx --verify-no-changes --diagnostics IDE1006` 的 `--diagnostics` 不生效，会连带报出既有文件的 `error IMPORTS: 修复导入顺序。` —— `src/KnowVault.Application.Contracts/KnowVaultApplicationContractsModule.cs(1,1)`、`src/KnowVault.Application/KnowVaultApplicationModule.cs(1,1)`、`src/KnowVault.HttpApi.Client/KnowVaultHttpApiClientModule.cs(1,1)`，三处均为**历史问题且不在本次改动文件中**（退出码 2）。Task 8 的验收判据据此校正为「无新增违规」
