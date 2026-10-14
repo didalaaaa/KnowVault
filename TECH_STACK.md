@@ -104,7 +104,7 @@ KnowVault.slnx
 |---|---|---|
 | **P0 骨架** | 建解决方案（ABP 分层）+ Aspire 编排（Postgres/Redis/Qdrant/MinIO/RMQ/Seq）+ Vue3 脚手架 + 最小上传/问答 API | 项目能跑起来，界面能连上后端 |
 | **P1 最小闭环** | 上传→解析→切片→向量化→Qdrant 写入；提问→检索→DeepSeek→引用溯源；文档解析 Worker 接 RabbitMQ | ✅ MVP 达成，可 demo |
-| **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | demo 效果拉满 |
+| **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | 实施中（🔥 demo 效果拉满）：计划见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限、GitHub Actions CI | 面试深度 + 可讲"坑" |
 | **P4 打磨讲故事** | README（架构图+选型理由）、demo 视频、面试话术 doc | 竞争加分 |
 
@@ -153,6 +153,26 @@ KnowVault.slnx
 - **测试**：P1 只加 `tests/KnowVault.Tests` 的**纯函数单测**（切片/解析/payload/Prompt），Testcontainers 集成测试仍留 P3；PDF 解析因缺可复现二进制夹具改手工验收。
   - ⚠️ `FluentAssertions` 若引入**必须钉 7.x**（7.2.0 为 Apache-2.0；8.11.0 已改为许可文件即 Xceed 商业 EULA）。
 
+### 9.2 P2 实现细节定稿（2026-10-14）
+
+- **流式输出**：`SignalR` 服务端在 .NET 10 共享框架内（**零 NuGet 包**），前端用 npm `@microsoft/signalr ^10.0.11`（MIT）；Hub 路由 `/signalr/qa`，方法名 `Ask`，返回 `IAsyncEnumerable<QaStreamEventDto>`（`Started` / `Delta` / `Completed` 三帧），客户端用 `connection.stream()` 消费。
+- **SignalR 鉴权**：WebSocket 无法携带自定义请求头，JS 客户端只能把令牌放 query string；而 **OpenIddict 的验证处理不读取 query string**（实测 `openiddict.validation.aspnetcore 7.5.0` 的 DLL 里 `access_token` 命中 0 次）→ Host 在 `UseAuthentication()` **之前**插一层中间件，只对 hub 路径把 `?access_token=` 搬运成 `Authorization: Bearer`。
+- **挂 Hub 的位置**：ABP 提供 `UseConfiguredEndpoints(IApplicationBuilder, Action<IEndpointRouteBuilder>)` 重载（10.5.0 XML 文档核实）→ 用 `app.UseConfiguredEndpoints(endpoints => endpoints.MapHub<QaHub>(QaHub.Route))`，不要再写 `UseEndpoints`。
+- **重排（Rerank）**：DashScope 文本重排接口，**经典域名** `https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank`，模型 **`qwen3-rerank`**；`gte-rerank` 已于 2026-05-30 下线（2026-10-14 实测 HTTP 403 `AccessDenied`），`gte-rerank-v2` 仍可用但非默认。
+- **重排不属于 OpenAI 兼容模式**：必须单独配置 `Ai:QwenRerankBaseUrl`，**不能**复用 `QwenBaseUrl` 的 `/compatible-mode/v1`；调用失败或返回空时 **fail-open** 退回向量检索顺序。
+- **重排策略**：宽召回 + 精排（`RerankCandidateCount = 20` → 取 topK ≤ 8），默认开启；引用中的 `Score` 语义由「余弦相似度」变为「重排相关性分（0~1，仅请求内相对可比）」。
+- **多轮历史**：只做「Prompt 带最近 `HistoryMaxMessages = 6` 条历史」（3 轮往返），**不做**会话列表侧边栏；历史以独立消息注入（最后一条用户消息仍是「资料片段 + 问题」），渲染前剥掉助手旧回答里的 `[编号]` 标记，System prompt 增加「历史只用于理解指代，事实依据必须来自本次资料片段」。
+- **流式实现**：`ILlmChatService` 只保留 `CompleteStreamAsync`（SK `GetStreamingChatMessageContentsAsync`）；REST 问答入口改为把同一条流拼成整段文本，两条入口共用一份检索 / 重排 / 落库实现。
+- **UoW 与流式的冲突**：ABP 的 UoW 拦截器在方法返回时就结束工作单元，而 `async IAsyncEnumerable` 的真正工作发生在枚举期间 → 流式编排服务**不依赖环境 UoW**，每次落库显式 `Begin(requiresNew: true)`；该类用 `[RemoteService(IsEnabled = false)]` 保证不被生成动态 API 控制器。
+- **知识库管理**：新增 Create / Update / Delete；**删除仅限空库**（默认知识库与含文档的库一律拒绝），文档删除与 Qdrant points 清理留 P3；错误提示沿用 `UserFriendlyException` + 中文文案（与 `DocumentAppService` 一致）。
+- **P2 不做**：会话列表 / 管理 API、文档删除、MinIO 孤儿对象清理、混合检索(BM25)、重排结果落库、多租户隔离强化、OCR、URL 抓取、Ingest 进度实时推送（前端仍 2s 轮询）、Testcontainers 集成测试。
+- **测试**：延续 P1，只加 `tests/KnowVault.Tests` 的纯函数 / 手写 fake 单测（重排响应解析、重排降级、Prompt 历史渲染）。
+- **执行计划**：见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`
+
 ## 10. P1 执行计划
 
 - 详见 [`docs/plans/2026-10-05-knowvault-p1-mvp.md`](docs/plans/2026-10-05-knowvault-p1-mvp.md)：含冻结规格、14 个任务的文件级改动、完整代码与逐项验证命令、风险登记与完成定义。
+
+## 11. P2 执行计划
+
+- 详见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md)：含冻结规格（六项决策 + 默认项 D1–D8）、8 个任务的文件级改动、15 项端到端验收、风险登记与完成定义。

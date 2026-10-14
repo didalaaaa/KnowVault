@@ -121,6 +121,9 @@ var api = builder.AddProject("knowvault-api", "../../src/KnowVault.HttpApi.Host/
     .WithEnvironment("Ai__DeepSeekModel", Env("DEEPSEEK_MODEL") ?? "deepseek-chat")
     .WithEnvironment("Ai__QwenApiKey", Env("QWEN_API_KEY") ?? string.Empty)
     .WithEnvironment("Ai__QwenBaseUrl", Env("QWEN_BASE_URL") ?? "https://dashscope.aliyuncs.com/compatible-mode/v1")
-    .WithEnvironment("Ai__QwenEmbeddingModel", Env("QWEN_EMBEDDING_MODEL") ?? "text-embedding-v3");
+    .WithEnvironment("Ai__QwenEmbeddingModel", Env("QWEN_EMBEDDING_MODEL") ?? "text-embedding-v3")
+    // 重排独立于 OpenAI 兼容模式：走经典域名 /api/v1，模型用 qwen3-rerank（gte-rerank 已下线）
+    .WithEnvironment("Ai__QwenRerankBaseUrl", Env("QWEN_RERANK_BASE_URL") ?? "https://dashscope.aliyuncs.com/api/v1")
+    .WithEnvironment("Ai__QwenRerankModel", Env("QWEN_RERANK_MODEL") ?? "qwen3-rerank");
 
 builder.Build().Run();
