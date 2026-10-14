@@ -29,18 +29,19 @@ namespace KnowVault.Application
 			_messageRepository = messageRepository;
 		}
 
-		public async Task<QaAnswerDto> AskAsync(AskQuestionInput input)
+		public async Task<QaAnswerDto> AskAsync(AskQuestionInput input, CancellationToken cancellationToken)
 		{
 			var conversation = input.ConversationId.HasValue
-				? await _conversationRepository.GetAsync(input.ConversationId.Value)
+				? await _conversationRepository.GetAsync(input.ConversationId.Value, cancellationToken: cancellationToken)
 				: await _conversationRepository.InsertAsync(
 					new Conversation(
 						GuidGenerator.Create(),
 						input.Question.Length <= 128 ? input.Question : input.Question[..128]),
-					autoSave: true);
+					autoSave: true,
+					cancellationToken: cancellationToken);
 
 			// 用户消息
-			await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true);
+			await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true, cancellationToken: cancellationToken);
 
 			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
 			var rag = await _ragService.AnswerAsync(new RagRequest
@@ -50,7 +51,7 @@ namespace KnowVault.Application
 				ConversationId = conversation.Id,
 				Question = input.Question,
 				TopK = input.TopK ?? 0
-			});
+			}, cancellationToken);
 
 			var citations = rag.Citations.Select(c => new RagCitationDto
 			{
@@ -68,7 +69,8 @@ namespace KnowVault.Application
 					MessageRoleEnum.Assistant,
 					rag.Answer,
 					citationsJson: JsonSerializer.Serialize(citations)),
-				autoSave: true);
+				autoSave: true,
+				cancellationToken: cancellationToken);
 
 			return new QaAnswerDto
 			{

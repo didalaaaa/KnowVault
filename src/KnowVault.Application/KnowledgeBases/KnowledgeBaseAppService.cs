@@ -25,10 +25,10 @@ namespace KnowVault.Application
 		}
 
 		/// <inheritdoc />
-		public async Task<List<KnowledgeBaseDto>> GetListAsync()
+		public async Task<List<KnowledgeBaseDto>> GetListAsync(CancellationToken cancellationToken)
 		{
-			var knowledgeBases = await _knowledgeBaseRepository.GetListAsync();
-			var documents = await _documentRepository.GetListAsync();
+			var knowledgeBases = await _knowledgeBaseRepository.GetListAsync(cancellationToken: cancellationToken);
+			var documents = await _documentRepository.GetListAsync(cancellationToken: cancellationToken);
 
 			return knowledgeBases
 				.Select(kb => new KnowledgeBaseDto
@@ -45,9 +45,9 @@ namespace KnowVault.Application
 		}
 
 		/// <inheritdoc />
-		public async Task<KnowledgeBaseDto?> GetDefaultAsync()
+		public async Task<KnowledgeBaseDto?> GetDefaultAsync(CancellationToken cancellationToken)
 		{
-			var list = await GetListAsync();
+			var list = await GetListAsync(cancellationToken);
 			return list.FirstOrDefault(kb => kb.Id == KnowVaultConsts.DefaultKnowledgeBaseId) ?? list.FirstOrDefault();
 		}
 	}

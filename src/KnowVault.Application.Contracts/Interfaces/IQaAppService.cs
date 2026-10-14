@@ -9,7 +9,7 @@ namespace KnowVault.Application.Contracts
 	/// </summary>
 	public interface IQaAppService : IApplicationService
 	{
-		Task<QaAnswerDto> AskAsync(AskQuestionInput input);
+		Task<QaAnswerDto> AskAsync(AskQuestionInput input, CancellationToken cancellationToken);
 	}
 
 }
