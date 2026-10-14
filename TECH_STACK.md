@@ -104,7 +104,7 @@ KnowVault.slnx
 |---|---|---|
 | **P0 骨架** | 建解决方案（ABP 分层）+ Aspire 编排（Postgres/Redis/Qdrant/MinIO/RMQ/Seq）+ Vue3 脚手架 + 最小上传/问答 API | 项目能跑起来，界面能连上后端 |
 | **P1 最小闭环** | 上传→解析→切片→向量化→Qdrant 写入；提问→检索→DeepSeek→引用溯源；文档解析 Worker 接 RabbitMQ | ✅ MVP 达成，可 demo |
-| **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | 实施中（🔥 demo 效果拉满）：计划见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
+| **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限、GitHub Actions CI | 面试深度 + 可讲"坑" |
 | **P4 打磨讲故事** | README（架构图+选型理由）、demo 视频、面试话术 doc | 竞争加分 |
 
@@ -114,6 +114,7 @@ KnowVault.slnx
 
 - **.NET 10 SDK** + Node.js（Vite）
 - **Docker Desktop**（跑 Postgres / Redis / Qdrant / MinIO / RabbitMQ / Seq）
+  - 不用 Aspire 时（本机验收路径）：复用 P1 遗留的手工容器 `kv-postgres` / `kv-redis` / `kv-qdrant` / `kv-rabbitmq` / `kv-minio`，`docker start kv-*` 即可（数据在容器可写层）；**Postgres 映射在宿主 5433**；仓库内**没有** docker-compose 文件，配置走环境变量覆盖 `ConnectionStrings__Default` / `ConnectionStrings__rabbitmq` / `Minio__*` / `Redis__Configuration` / `Qdrant__Endpoint`
 - **Aspire** 一键编排启动全部依赖
 - 模型：`DeepSeek` + `Qwen` 的 **API Key**（环境变量，不进仓库）
 - 可选：本地 Ollama 用于离线 fallback
@@ -167,6 +168,8 @@ KnowVault.slnx
 - **知识库管理**：新增 Create / Update / Delete；**删除仅限空库**（默认知识库与含文档的库一律拒绝），文档删除与 Qdrant points 清理留 P3；错误提示沿用 `UserFriendlyException` + 中文文案（与 `DocumentAppService` 一致）。
 - **P2 不做**：会话列表 / 管理 API、文档删除、MinIO 孤儿对象清理、混合检索(BM25)、重排结果落库、多租户隔离强化、OCR、URL 抓取、Ingest 进度实时推送（前端仍 2s 轮询）、Testcontainers 集成测试。
 - **测试**：延续 P1，只加 `tests/KnowVault.Tests` 的纯函数 / 手写 fake 单测（重排响应解析、重排降级、Prompt 历史渲染）。
+- **ABP 动态 API 路由（实测结论，写前端 URL 必须照它来）**：`UpdateAsync(输入DTO)` → `PUT /api/app/{服务名}`，**路由不带 `{id}`、实体 ID 走请求体**（Task 8 实测拼 `{id}` 会 405）；`DeleteAsync(Guid id)` → `DELETE /api/app/{服务名}/{id}`；`CreateAsync` → `POST /api/app/{服务名}`。
+- **API 认证失败语义**：`/api` 前缀下把 Cookie 方案的 challenge 改写成 **401 + `WWW-Authenticate: Bearer`**（其它路径保持跳登录页），前端 axios 据此清 token 回登录态。
 - **执行计划**：见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`
 
 ## 10. P1 执行计划
@@ -176,3 +179,4 @@ KnowVault.slnx
 ## 11. P2 执行计划
 
 - 详见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md)：含冻结规格（六项决策 + 默认项 D1–D8）、8 个任务的文件级改动、15 项端到端验收、风险登记与完成定义。
+- **状态：已完成（2026-10-14）**。逐项命令与实测输出写在该文件 §5「Task 8 —— 端到端验收」：`dotnet build KnowVault.slnx` 0 错误 0 警告、`dotnet test tests\KnowVault.Tests` 32/32、`dotnet format style` 无新增违规、47 个改动文件行尾全部合规（CRLF 无 BOM）、`npm run build` 通过。

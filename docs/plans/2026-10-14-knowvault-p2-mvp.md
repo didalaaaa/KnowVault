@@ -816,6 +816,8 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 
 ## §2 端到端验收清单（Task 8 逐项打勾并记录证据）
 
+> 逐项命令与实际输出见 §5「Task 8 —— 端到端验收（2026-10-14）」。
+
 1. 匿名访问 `/api/app/knowledge-base` → **401**（Task 7）；
 2. 登录后上传一份 PDF/Markdown → 轮询到「已就绪」；
 3. 提问 → 浏览器**逐字**出现回答，引用标签在看板出现且可点开定位到文档与片段序号；
@@ -916,10 +918,10 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 
 ### Task 6 —— 知识库管理（后端 + 前端）（2026-10-14）
 
-- 契约：`IKnowledgeBaseAppService` 加 `CreateAsync` / `UpdateAsync` / `DeleteAsync`；新增 `CreateKnowledgeBaseInput`（`[Required][StringLength(128)] Name` + `[StringLength(512)] Description?`）与 `UpdateKnowledgeBaseInput`（多一个 `Guid Id`——ABP 见入参带 Id 即映射为 PUT 路由的 `{id}`）
+- 契约：`IKnowledgeBaseAppService` 加 `CreateAsync` / `UpdateAsync` / `DeleteAsync`；新增 `CreateKnowledgeBaseInput`（`[Required][StringLength(128)] Name` + `[StringLength(512)] Description?`）与 `UpdateKnowledgeBaseInput`（继承 `EntityDto<Guid>`；⚠️ Task 8 实测更正：ABP 10.5 把 `UpdateAsync(输入DTO)` 映射成**不带 `{id}`** 的 `PUT /api/app/knowledge-base`，ID 走请求体——详见 §5 的 Task 8 记录）
 - 实现：`CreateAsync` 用 `GuidGenerator.Create()` + `CurrentTenant.Id` 建库并直接返回 DTO（`ReadyDocumentCount = 0`）；`UpdateAsync` 走实体既有的 `Update(name, description)`；`DeleteAsync` 两道闸——`id == KnowVaultConsts.DefaultKnowledgeBaseId` 抛「默认知识库不可删除」，`_documentRepository.AnyAsync(...)` 命中则抛「知识库下仍有文档，请先清空（文档删除在 P3 提供）」；三处全用 `UserFriendlyException` + 中文文案（与 P1 的 `DocumentAppService` 一致），不引新错误码
 - 空白描述统一经 `Normalize` 落成 null，避免「没填描述」变成空字符串后到处判断；`CountReadyDocumentsAsync` 只给 `UpdateAsync` 的返回值用
-- 前端：`api/knowledgeBases.js` 加 `create/update/remove`（`PUT/DELETE /app/knowledge-base/{id}`，与 ABP 约定路由一致）；`stores/documents.js` 新增 `reloadKnowledgeBases(preferredId)`（期望选中项还在列表里就保留，否则退回第一个）与 `createKnowledgeBase/updateKnowledgeBase/removeKnowledgeBase`（CRUD 错误**向上抛**，由界面弹提示，不塞进 `state.error`）；新增 `components/KnowledgeBasePanel.vue`（`n-list` + `n-modal`/`n-form` 新建与编辑复用同一表单 + `n-popconfirm` 删除，默认库删除按钮 `disabled`，操作成功后刷新列表并同步问答视图的知识库下拉）
+- 前端：`api/knowledgeBases.js` 加 `create/update/remove`（create = `POST /app/knowledge-base`、update = `PUT /app/knowledge-base`（ID 在请求体）、remove = `DELETE /app/knowledge-base/{id}`；⚠️ update 的 URL 最初写成拼 `{id}`，Task 8 实测 405 后已改，见 §5）；`stores/documents.js` 新增 `reloadKnowledgeBases(preferredId)`（期望选中项还在列表里就保留，否则退回第一个）与 `createKnowledgeBase/updateKnowledgeBase/removeKnowledgeBase`（CRUD 错误**向上抛**，由界面弹提示，不塞进 `state.error`）；新增 `components/KnowledgeBasePanel.vue`（`n-list` + `n-modal`/`n-form` 新建与编辑复用同一表单 + `n-popconfirm` 删除，默认库删除按钮 `disabled`，操作成功后刷新列表并同步问答视图的知识库下拉）
 - `App.vue`：内容区改 `n-tabs`（`v-model:value="activeTab"`，默认 `qa`）切「问答 / 知识库」，两个 `n-tab-pane` 都加 `display-directive="show:lazy"` 保留组件状态；问答视图的 `aside + main` 布局与「新会话」按钮位置原样不动
 - 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；`npm run build` 成功（`dist/assets/index-CsGnVijm.js` 714.53 kB / gzip 217.64 kB，仅 chunk 体积告警）
 
@@ -929,3 +931,35 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - 定位结论与修法取舍见本文档 Task 7 小节的「实际处理」段
 - 前端无需改动：`src/api/http.js` 的 401 拦截器（清 token + 派发 `knowvault:unauthorized`）与 `App.vue` 的监听 P1 已就位，之前只是后端没返回 401
 - 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；HTTP 行为待 Task 8 起服务后 `curl -i` 实测
+
+### Task 8 —— 端到端验收（2026-10-14）
+
+**环境**：Docker Desktop 起容器后复用 P1 遗留的 `kv-postgres`(宿主 5433→容器 5432) / `kv-redis` / `kv-qdrant` / `kv-rabbitmq` / `kv-minio`（`docker start kv-*`，P1 数据在容器可写层，`KnowVault` 库保留原有 5 篇就绪文档）；API 用本机配方启动（读仓库 `.env` → 覆盖 `ConnectionStrings__Default` 到 5433、`ConnectionStrings__rabbitmq`、`Minio__*`、`Redis__Configuration`、`Qdrant__Endpoint`、`Ai__QwenRerank*` → `dotnet run --project src/KnowVault.HttpApi.Host`），`GET /health-status` 返回 200 且 `masstransit-bus`（`rabbitmq://localhost/DocumentIngest` ready）与 `KnowVault DbContext Check` 都 Healthy。**P2 无数据库结构变更，未新增迁移**。
+
+**逐项证据（命令 + 实际输出）**
+
+| # | 项 | 实测证据 | 结论 |
+|---|---|---|---|
+| 1 | 匿名访问 API → 401 | `curl -k -i /api/app/knowledge-base` → `HTTP/1.1 401 Unauthorized` + `WWW-Authenticate: Bearer`；`Bearer not-a-real-token` 也是 401；有效令牌 200 | ✅ |
+| 2 | 上传 → 轮询到就绪 | `POST /api/app/document/upload`（.md）→ 200 `status=0`；3 秒后 `GET /api/app/document/{id}` → `status=2`；库的 `readyDocumentCount` 0→1（RabbitMQ → 解析 → 切片 → Qwen 向量 → Qdrant 全链路通） | ✅ |
+| 3 | 流式逐字 | Node + `@microsoft/signalr` 直连 Hub 调 `Ask` → `Started` 帧带 `conversationId` 与 2 条引用，首个 `Delta` 3230ms、`Completed` 3921ms、共 **12 个增量片段**，拼接结果与 REST 一致 | ✅ 服务端；浏览器逐字渲染属人工项 |
+| 4 | 停止生成不留半截消息 | Node 客户端 1200ms 后 `subscription.dispose()`（等价前端「停止生成」）→ 未收到 `Completed`；`AppMessages` 里该会话**只有 1 条用户消息**（len=21），完整对照组 2 条（用户 + 助手）；全库 `Role=1 AND length(Content)=0` 计数 **0** | ✅ |
+| 5 | 多轮历史生效 | 第 2 轮「我刚才问你的第一个问题是什么？请原样重复。」→ 回答**「你刚才问的第一个问题是：**「灯塔计划的负责人代号是什么？」**」**（只能来自历史）；第 3 轮「它的年度预算是多少？」→ 48 万元 | ✅ |
+| 6 | 重排生效 | 同一问题、两个进程对照（`Ai__RerankEnabled` 开/关）：「灯塔计划的目标是什么？」开 `#1:0.9357 \| #0:0.7364` vs 关 `#0:0.7175 \| #1:0.7154`（**顺序翻转**）；「向量库硬件占预算的多少？」开 `#1:0.9677 \| #0:0.3340` vs 关 `#1:0.6853 \| #0:0.4489`；「灯塔计划什么时候启动的？」开 `#0:0.9610 \| #1:0.8361` vs 关 `#0:0.7755 \| #1:0.6894`（分值区间与顺序都不同） | ✅ |
+| 7 | `RerankEnabled=false` 仍能回答 | 关闭后三次提问全部 200 且答案正确、引用退回向量分顺序（上表右列） | ✅ |
+| 8 | 知识库增改删 | 建库 200（`readyDocumentCount=0`）；改名 200（名称与描述都生效）；删空库 **204** 且从列表消失；删默认库 **403**「默认知识库不可删除」；删非空库 **403**「知识库下仍有文档，请先清空（文档删除在 P3 提供）」；重复删同一库 404「There is no entity KnowledgeBase with id = ...」 | ✅ |
+| 9 | REST 路径未被破坏 | `POST /api/app/qa/ask` → 200，`answer`「灯塔计划的负责人代号是「蓝鲸」。[1]」+ 2 条引用，`conversationId` 复用正常 | ✅ |
+| 10 | SignalR 不可用时降级 | `src/api/qaHub.js` 的 `startQaHub()` 失败返回 false → `stores/chat.js` 转 `askViaRest()`（Task 4 起 REST 与 Hub 共用同一条编排路径，REST 已实测通过）；浏览器断连降级属人工项 | ⚠️ 代码 + REST 等价验证 |
+| 11 | `dotnet build KnowVault.slnx` | `已成功生成。 0 个警告 0 个错误`（1m7s） | ✅ |
+| 12 | `dotnet test tests\KnowVault.Tests` | `已通过! - 失败: 0，通过: 32，已跳过: 0，总计: 32`（21s） | ✅ |
+| 13 | `dotnet format style --verify-no-changes --diagnostics IDE1006` | 仅 3 条历史 `error IMPORTS`（`KnowVaultApplicationContractsModule.cs(1,1)` / `KnowVaultApplicationModule.cs(1,1)` / `KnowVaultHttpApiClientModule.cs(1,1)`，与 P1 记录完全一致），**无 IDE1006、无新增违规**（`--diagnostics` 不生效是既有现象） | ✅ 无新增 |
+| 14 | 行尾自查 | 分支上 47 个新增/改动文件逐个实测：全部 CRLF 且 loneLF=0、无 BOM，**不合规 0** | ✅ |
+| 15 | `cd frontend && npm run build` | `✓ built in 1m 29s`，`dist/assets/index-CK6w2Srs.js 714.52 kB / gzip 217.64 kB`、`index-BThQeuxE.css 1.93 kB`（仅 chunk >500 kB 告警） | ✅ |
+
+**验收中发现并修复的缺陷（都属 Task 6/7 遗留）**
+
+- **`PUT /api/app/knowledge-base/{id}` 返回 405**：Task 6 前端把 ID 拼进了 URL。从 Swagger 读到 ABP 10.5 的真实映射后确认：`UpdateAsync(输入DTO)` → `PUT /api/app/knowledge-base`（**不带** `{id}`，ID 在请求体），只有 `DeleteAsync(Guid id)` → `DELETE /api/app/knowledge-base/{id}`。改 `frontend/src/api/knowledgeBases.js` 的 `update` 为 `http.put('/app/knowledge-base', payload)`；`UpdateKnowledgeBaseInput` 保留 `EntityDto<Guid>`（统一 ID 来源），但把原先断言「带 Id 即映射 {id}」的注释更正为实测结论
+- **401 少 `WWW-Authenticate`**：Task 7 直接写状态码绕过了 challenge。`KnowVaultHttpApiHostModule.WriteStatusCodeAsync` 补 `if (statusCode == StatusCodes.Status401Unauthorized) response.Headers.WWWAuthenticate = "Bearer";`
+- **本机 `.env` 的 `QWEN_RERANK_MODEL` 仍是 `gte-rerank`**（已下线，403）→ 本机改成 `qwen3-rerank`（`.env` 不入库；`.env.example` 与 `appsettings.json` 默认值 Task 0 已改）
+
+**本机验收产物（全部在 `%TEMP%`，不入库）**：`knowvault-run-api.ps1`（启动配方）、`kv-stage1.ps1`~`kv-stage3.ps1`（HTTP 验收）、`kv-stream.js`（SignalR 流式与停止生成）、`kv-check.sql`（消息落库核对）。经验：本机 `pwsh` 是 Windows PowerShell **5.1**（`Invoke-RestMethod` 没有 `-SkipCertificateCheck`），统一改用 `curl.exe -k`；含中文的脚本必须存成 **UTF-8 带 BOM**，否则 5.1 按 ANSI 解析会吃掉引号；命令行参数里的中文会被 5.1 转成 ANSI，所以请求体一律先写成 UTF-8 文件再 `--data-binary @文件`；重启 API 必须先 `Stop-Process -Name KnowVault.HttpApi.Host`（杀后台 job 不会杀掉子进程）。
