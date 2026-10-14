@@ -4,9 +4,11 @@ using KnowVault.Domain;
 using KnowVault.Domain.Shared;
 using KnowVault.EntityFrameworkCore;
 using KnowVault.Ingest;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
@@ -162,6 +164,44 @@ namespace KnowVault.HttpApi.Host
 				 */
 				options.IsDynamicClaimsEnabled = true;
 			});
+
+			/*
+			 * 匿名或令牌失效的 API 请求默认会走 Identity 的 Cookie 方案挑战，被 302 重定向到登录页，
+			 * 前端 axios 因此拿不到 401、无法自动退回登录态；这里只对 /api 前缀改为返回状态码，
+			 * Account 等页面路径仍保持原有跳转。PostConfigure 保证在其它 Configure 之后生效
+			 */
+			context.Services.PostConfigure<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme, options =>
+			{
+				var redirectToLogin = options.Events.OnRedirectToLogin;
+				var redirectToAccessDenied = options.Events.OnRedirectToAccessDenied;
+
+				options.Events.OnRedirectToLogin = cookieContext => IsApiRequest(cookieContext.Request)
+					? WriteStatusCodeAsync(cookieContext.Response, StatusCodes.Status401Unauthorized)
+					: redirectToLogin(cookieContext);
+
+				options.Events.OnRedirectToAccessDenied = cookieContext => IsApiRequest(cookieContext.Request)
+					? WriteStatusCodeAsync(cookieContext.Response, StatusCodes.Status403Forbidden)
+					: redirectToAccessDenied(cookieContext);
+			});
+		}
+
+		/// <summary>
+		/// 判断是否为 API 请求（/api 前缀），用于区分「返回状态码」与「跳登录页」
+		/// </summary>
+		/// <param name="request">请求</param>
+		/// <returns>是 API 请求则为 true</returns>
+		private static bool IsApiRequest(HttpRequest request) => request.Path.StartsWithSegments("/api");
+
+		/// <summary>
+		/// 只写状态码、不做重定向
+		/// </summary>
+		/// <param name="response">响应</param>
+		/// <param name="statusCode">状态码</param>
+		/// <returns>任务</returns>
+		private static Task WriteStatusCodeAsync(HttpResponse response, int statusCode)
+		{
+			response.StatusCode = statusCode;
+			return Task.CompletedTask;
 		}
 
 		private void ConfigureUrls(IConfiguration configuration)

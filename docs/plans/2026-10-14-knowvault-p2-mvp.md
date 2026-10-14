@@ -794,6 +794,15 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 
 ---
 
+### Task 7：工程收尾的实际处理（2026-10-14）
+
+**已定范围：401 语义**（「重新处理」入口与 RabbitMQ 消息持久化经确认留到 P3）。
+
+- **定位结论**：`ForwardIdentityAuthenticationForBearer` 只在**带 Bearer 令牌**时把认证转发给 OpenIddict 验证方案；请求没有令牌（匿名）或令牌失效时，`AuthorizationMiddleware` 走的是**默认挑战方案** `IdentityConstants.ApplicationScheme`（Cookie），而 Cookie 默认的 `OnRedirectToLogin` 对非 `X-Requested-With: XMLHttpRequest` 的请求一律 `302` 跳 `/Account/Login`——axios 默认不发这个头，所以拿到的是 302 而不是 401
+- **实际修法**（比原候选更小：不动默认方案、不动 `/api` 前缀的全局策略）：在 `KnowVaultHttpApiHostModule.ConfigureAuthentication` 里对 `IdentityConstants.ApplicationScheme` 加 `PostConfigure<CookieAuthenticationOptions>`，`/api` 前缀把 `OnRedirectToLogin` / `OnRedirectToAccessDenied` 改成只写状态码（401 / 403），其余路径继续调用原有处理器；`PostConfigure` 保证在其它 `Configure` 之后执行，同时保留 ABP 已注册的事件处理器
+- **待 Task 8 实测**：`curl -i` 匿名与过期令牌请求 `/api/app/knowledge-base`，预期 401（带 `WWW-Authenticate`）而非 302；前端 axios 收到 401 后清 token 并派发 `knowvault:unauthorized`（P1 已实现）退回登录页
+
+---
 ## Task 8：端到端验收与文档回写
 
 **Files:**
@@ -913,3 +922,10 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - 前端：`api/knowledgeBases.js` 加 `create/update/remove`（`PUT/DELETE /app/knowledge-base/{id}`，与 ABP 约定路由一致）；`stores/documents.js` 新增 `reloadKnowledgeBases(preferredId)`（期望选中项还在列表里就保留，否则退回第一个）与 `createKnowledgeBase/updateKnowledgeBase/removeKnowledgeBase`（CRUD 错误**向上抛**，由界面弹提示，不塞进 `state.error`）；新增 `components/KnowledgeBasePanel.vue`（`n-list` + `n-modal`/`n-form` 新建与编辑复用同一表单 + `n-popconfirm` 删除，默认库删除按钮 `disabled`，操作成功后刷新列表并同步问答视图的知识库下拉）
 - `App.vue`：内容区改 `n-tabs`（`v-model:value="activeTab"`，默认 `qa`）切「问答 / 知识库」，两个 `n-tab-pane` 都加 `display-directive="show:lazy"` 保留组件状态；问答视图的 `aside + main` 布局与「新会话」按钮位置原样不动
 - 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；`npm run build` 成功（`dist/assets/index-CsGnVijm.js` 714.53 kB / gzip 217.64 kB，仅 chunk 体积告警）
+
+### Task 7 —— 401 语义（2026-10-14）
+
+- `src/KnowVault.HttpApi.Host/KnowVaultHttpApiHostModule.cs`：新增 `using Microsoft.AspNetCore.Authentication.Cookies;` 与 `using Microsoft.AspNetCore.Identity;`；`ConfigureAuthentication` 末尾加 `PostConfigure<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme, ...)`（`/api` 前缀返回 401/403，其它路径保持原跳转）；新增两个静态小工具 `IsApiRequest(HttpRequest)` 与 `WriteStatusCodeAsync(HttpResponse, int)`
+- 定位结论与修法取舍见本文档 Task 7 小节的「实际处理」段
+- 前端无需改动：`src/api/http.js` 的 401 拦截器（清 token + 派发 `knowvault:unauthorized`）与 `App.vue` 的监听 P1 已就位，之前只是后端没返回 401
+- 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；HTTP 行为待 Task 8 起服务后 `curl -i` 实测
