@@ -201,6 +201,8 @@ namespace KnowVault.HttpApi.Host
 		private static Task WriteStatusCodeAsync(HttpResponse response, int statusCode)
 		{
 			response.StatusCode = statusCode;
+			// 401 带上挑战头，调用方才能识别认证方案（默认的 Cookie 挑战是跳登录页，这里只写状态码）
+			if (statusCode == StatusCodes.Status401Unauthorized) response.Headers.WWWAuthenticate = "Bearer";
 			return Task.CompletedTask;
 		}
 
