@@ -17,6 +17,11 @@ namespace KnowVault.Ai
 
 		/// <summary>top-k 检索数；&lt;=0 时用 <see cref="AiOptions.TopK"/>，上限 8。</summary>
 		public int TopK { get; set; }
+
+		/// <summary>
+		/// 历史轮次（时间升序，不含本轮提问）
+		/// </summary>
+		public IReadOnlyList<LlmChatMessage> History { get; set; } = [];
 	}
 
 	/// <summary>RAG 回答。</summary>

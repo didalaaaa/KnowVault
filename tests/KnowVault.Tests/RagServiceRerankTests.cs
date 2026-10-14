@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using KnowVault.Ai;
 using KnowVault.Domain;
 using KnowVault.Domain.Shared;
@@ -31,6 +32,20 @@ namespace KnowVault.Tests
 			Assert.Equal(1, answer.Citations[0].ChunkIndex);
 			Assert.Equal("甲", answer.Citations[1].Title);
 			Assert.Equal(0.10, answer.Citations[1].Score, 4);
+		}
+
+		/// <summary>
+		/// 一次性回答要把增量流拼成整段文本
+		/// </summary>
+		[Fact]
+		public async Task AnswerAsync_joins_stream_deltas()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)]);
+			var service = CreateService(store, new FakeRerankService([]));
+
+			var answer = await service.AnswerAsync(new RagRequest { Question = "问题", TopK = 1 });
+
+			Assert.Equal("答案", answer.Answer);
 		}
 
 		/// <summary>
@@ -144,8 +159,15 @@ namespace KnowVault.Tests
 
 		private sealed class FakeChatService : ILlmChatService
 		{
-			public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
-				=> Task.FromResult("答案");
+			public async IAsyncEnumerable<string> CompleteStreamAsync(
+				string systemPrompt,
+				IReadOnlyList<LlmChatMessage> messages,
+				[EnumeratorCancellation] CancellationToken cancellationToken = default)
+			{
+				yield return "答";
+				await Task.Yield();
+				yield return "案";
+			}
 		}
 
 		private sealed class FakeRerankService : IRerankService

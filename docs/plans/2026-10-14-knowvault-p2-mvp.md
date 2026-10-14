@@ -870,3 +870,14 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - 重排失败用 `catch (Exception ex) when (ex is not OperationCanceledException)` → 记 warning 后退回向量分顺序（取消仍照常向上传播）
 - 新增测试 `tests/KnowVault.Tests/QwenRerankResponseParserTests.cs`（4 条）、`tests/KnowVault.Tests/RagServiceRerankTests.cs`（4 条，手写 fake 替身）；`dotnet test` **27/27 通过**（P1 19 + 新增 8）
 - ⚠️ **IDE1006 检查命令的现实偏差**：`dotnet format style KnowVault.slnx --verify-no-changes --diagnostics IDE1006` 的 `--diagnostics` 不生效，会连带报出既有文件的 `error IMPORTS: 修复导入顺序。` —— `src/KnowVault.Application.Contracts/KnowVaultApplicationContractsModule.cs(1,1)`、`src/KnowVault.Application/KnowVaultApplicationModule.cs(1,1)`、`src/KnowVault.HttpApi.Client/KnowVaultHttpApiClientModule.cs(1,1)`，三处均为**历史问题且不在本次改动文件中**（退出码 2）。Task 8 的验收判据据此校正为「无新增违规」
+
+### Task 2/3 —— 多轮历史 + 流式（Ai 层，合并为一次提交）
+
+- **合并原因（计划偏差）**：Task 2 把 `RagPromptBuilder.Build` 的返回值从 `(string System, string User)` 改成 `(string System, IReadOnlyList<LlmChatMessage> Messages)`，而换掉 `ILlmChatService` 是 Task 3 的事——要让这两步之间始终可编译，只能一次性把 Ai 层切成「消息 + 流式」，故 Task 2 与 Task 3 合并提交
+- `ILlmChatService.CompleteAsync` **已删除**，只留 `IAsyncEnumerable<string> CompleteStreamAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, CancellationToken cancellationToken = default)`；`DeepSeekChatService` 用 `GetStreamingChatMessageContentsAsync` + `[EnumeratorCancellation]`，丢弃空白首尾帧
+- 空回答检查下沉到 `RagService.StreamWithEmptyCheckAsync`（私有异步迭代器），流式与一次性两条路径共享，`AiCallException("DeepSeek 返回了空回答。")` 文案不变
+- `IRagService` 现为双入口：`AnswerAsync`（拼流 + `Trim()`）与 `AnswerStreamAsync`（返回 `RagStreamResult { Chunks, Deltas }`）；检索与重排收进私有 `RetrieveAsync`，`RerankAsync` 保持 fail-open
+- `RagPromptBuilder` 改为多消息：`Build(question, chunks, history = null)` → `(System, Messages)`；助手历史消息用静态 `Regex(@"\[\d+\]", RegexOptions.Compiled)` 剥掉 `[编号]` 再 `Trim()`，空白内容整条丢弃；**用户历史消息里的方括号不动**；本轮用户消息正文与 P1 逐字一致，引用编号语义不变
+- `RagPromptTemplates.SystemPrompt` 增第 5 条：历史只用于理解指代，事实依据必须来自本次资料片段，历史编号已失效
+- **Task 2 Step 4 的「历史加载」尚未落地**：`Application/Qa/QaAppService.cs` 仍直接调 `AnswerAsync`，历史读取移到 Task 4 的 `QaStreamService`（REST 与 Hub 共用同一入口，只读一处）
+- 测试：`tests/KnowVault.Tests/RagPromptBuilderTests.cs` 全部改签名并新增 4 条（历史顺序 / 剥离引用标记 / 不剥用户方括号 / 丢弃空白助手消息）；`tests/KnowVault.Tests/RagServiceRerankTests.cs` 的假聊天服务改流式，新增 1 条断言两帧拼成 `答案`。`dotnet build KnowVault.slnx` **0 错误 0 警告**，`dotnet test` **32/32 通过**（P1 19 含被改写的 2 条 Prompt 用例 + Task 1 的 8 + 本次新增 5）
