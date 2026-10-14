@@ -904,3 +904,12 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - **踩坑（Vue 响应式）**：`this.messages.push(obj)` 之后再改本地 `obj` 不会触发视图更新（state 里存的是原始对象，读取时才代理），必须 `const assistant = this.messages[this.messages.length - 1]` 取回响应式引用再改
 - `src/components/ChatPanel.vue`：助手气泡正文为空时显示「正在生成…」，`streaming` 期间发送按钮换成「停止生成」；`watch` 最后一条消息的 `content` 跟着增量滚到底（流式是追加不是整体替换）；引用标签文案改为「相关性」（重排后 Score 从 cosine 相似度变成 0~1 relevance）
 - 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；`npm install && npm run build` 成功（`dist/assets/index-*.js` 642.29 kB / gzip 199.00 kB，只有 signalr 的 `/*#__PURE__*/` 注解与 chunk 体积两条告警）
+
+### Task 6 —— 知识库管理（后端 + 前端）（2026-10-14）
+
+- 契约：`IKnowledgeBaseAppService` 加 `CreateAsync` / `UpdateAsync` / `DeleteAsync`；新增 `CreateKnowledgeBaseInput`（`[Required][StringLength(128)] Name` + `[StringLength(512)] Description?`）与 `UpdateKnowledgeBaseInput`（多一个 `Guid Id`——ABP 见入参带 Id 即映射为 PUT 路由的 `{id}`）
+- 实现：`CreateAsync` 用 `GuidGenerator.Create()` + `CurrentTenant.Id` 建库并直接返回 DTO（`ReadyDocumentCount = 0`）；`UpdateAsync` 走实体既有的 `Update(name, description)`；`DeleteAsync` 两道闸——`id == KnowVaultConsts.DefaultKnowledgeBaseId` 抛「默认知识库不可删除」，`_documentRepository.AnyAsync(...)` 命中则抛「知识库下仍有文档，请先清空（文档删除在 P3 提供）」；三处全用 `UserFriendlyException` + 中文文案（与 P1 的 `DocumentAppService` 一致），不引新错误码
+- 空白描述统一经 `Normalize` 落成 null，避免「没填描述」变成空字符串后到处判断；`CountReadyDocumentsAsync` 只给 `UpdateAsync` 的返回值用
+- 前端：`api/knowledgeBases.js` 加 `create/update/remove`（`PUT/DELETE /app/knowledge-base/{id}`，与 ABP 约定路由一致）；`stores/documents.js` 新增 `reloadKnowledgeBases(preferredId)`（期望选中项还在列表里就保留，否则退回第一个）与 `createKnowledgeBase/updateKnowledgeBase/removeKnowledgeBase`（CRUD 错误**向上抛**，由界面弹提示，不塞进 `state.error`）；新增 `components/KnowledgeBasePanel.vue`（`n-list` + `n-modal`/`n-form` 新建与编辑复用同一表单 + `n-popconfirm` 删除，默认库删除按钮 `disabled`，操作成功后刷新列表并同步问答视图的知识库下拉）
+- `App.vue`：内容区改 `n-tabs`（`v-model:value="activeTab"`，默认 `qa`）切「问答 / 知识库」，两个 `n-tab-pane` 都加 `display-directive="show:lazy"` 保留组件状态；问答视图的 `aside + main` 布局与「新会话」按钮位置原样不动
+- 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；`npm run build` 成功（`dist/assets/index-CsGnVijm.js` 714.53 kB / gzip 217.64 kB，仅 chunk 体积告警）

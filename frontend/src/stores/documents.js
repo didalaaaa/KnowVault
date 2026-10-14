@@ -56,6 +56,48 @@ export const useDocumentStore = defineStore('documents', {
       }
     },
 
+    /**
+     * 重新拉取知识库列表；preferredId 仍在列表里时优先选中它。
+     * @param {string} [preferredId] 期望选中的知识库 ID
+     */
+    async reloadKnowledgeBases(preferredId) {
+      this.knowledgeBases = await knowledgeBaseApi.list()
+      const exists = this.knowledgeBases.some((kb) => kb.id === preferredId)
+      this.knowledgeBaseId = exists ? preferredId : this.knowledgeBases[0]?.id || ''
+      await this.refresh()
+    },
+
+    /**
+     * 新建知识库并选中它（错误向上抛，由界面弹提示）。
+     * @param {{name: string, description?: string}} payload 名称与描述
+     * @returns {Promise<object>} 新建的知识库
+     */
+    async createKnowledgeBase(payload) {
+      const created = await knowledgeBaseApi.create(payload)
+      await this.reloadKnowledgeBases(created.id)
+      return created
+    },
+
+    /**
+     * 修改知识库（错误向上抛，由界面弹提示）。
+     * @param {{id: string, name: string, description?: string}} payload 知识库 ID 与新名称、描述
+     * @returns {Promise<object>} 修改后的知识库
+     */
+    async updateKnowledgeBase(payload) {
+      const updated = await knowledgeBaseApi.update(payload)
+      await this.reloadKnowledgeBases(this.knowledgeBaseId)
+      return updated
+    },
+
+    /**
+     * 删除知识库（仅空库；错误向上抛，由界面弹提示）。
+     * @param {string} id 知识库 ID
+     */
+    async removeKnowledgeBase(id) {
+      await knowledgeBaseApi.remove(id)
+      await this.reloadKnowledgeBases(this.knowledgeBaseId === id ? '' : this.knowledgeBaseId)
+    },
+
     /** 有 Pending/Processing 文档时每 2s 轮询一次（P1 没有 SignalR 推送）。 */
     ensurePolling() {
       // 状态枚举落库为 int：0 Pending / 1 Processing / 2 Ready / 3 Failed

@@ -1,6 +1,6 @@
 import { http } from './http'
 
-// 知识库接口（P1 只有列表与默认库）
+// 知识库接口（P2：列表 + 默认库 + 增改删）
 export const knowledgeBaseApi = {
   /**
    * 列出知识库。
@@ -13,4 +13,25 @@ export const knowledgeBaseApi = {
    * @returns {Promise<object>} 默认知识库
    */
   getDefault: () => http.get('/app/knowledge-base/default'),
+
+  /**
+   * 新建知识库。
+   * @param {{name: string, description?: string}} payload 名称与描述
+   * @returns {Promise<object>} 新建的知识库
+   */
+  create: (payload) => http.post('/app/knowledge-base', payload),
+
+  /**
+   * 修改知识库。
+   * @param {{id: string, name: string, description?: string}} payload 知识库 ID 与新名称、描述
+   * @returns {Promise<object>} 修改后的知识库
+   */
+  update: (payload) => http.put('/app/knowledge-base/' + payload.id, payload),
+
+  /**
+   * 删除知识库（后端只允许空库、默认库不可删）。
+   * @param {string} id 知识库 ID
+   * @returns {Promise<void>}
+   */
+  remove: (id) => http.delete('/app/knowledge-base/' + id),
 }

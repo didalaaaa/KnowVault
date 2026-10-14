@@ -14,10 +14,17 @@
           </div>
         </n-layout-header>
         <n-layout-content content-style="padding: 24px" style="height: calc(100vh - 65px)">
-          <div class="layout">
-            <aside class="side"><DocumentPanel /></aside>
-            <main class="main"><ChatPanel /></main>
-          </div>
+          <n-tabs v-model:value="activeTab" type="line" animated class="app-tabs">
+            <n-tab-pane name="qa" tab="问答" display-directive="show:lazy" style="height: 100%">
+              <div class="layout">
+                <aside class="side"><DocumentPanel /></aside>
+                <main class="main"><ChatPanel /></main>
+              </div>
+            </n-tab-pane>
+            <n-tab-pane name="kb" tab="知识库" display-directive="show:lazy" style="height: 100%; overflow-y: auto">
+              <KnowledgeBasePanel />
+            </n-tab-pane>
+          </n-tabs>
         </n-layout-content>
       </n-layout>
     </n-message-provider>
@@ -25,14 +32,15 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   NConfigProvider, NLayout, NLayoutHeader, NLayoutContent, NMessageProvider, NTag, NButton,
-  zhCN, dateZhCN,
+  NTabs, NTabPane, zhCN, dateZhCN,
 } from 'naive-ui'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginPanel from './components/LoginPanel.vue'
 import DocumentPanel from './components/DocumentPanel.vue'
+import KnowledgeBasePanel from './components/KnowledgeBasePanel.vue'
 import { useChatStore } from './stores/chat'
 import { useAuthStore } from './stores/auth'
 import { useDocumentStore } from './stores/documents'
@@ -40,6 +48,9 @@ import { useDocumentStore } from './stores/documents'
 const chat = useChatStore()
 const auth = useAuthStore()
 const documents = useDocumentStore()
+
+// 「问答」为默认视图；「新会话」按钮仍固定在 header，不随视图切换
+const activeTab = ref('qa')
 
 // 主题微调（P0 骨架先给个基础主题）
 const themeOverrides = {
@@ -84,6 +95,7 @@ html, body, #app { margin: 0; height: 100%; }
 </style>
 
 <style scoped>
+.app-tabs { height: 100%; }
 .layout { display: flex; gap: 24px; height: 100%; }
 .side { width: 340px; flex: none; overflow-y: auto; }
 .main { flex: 1; min-width: 0; }
