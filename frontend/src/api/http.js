@@ -2,6 +2,14 @@ import axios from 'axios'
 
 const TOKEN_KEY = 'knowvault.token'
 
+/**
+ * 取本地访问令牌（SignalR 的 accessTokenFactory 也要用它）。
+ * @returns {string|null} 令牌，未登录时为 null
+ */
+export function getToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
 // 统一 axios 实例：baseURL=/api（开发时由 Vite 代理到后端），统一拦截器处理鉴权与错误。
 export const http = axios.create({
   baseURL: '/api',
@@ -9,7 +17,7 @@ export const http = axios.create({
 })
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem(TOKEN_KEY)
+  const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

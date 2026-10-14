@@ -891,3 +891,16 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - `QaAppService.AskAsync` 改为消费同一条事件流并拼接 `Delta`，返回原 `QaAnswerDto`（REST 契约与 P1 一致）；它不再直接依赖仓储与 `IRagService`
 - Task 4 不加新单测：Application 层需要 DI + 仓储宿主，按 §0.5 交给 Task 8 端到端验收（Swagger 手测 REST 路径 + 前端降级路径）
 - `dotnet build KnowVault.slnx` 0 错误 0 警告，`dotnet test` 32/32 通过
+
+
+### Task 5 —— SignalR 传输 + 前端流式（2026-10-14）
+
+- 新增 `src/KnowVault.HttpApi/Hubs/QaHub.cs`：`[Authorize] public class QaHub : Hub`、`public const string Route = "/signalr/qa"`、`[HubMethodName("Ask")] IAsyncEnumerable<QaStreamEventDto> AskAsync(AskQuestionInput input)`，取消令牌取自 `Context.ConnectionAborted`（Hub 方法不能声明 CancellationToken，SignalR 会把它当成客户端参数）
+- `src/KnowVault.HttpApi/KnowVault.HttpApi.csproj` **一行未改**：`Microsoft.AspNetCore.App` 由 ABP 的 HttpApi 包传递引入，`Hub` 与流式返回直接可用（计划里预判的 `<FrameworkReference>` 兜底没用上）
+- 新增 `src/KnowVault.HttpApi.Host/Middleware/SignalRAccessTokenMiddleware.cs`：只对 hub 路径生效（`Path.StartsWithSegments(QaHub.Route)`），无 Authorization 头时把 query string 的 `access_token` 提升为 `Bearer`（OpenIddict 验证不读 query string，WebSocket 又带不了自定义头，这一步是必需的）
+- `KnowVaultHttpApiHostModule` 三处装配：`ConfigureServices` 末尾 `context.Services.AddSignalR();`；`app.UseCors();` 之后、`UseAuthentication()` 之前插 `app.UseMiddleware<SignalRAccessTokenMiddleware>();`；末行改 `app.UseConfiguredEndpoints(endpoints => endpoints.MapHub<QaHub>(QaHub.Route));`
+- 前端依赖与代理：`package.json` 加 `@microsoft/signalr ^10.0.11`（`npm install` 实装 18 个包）；`vite.config.js` 加 `/signalr` 代理并显式 `ws: true`（不写 ws 时 Vite 只做普通 HTTP 代理，WebSocket 握手必失败）；`src/api/http.js` 抽出并导出 `getToken()`（拦截器改用，行为不变）；新增 `src/api/qaHub.js`（单例连接 + `startQaHub()` + `askStream()` 返回订阅句柄）
+- `src/stores/chat.js` 重写：`ask()` 先塞用户消息与助手占位（`streaming: true`）再 `startQaHub()`，连不上走 `askViaRest()` 降级（P1 行为）；`Started` 帧写 `conversationId` 与 `citations`，`Delta` 帧追加正文；`stop()` 用 `subscription.dispose()` 取消并立即收尾——客户端断开后服务端迭代器随即退出，不落半截助手消息；订阅句柄与 resolve 回调都放模块级变量，避免不可序列化对象进 Pinia state
+- **踩坑（Vue 响应式）**：`this.messages.push(obj)` 之后再改本地 `obj` 不会触发视图更新（state 里存的是原始对象，读取时才代理），必须 `const assistant = this.messages[this.messages.length - 1]` 取回响应式引用再改
+- `src/components/ChatPanel.vue`：助手气泡正文为空时显示「正在生成…」，`streaming` 期间发送按钮换成「停止生成」；`watch` 最后一条消息的 `content` 跟着增量滚到底（流式是追加不是整体替换）；引用标签文案改为「相关性」（重排后 Score 从 cosine 相似度变成 0~1 relevance）
+- 验证：`dotnet build KnowVault.slnx` 0 错误 0 警告；`dotnet test` 32/32 通过；`npm install && npm run build` 成功（`dist/assets/index-*.js` 642.29 kB / gzip 199.00 kB，只有 signalr 的 `/*#__PURE__*/` 注解与 chunk 体积两条告警）

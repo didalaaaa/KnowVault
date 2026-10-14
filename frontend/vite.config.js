@@ -15,6 +15,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/signalr': {
+        // SignalR（WebSocket）：必须显式开 ws，否则 Vite 只做普通 HTTP 代理，握手直接失败
+        target: process.env.VITE_API_TARGET || 'https://localhost:44300',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
       '/connect': {
         target: process.env.VITE_API_TARGET || 'https://localhost:44300',
         changeOrigin: true,

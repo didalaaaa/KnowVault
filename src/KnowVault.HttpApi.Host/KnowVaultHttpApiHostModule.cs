@@ -131,6 +131,9 @@ namespace KnowVault.HttpApi.Host
 			ConfigureVirtualFileSystem(context);
 			ConfigureCors(context, configuration);
 			ConfigureMvcLibs();
+
+			// SignalR 服务端在 .NET 共享框架里，不需要额外 NuGet 包；Hub 在 OnApplicationInitialization 末端映射
+			context.Services.AddSignalR();
 		}
 
 		private void ConfigureStudio(IHostEnvironment hostingEnvironment)
@@ -327,6 +330,9 @@ namespace KnowVault.HttpApi.Host
 			app.UseAbpSecurityHeaders();
 			app.UseCors();
 
+			// SignalR 的 WebSocket 握手带不了自定义头，认证前先把 query string 里的令牌搬进 Authorization 头
+			app.UseMiddleware<SignalRAccessTokenMiddleware>();
+
 			// 解析请求中的凭证（Bearer Token、Cookie），构建 HttpContext.User
 			app.UseAuthentication();
 
@@ -362,7 +368,7 @@ namespace KnowVault.HttpApi.Host
 
 			// 给 Serilog 日志添加上下文信息（如当前用户、租户、请求 ID）
 			app.UseAbpSerilogEnrichers();
-			app.UseConfiguredEndpoints();
+			app.UseConfiguredEndpoints(endpoints => endpoints.MapHub<QaHub>(QaHub.Route));
 		}
 	}
 }
