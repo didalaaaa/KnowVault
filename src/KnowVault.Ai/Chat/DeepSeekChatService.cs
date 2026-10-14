@@ -8,6 +8,7 @@ namespace KnowVault.Ai
 	/// <summary>
 	/// DeepSeek 生成实现：用 Semantic Kernel 的 OpenAI 兼容连接器指向 DeepSeek 的 /chat/completions。
 	/// </summary>
+	[ExposeServices(typeof(ILlmChatService))]
 	public class DeepSeekChatService : ILlmChatService, ITransientDependency
 	{
 		private readonly Kernel _kernel;
@@ -23,10 +24,7 @@ namespace KnowVault.Ai
 		}
 
 		/// <inheritdoc />
-		public async Task<string> CompleteAsync(
-			string systemPrompt,
-			string userPrompt,
-			CancellationToken cancellationToken = default)
+		public async Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken cancellationToken = default)
 		{
 			var chat = _kernel.GetRequiredService<IChatCompletionService>();
 			var history = new ChatHistory();

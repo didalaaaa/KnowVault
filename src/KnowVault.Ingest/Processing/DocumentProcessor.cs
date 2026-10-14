@@ -61,8 +61,7 @@ namespace KnowVault.Ingest
 			{
 				// 抛错而不是静默返回：最常见的成因是「消息先于上传事务的提交到达」，
 				// 交给 MassTransit 的重试策略即可在提交后重新投递（重试耗尽会进 error 队列，不会无声消失）。
-				throw new InvalidOperationException(
-					$"文档 {documentId} 当前不可见（可能上传事务尚未提交），交由重试策略重新投递。");
+				throw new InvalidOperationException($"文档 {documentId} 当前不可见（可能上传事务尚未提交），交由重试策略重新投递。");
 			}
 
 			try
@@ -103,8 +102,7 @@ namespace KnowVault.Ingest
 				throw new InvalidOperationException("未从文档中解析出任何文本内容。");
 			}
 
-			var vectors = await _embeddingService.EmbedAsync(
-				chunks.Select(c => c.Content).ToList(), cancellationToken);
+			var vectors = await _embeddingService.EmbedAsync(chunks.Select(c => c.Content).ToList(), cancellationToken);
 
 			// 单租户运行时 TenantId 为 null：payload 必须归一化成 Guid.Empty，否则 Qdrant 过滤恒不命中
 			var tenantId = document.TenantId ?? Guid.Empty;

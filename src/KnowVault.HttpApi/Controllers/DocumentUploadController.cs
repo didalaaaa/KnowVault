@@ -28,7 +28,7 @@ namespace KnowVault.HttpApi
 		/// <returns>新建的文档 DTO（状态 Pending）。</returns>
 		[HttpPost("upload")]
 		[Consumes("multipart/form-data")]
-		public Task<DocumentDto> UploadAsync([FromForm] UploadDocumentInput input)
-			=> _documentAppService.UploadAsync(input);
+		public Task<DocumentDto> UploadAsync([FromForm] UploadDocumentInput input, CancellationToken cancellationToken)
+			=> _documentAppService.UploadAsync(input, cancellationToken);
 	}
 }

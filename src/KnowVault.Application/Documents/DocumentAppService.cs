@@ -51,7 +51,7 @@ namespace KnowVault.Application
 		/// 注意：该特性必须标在**实现类的方法**上（标在接口上不生效，会与显式控制器产生路由冲突）。
 		/// </remarks>
 		[RemoteService(IsEnabled = false)]
-		public async Task<DocumentDto> UploadAsync(UploadDocumentInput input)
+		public async Task<DocumentDto> UploadAsync(UploadDocumentInput input, CancellationToken cancellationToken)
 		{
 			var fileName = input.File.FileName;
 			if (string.IsNullOrWhiteSpace(fileName))
@@ -64,8 +64,7 @@ namespace KnowVault.Application
 
 			if (!options.AllowedExtensions.Contains(extension))
 			{
-				throw new UserFriendlyException(
-					$"不支持的文件类型：{extension}（支持 {string.Join("、", options.AllowedExtensions)}）");
+				throw new UserFriendlyException($"不支持的文件类型：{extension}（支持 {options.AllowedExtensions.JoinAsString("、")}）");
 			}
 
 			// ContentLength 可能为 null（分块上传时未知），拿不到就不做上限校验
@@ -76,42 +75,32 @@ namespace KnowVault.Application
 				throw new UserFriendlyException($"文件超过 {options.MaxFileSizeMb}MB 上限。");
 			}
 
-			var sourceType = DocumentSourceTypeResolver.FromExtension(extension)
-							 ?? throw new UserFriendlyException($"无法识别文件类型：{extension}");
+			var sourceType = DocumentSourceTypeResolver.FromExtension(extension) ?? throw new UserFriendlyException($"无法识别文件类型：{extension}");
+			var title = string.IsNullOrWhiteSpace(input.Title) ? (Path.GetFileNameWithoutExtension(fileName) ?? "未命名文档") : input.Title;
+			var document = new Document(GuidGenerator.Create(), input.KnowledgeBaseId, title, sourceType, CurrentTenant.Id);
 
-			var title = string.IsNullOrWhiteSpace(input.Title)
-				? Path.GetFileNameWithoutExtension(fileName) ?? "未命名文档"
-				: input.Title!;
-
-			var document = new Document(
-				GuidGenerator.Create(),
-				input.KnowledgeBaseId,
-				title,
-				sourceType,
-				CurrentTenant.Id);
-
-			await _documentStorage.EnsureBucketAsync();
+			await _documentStorage.EnsureBucketAsync(cancellationToken);
 
 			// 对象键带租户与知识库前缀，便于按租户清理与排查
 			var objectKey = $"{(document.TenantId?.ToString() ?? "host")}/{input.KnowledgeBaseId}/{document.Id}{extension}";
 			await using (var stream = input.File.GetStream())
 			{
-				await _documentStorage.PutAsync(objectKey, stream, input.File.ContentType ?? "application/octet-stream");
+				await _documentStorage.PutAsync(objectKey, stream, input.File.ContentType ?? "application/octet-stream", cancellationToken);
 			}
 
 			document.ObjectStorageKey = objectKey;
-			await _documentRepository.InsertAsync(document, autoSave: true);
+			await _documentRepository.InsertAsync(document, autoSave: true, cancellationToken: cancellationToken);
 
 			// 必须等当前 UoW 提交后再发消息：否则消费者可能先于提交去查这行文档，
 			// 读到 null 就把消息白跑一趟（实测症状：文档永远停在 Pending，日志出现「文档 xxx 不存在，跳过处理」）。
 			var unitOfWork = _unitOfWorkManager.Current;
 			if (unitOfWork is not null)
 			{
-				unitOfWork.OnCompleted(async () => await _ingestPublisher.PublishAsync(document.Id, document.TenantId));
+				unitOfWork.OnCompleted(async () => await _ingestPublisher.PublishAsync(document.Id, document.TenantId, cancellationToken));
 			}
 			else
 			{
-				await _ingestPublisher.PublishAsync(document.Id, document.TenantId);
+				await _ingestPublisher.PublishAsync(document.Id, document.TenantId, cancellationToken);
 			}
 
 			_logger.LogInformation("文档 {DocumentId} 已上传，将在事务提交后入队：{ObjectKey}", document.Id, objectKey);
@@ -120,16 +109,16 @@ namespace KnowVault.Application
 		}
 
 		/// <inheritdoc />
-		public async Task<DocumentDto> GetAsync(Guid id)
+		public async Task<DocumentDto> GetAsync(Guid id, CancellationToken cancellationToken)
 		{
-			var document = await _documentRepository.GetAsync(id);
+			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
 			return MapToDto(document);
 		}
 
 		/// <inheritdoc />
-		public async Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId)
+		public async Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId, CancellationToken cancellationToken)
 		{
-			var documents = await _documentRepository.GetListAsync(x => x.KnowledgeBaseId == knowledgeBaseId);
+			var documents = await _documentRepository.GetListAsync(x => x.KnowledgeBaseId == knowledgeBaseId, cancellationToken: cancellationToken);
 			return documents.OrderByDescending(d => d.CreationTime).Select(MapToDto).ToList();
 		}
 

@@ -26,10 +26,7 @@ namespace KnowVault.Ingest
 					.Where(line => line.Replace("|", string.Empty).Trim().Length > 0)
 					.ToList();
 
-				if (rows.Count == 0)
-				{
-					continue;
-				}
+				if (rows.Count == 0) continue;
 
 				result.Sections.Add(new ParsedSection
 				{

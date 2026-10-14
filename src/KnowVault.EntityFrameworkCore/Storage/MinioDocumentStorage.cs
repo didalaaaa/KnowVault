@@ -30,25 +30,18 @@ namespace KnowVault.EntityFrameworkCore
 		/// <inheritdoc />
 		public async Task EnsureBucketAsync(CancellationToken cancellationToken = default)
 		{
-			if (_bucketEnsured)
-			{
-				return;
-			}
+			if (_bucketEnsured) return;
 
 			await _bucketLock.WaitAsync(cancellationToken);
 			try
 			{
-				if (_bucketEnsured)
-				{
-					return;
-				}
+				if (_bucketEnsured) return;
 
-				var exists = await _client.BucketExistsAsync(
-					new BucketExistsArgs().WithBucket(_options.BucketName), cancellationToken);
+				var exists = await _client.BucketExistsAsync(new BucketExistsArgs().WithBucket(_options.BucketName), cancellationToken);
+
 				if (!exists)
 				{
-					await _client.MakeBucketAsync(
-						new MakeBucketArgs().WithBucket(_options.BucketName), cancellationToken);
+					await _client.MakeBucketAsync(new MakeBucketArgs().WithBucket(_options.BucketName), cancellationToken);
 					_logger.LogInformation("已创建 MinIO bucket {Bucket}", _options.BucketName);
 				}
 

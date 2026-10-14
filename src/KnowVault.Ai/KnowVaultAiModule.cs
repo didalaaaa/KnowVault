@@ -22,11 +22,6 @@ namespace KnowVault.Ai
 			// Qwen Embedding 走 HttpClient 直调 OpenAI 兼容端点，需要工厂来统一管理连接
 			context.Services.AddHttpClient();
 
-			// 显式注册 AI 服务：接口名与实现类名不同（ILlmChatService / DeepSeekChatService），
-			// 不能依赖 ABP 的默认暴露约定，否则运行期会出现「Cannot resolve parameter 'ILlmChatService'」。
-			context.Services.AddTransient<ILlmChatService, DeepSeekChatService>();
-			context.Services.AddTransient<IEmbeddingService, QwenEmbeddingService>();
-
 			// Kernel 用工厂构建：DeepSeek 走 OpenAI 兼容连接器（endpoint 指向 DeepSeek 官方地址）
 			context.Services.AddSingleton(sp =>
 			{

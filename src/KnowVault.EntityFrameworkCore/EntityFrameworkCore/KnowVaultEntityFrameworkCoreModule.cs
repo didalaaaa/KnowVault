@@ -83,8 +83,7 @@ namespace KnowVault.EntityFrameworkCore
 				var minio = sp.GetRequiredService<IOptions<MinioOptions>>().Value;
 				if (string.IsNullOrWhiteSpace(minio.Endpoint) || string.IsNullOrWhiteSpace(minio.AccessKey))
 				{
-					throw new AbpInitializationException(
-						"MinIO 未配置：需要 Minio:Endpoint / Minio:AccessKey / Minio:SecretKey（由 AppHost 注入）。");
+					throw new AbpInitializationException("MinIO 未配置：需要 Minio:Endpoint / Minio:AccessKey / Minio:SecretKey（由 AppHost 注入）。");
 				}
 
 				return new MinioClient()

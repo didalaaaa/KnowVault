@@ -57,9 +57,7 @@ namespace KnowVault.Ai
 				Score = hit.Score
 			}).ToList();
 
-			_logger.LogInformation(
-				"检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}）",
-				request.KnowledgeBaseId, chunks.Count, topK);
+			_logger.LogInformation("检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}）", request.KnowledgeBaseId, chunks.Count, topK);
 
 			var (system, user) = RagPromptBuilder.Build(request.Question, chunks);
 			var answer = await _chatService.CompleteAsync(system, user, cancellationToken);
@@ -67,16 +65,13 @@ namespace KnowVault.Ai
 			return new RagAnswer
 			{
 				Answer = answer,
-				Citations = chunks
-					.OrderByDescending(c => c.Score)
-					.Select(c => new RagCitation
-					{
-						DocumentId = c.DocumentId,
-						Title = c.DocumentTitle,
-						ChunkIndex = c.ChunkIndex,
-						Score = c.Score
-					})
-					.ToList()
+				Citations = [..chunks.OrderByDescending(c => c.Score).Select(c => new RagCitation
+				{
+					DocumentId = c.DocumentId,
+					Title = c.DocumentTitle,
+					ChunkIndex = c.ChunkIndex,
+					Score = c.Score
+				})]
 			};
 		}
 	}

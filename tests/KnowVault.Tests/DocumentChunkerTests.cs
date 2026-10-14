@@ -4,7 +4,9 @@ using Xunit;
 
 namespace KnowVault.Tests
 {
-	/// <summary>切片器行为测试（纯函数、无 IO）。</summary>
+	/// <summary>
+	/// 切片器行为测试（纯函数、无 IO）
+	/// </summary>
 	public class DocumentChunkerTests
 	{
 		private static DocumentChunker CreateChunker(int size = 100, int overlap = 20)

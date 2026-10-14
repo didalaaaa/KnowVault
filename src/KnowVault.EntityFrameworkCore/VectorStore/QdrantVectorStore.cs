@@ -33,28 +33,17 @@ namespace KnowVault.EntityFrameworkCore
 		/// <inheritdoc />
 		public async Task EnsureCollectionAsync(CancellationToken cancellationToken = default)
 		{
-			if (_collectionEnsured)
-			{
-				return;
-			}
+			if (_collectionEnsured) return;
 
 			await _ensureLock.WaitAsync(cancellationToken);
 			try
 			{
-				if (_collectionEnsured)
-				{
-					return;
-				}
+				if (_collectionEnsured) return;
 
 				if (!await _client.CollectionExistsAsync(_options.CollectionName, cancellationToken))
 				{
-					await _client.CreateCollectionAsync(
-						_options.CollectionName,
-						new VectorParams { Size = _options.VectorSize, Distance = Distance.Cosine },
-						cancellationToken: cancellationToken);
-					_logger.LogInformation(
-						"已创建 Qdrant collection {Collection}（维度 {Size}，Cosine）",
-						_options.CollectionName, _options.VectorSize);
+					await _client.CreateCollectionAsync(_options.CollectionName, new VectorParams { Size = _options.VectorSize, Distance = Distance.Cosine }, cancellationToken: cancellationToken);
+					_logger.LogInformation("已创建 Qdrant collection {Collection}（维度 {Size}，Cosine）", _options.CollectionName, _options.VectorSize);
 				}
 
 				_collectionEnsured = true;
@@ -68,10 +57,7 @@ namespace KnowVault.EntityFrameworkCore
 		/// <inheritdoc />
 		public async Task UpsertAsync(IReadOnlyList<VectorPoint> points, CancellationToken cancellationToken = default)
 		{
-			if (points.Count == 0)
-			{
-				return;
-			}
+			if (points.Count == 0) return;
 
 			await EnsureCollectionAsync(cancellationToken);
 
@@ -115,12 +101,12 @@ namespace KnowVault.EntityFrameworkCore
 				payloadSelector: new WithPayloadSelector { Enable = true },
 				cancellationToken: cancellationToken);
 
-			return points.Select(point => new VectorSearchHit
+			return [.. points.Select(point => new VectorSearchHit
 			{
 				Id = Guid.TryParse(point.Id.Uuid, out var id) ? id : Guid.Empty,
 				Score = point.Score,
 				Payload = point.Payload.ToDictionary(kv => kv.Key, kv => FromValue(kv.Value))
-			}).ToList();
+			})];
 		}
 
 		private static Value ToValue(object value) => value switch

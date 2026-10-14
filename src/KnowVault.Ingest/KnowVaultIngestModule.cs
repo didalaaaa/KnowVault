@@ -35,8 +35,7 @@ namespace KnowVault.Ingest
 					var connectionString = configuration.GetConnectionString("rabbitmq");
 					if (connectionString.IsNullOrWhiteSpace())
 					{
-						throw new AbpInitializationException(
-							"未配置 RabbitMQ：需要 ConnectionStrings:rabbitmq（由 Aspire 的 WithReference 注入）。");
+						throw new AbpInitializationException("未配置 RabbitMQ：需要 ConnectionStrings:rabbitmq（由 Aspire 的 WithReference 注入）。");
 					}
 
 					rabbit.Host(new Uri(connectionString));

@@ -40,9 +40,7 @@ namespace KnowVault.Application
 					autoSave: true);
 
 			// 用户消息
-			await _messageRepository.InsertAsync(
-				new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question),
-				autoSave: true);
+			await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true);
 
 			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
 			var rag = await _ragService.AnswerAsync(new RagRequest
@@ -54,15 +52,13 @@ namespace KnowVault.Application
 				TopK = input.TopK ?? 0
 			});
 
-			var citations = rag.Citations
-				.Select(c => new RagCitationDto
-				{
-					DocumentId = c.DocumentId,
-					Title = c.Title,
-					ChunkIndex = c.ChunkIndex,
-					Score = c.Score
-				})
-				.ToList();
+			var citations = rag.Citations.Select(c => new RagCitationDto
+			{
+				DocumentId = c.DocumentId,
+				Title = c.Title,
+				ChunkIndex = c.ChunkIndex,
+				Score = c.Score
+			}).ToList();
 
 			// 助手消息（含引用溯源）
 			await _messageRepository.InsertAsync(

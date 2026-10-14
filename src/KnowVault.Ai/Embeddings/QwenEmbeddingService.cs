@@ -60,9 +60,7 @@ namespace KnowVault.Ai
 		private async Task<List<float[]>> EmbedBatchAsync(string[] batch, CancellationToken cancellationToken)
 		{
 			var client = _httpClientFactory.CreateClient(nameof(QwenEmbeddingService));
-			using var request = new HttpRequestMessage(
-				HttpMethod.Post,
-				$"{_options.QwenBaseUrl.TrimEnd('/')}/embeddings");
+			using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.QwenBaseUrl.TrimEnd('/')}/embeddings");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.QwenApiKey);
 			request.Content = JsonContent.Create(new
 			{

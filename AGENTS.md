@@ -87,6 +87,25 @@ KnowVault.slnx
   - `src/KnowVault.Domain/Documents/Document.cs` → 目前仍是 `KnowVault.Domain.Documents`（历史遗留；同目录 `DocumentChunk.cs` 已是 `KnowVault.Domain`）。
 - **namespace 一律使用块级（block-scoped）声明**：`.editorconfig` 已强制 `csharp_style_namespace_declarations = block_scoped:error`；禁用 file-scoped（`namespace X;`），否则触发 IDE0160。
 - **方法偏好表达式主体（`=> ...`）**：`.editorconfig` 设 `csharp_style_expression_bodied_methods = true:silent`，所以 `public void MarkProcessing() => Status = DocumentStatusEnum.Processing;` 这类写法是**首选风格**，不会再报"使用方法的程序块主体"（IDE0022）。级别 `silent`（VS 里显示为 Refactoring Only）的含义：反向的"改用表达式主体"只以灯泡建议形式出现，**不进错误列表、不参与 Code Cleanup / `dotnet format`**，因此**不强制**改写 ABP 样板里可转的块体方法（实测 18 处，改不改都合规）；多语句方法照旧用 `{ }` 程序块。
+- **分支单语句去大括号（强制执行）**：`if` 的**块体只有一条语句**时，**去掉 `{ }`，把该语句和 `if` 写在同一行**（守卫子句 / 提前返回的标准写法）；但同一个 `if / else if / else` 链里只要出现了 `else` 或 `else if`，就**保持大括号，且语句不与条件同行**（各占一行）。
+  - 命中（去括号 + 同行）——本次改动样例 `src/KnowVault.EntityFrameworkCore/Storage/MinioDocumentStorage.cs:33`（改前是 `if (_bucketEnsured)` + `{` + `return;` + `}` 四行）：
+    ```csharp
+    if (_bucketEnsured) return;
+    ```
+  - 命中（链上有 `else`，保持大括号 + 分行）：
+    ```csharp
+    if (!exists)
+    {
+        await _client.MakeBucketAsync(new MakeBucketArgs().WithBucket(_options.BucketName), cancellationToken);
+    }
+    else
+    {
+        _logger.LogInformation("bucket {Bucket} 已存在", _options.BucketName);
+    }
+    ```
+  - 判据只看「花括号里有几条语句」：**单条语句但本身跨多行**（方法调用/对象初始化器换行、lambda 体、`await` 链分行）时**仍用大括号并分行**——硬塞成同行会把条件挤到屏幕外，反而更难读。
+  - 反向要求：只要是**只有一条语句、且能写成一行**的 `if`，就**不要**写成块体（不要再写 `if (x)` + `{` + `return;` + `}`）。
+  - 边界：空体 `if`（`{ }` 或 `;`）保持现状不适用；`for` / `foreach` / `while` / `using` / `try` / `catch` **不在本条规则内**（本仓现状一律带大括号，不强制内联）；`.editorconfig` 未设 `csharp_prefer_braces`，此风格**不参与构建 / `dotnet format`**，靠人工与 review 保证。
 - 不写无意义的 `Common`/`Utils` 命名空间；一个 `.cs` 文件对应一个命名空间。
 
 ### 前端（Vue 3 / JavaScript）
@@ -102,18 +121,34 @@ KnowVault.slnx
 ### 注释规范（强制执行）
 - **原则**：注释用于解释「为什么」而非复述「是什么」；只要是合理的常规代码（如简单 setter 赋值、显而易见的行）不要注释；避免临时调试注释（如 `console.log` 残留）入库。
 - **C# 公开/受保护成员（类、方法、属性、枚举值）用 XML 文档注释**：
-  - 类/接口：`/// <summary>…</summary>`（一句话说明职责）。
-  - 方法：`/// <summary>…</summary>` + `/// <param name="x">…</param>` + `/// <returns>…</returns>`。
-  - 属性/字段/枚举值：`/// <summary>…</summary>`（说明含义、取值范围或约束）。
-  - 构造函数：`/// <summary>` + 逐个 `/// <param>`。
+  - 类/接口：`<summary>` 说明职责（一句话）。
+  - 方法：`<summary>` + `<param name="x">…</param>` + `<returns>…</returns>`。
+  - 属性/字段/枚举值：`<summary>` 说明含义、取值范围或约束。
+  - 构造函数：`<summary>` + 逐个 `<param>`。
   - 常用标签：`<see cref="..."/>`、`<remarks>`、`<c>code</c>`、`<exception cref="...">`。
   - 复杂算法/易误解逻辑：行内 `//` 说明，放在语句上方。
+  - **`<summary>` 必须展开为多行，禁止单行**：开标签、正文、闭标签各占一行，正文比开标签再缩进一级（**一个文档注释块内即便只有一句话也照样展开**，不要因为"短"就压回单行）。**规范示例**（`tests/KnowVault.Tests/DocumentChunkerTests.cs:7-9`）：
+
+    ```csharp
+    /// <summary>
+    /// 短文档只产出一个切片，正文不丢字
+    /// </summary>
+    [Fact]
+    public void Short_document_produces_single_chunk()
+    ```
+
+    **反面示例**（标识与内容挤在同一行，勿再用；VS 里敲 `///` 自动补全出来的就是这种单行产物，必须手工展开）：
+    ```csharp
+    /// <summary>短文档只产出一个切片，正文不丢字。</summary>
+    ```
+  - **注释正文结尾不写句号**：`<summary>` / `<param>` / `<returns>` / `<exception>` / 类级 `<summary>` 的正文行，以及行内 `//` 说明，**末尾一律不加** `。`（中文）或 `.`（英文点号）。句中标点照常（「，」「、」「；」「：」该用就用），只是不再用句号收尾。**标点收尾的例外**：正文本身以 `？` `！` `；` `：` `）` 等结尾时保持原样，不补句号；**多句正文**句间仍用 `。` 分隔，只去掉整段最后那个句号。**范围例外**：`<remarks>` 里成段的多句说明按普通行文加句号；`<param>` / `<returns>` 内的 `<see cref="…"/>`、`<c>…</c>`、代码示例、命令、URL、文件路径保持原样。
 - **C# 自动生成文件**（EF 迁移 `Migrations/*`、`*.Designer.cs`、`AssemblyInfo.cs`）不强制注释，勿随意改动。
 - **前端（JS / Vue）**：
   - 具名函数/工具用 JSDoc：`/** ... @param {...} ... @returns {...} */`。
   - 组件（`.vue`）在 `<script setup>` 内：`ref` 状态、具名函数、`onMounted` 逻辑用 `//` 或 JSDoc 说明；模板可用 `<!-- ... -->` 说明复杂块。
   - Pinia store：state 字段与 action 用 JSDoc/`//` 说明。
 - **注释与代码同源**：改动代码时同步更新其注释；新增文件按此规范书写。
+- **存量文件不做批量回填（历史文件不动）**：上述两条 XML 注释格式（多行 `<summary>`、正文结尾不写句号）**只约束新增代码与本次改动到的注释**；散落在 64 个既有 `.cs` 文件里的约 199 处单行 `<summary>`、约 60 行以句号结尾的 `///` **不要为了对齐格式而专门改动**——纯格式 diff 不带来收益，还会把真实改动淹掉。写新代码、新文件一律按新格式；改既有文件的其它内容时，顺带把该文件**本次触及**的注释收敛到新格式即可（未触及的保持原样）。
 
 ### 行尾与换行规范（强制执行）
 - **统一使用 CRLF（`\r\n`）**：仓库根 `.editorconfig`（`root = true`）对 `[*]` 声明 `end_of_line = crlf`，`.gitattributes` 声明 `* text=auto eol=crlf`。所有文本文件（`.cs` / `.cshtml` / `.json` / `.js` / `.vue` / `.md` / `.props` / `.slnx` 等）一律 **Windows CRLF**，与 VS2026 类模板、`dotnet new`、`abp new` 在 Windows 上的默认产出保持一致。
