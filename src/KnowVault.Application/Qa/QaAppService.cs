@@ -1,81 +1,53 @@
-using System.Text.Json;
-using KnowVault.Ai;
+using System.Text;
 using KnowVault.Application.Contracts;
-using KnowVault.Domain;
-using KnowVault.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
-using Volo.Abp.Domain.Repositories;
 
 namespace KnowVault.Application
 {
 
 	/// <summary>
-	/// 问答应用服务：持久化会话/消息（含引用），并调用 Ai 层做 RAG。
+	/// 问答应用服务：把流式编排（<see cref="IQaStreamService"/>）的事件流拼成一次性回答
+	/// ABP 动态生成 POST /api/app/qa/ask，与非流式客户端保持 P1 契约
 	/// </summary>
 	[Authorize]
 	public class QaAppService : KnowVaultAppService, IQaAppService
 	{
-		private readonly IRagService _ragService;
-		private readonly IRepository<Conversation, Guid> _conversationRepository;
-		private readonly IRepository<Message, Guid> _messageRepository;
+		private readonly IQaStreamService _qaStreamService;
 
-		public QaAppService(
-			IRagService ragService,
-			IRepository<Conversation, Guid> conversationRepository,
-			IRepository<Message, Guid> messageRepository)
+		/// <summary>
+		/// 构造函数
+		/// </summary>
+		/// <param name="qaStreamService">流式问答编排</param>
+		public QaAppService(IQaStreamService qaStreamService)
 		{
-			_ragService = ragService;
-			_conversationRepository = conversationRepository;
-			_messageRepository = messageRepository;
+			_qaStreamService = qaStreamService;
 		}
 
+		/// <inheritdoc />
 		public async Task<QaAnswerDto> AskAsync(AskQuestionInput input, CancellationToken cancellationToken)
 		{
-			var conversation = input.ConversationId.HasValue
-				? await _conversationRepository.GetAsync(input.ConversationId.Value, cancellationToken: cancellationToken)
-				: await _conversationRepository.InsertAsync(
-					new Conversation(
-						GuidGenerator.Create(),
-						input.Question.Length <= 128 ? input.Question : input.Question[..128]),
-					autoSave: true,
-					cancellationToken: cancellationToken);
+			var answer = new StringBuilder();
+			var conversationId = Guid.Empty;
+			IReadOnlyList<RagCitationDto> citations = [];
 
-			// 用户消息
-			await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true, cancellationToken: cancellationToken);
-
-			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
-			var rag = await _ragService.AnswerAsync(new RagRequest
+			await foreach (var streamEvent in _qaStreamService.AskStreamAsync(input, cancellationToken))
 			{
-				KnowledgeBaseId = input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId,
-				TenantId = CurrentTenant.Id ?? Guid.Empty,
-				ConversationId = conversation.Id,
-				Question = input.Question,
-				TopK = input.TopK ?? 0
-			}, cancellationToken);
-
-			var citations = rag.Citations.Select(c => new RagCitationDto
-			{
-				DocumentId = c.DocumentId,
-				Title = c.Title,
-				ChunkIndex = c.ChunkIndex,
-				Score = c.Score
-			}).ToList();
-
-			// 助手消息（含引用溯源）
-			await _messageRepository.InsertAsync(
-				new Message(
-					GuidGenerator.Create(),
-					conversation.Id,
-					MessageRoleEnum.Assistant,
-					rag.Answer,
-					citationsJson: JsonSerializer.Serialize(citations)),
-				autoSave: true,
-				cancellationToken: cancellationToken);
+				switch (streamEvent.Kind)
+				{
+					case QaStreamEventKindEnum.Started:
+						conversationId = streamEvent.ConversationId ?? Guid.Empty;
+						citations = streamEvent.Citations;
+						break;
+					case QaStreamEventKindEnum.Delta:
+						answer.Append(streamEvent.Delta);
+						break;
+				}
+			}
 
 			return new QaAnswerDto
 			{
-				ConversationId = conversation.Id,
-				Answer = rag.Answer,
+				ConversationId = conversationId,
+				Answer = answer.ToString(),
 				Citations = citations
 			};
 		}

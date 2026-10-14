@@ -881,3 +881,13 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - `RagPromptTemplates.SystemPrompt` 增第 5 条：历史只用于理解指代，事实依据必须来自本次资料片段，历史编号已失效
 - **Task 2 Step 4 的「历史加载」尚未落地**：`Application/Qa/QaAppService.cs` 仍直接调 `AnswerAsync`，历史读取移到 Task 4 的 `QaStreamService`（REST 与 Hub 共用同一入口，只读一处）
 - 测试：`tests/KnowVault.Tests/RagPromptBuilderTests.cs` 全部改签名并新增 4 条（历史顺序 / 剥离引用标记 / 不剥用户方括号 / 丢弃空白助手消息）；`tests/KnowVault.Tests/RagServiceRerankTests.cs` 的假聊天服务改流式，新增 1 条断言两帧拼成 `答案`。`dotnet build KnowVault.slnx` **0 错误 0 警告**，`dotnet test` **32/32 通过**（P1 19 含被改写的 2 条 Prompt 用例 + Task 1 的 8 + 本次新增 5）
+
+### Task 4 —— 流式编排（Application 层）
+
+- 新增 `src/KnowVault.Application.Contracts/Models/Qa/QaStreamEventKindEnum.cs`（Started=0 / Delta=1 / Completed=2）、`src/KnowVault.Application.Contracts/Models/Qa/QaStreamEventDto.cs`、`src/KnowVault.Application.Contracts/Interfaces/IQaStreamService.cs` —— **接口落在 `Interfaces/` 而非计划里写的 `Contracts/Qa/`**，与 P1 的 `Interfaces/IQaAppService.cs` 保持一致
+- 新增 `src/KnowVault.Application/Qa/QaStreamService.cs`，继承 `KnowVaultAppService` 并加 `[RemoteService(IsEnabled = false)]`：否则 ABP 会为这个 IApplicationService 生成动态 API 控制器
+- **两段显式 UoW**（`_unitOfWorkManager.Begin(requiresNew: true, isTransactional: false)`）：第一段解析会话 + 读历史 + 落用户消息（读完即写，顺序铁律），第二段落助手消息；两段之间是纯模型生成，不持有数据库连接
+- 历史加载：先 `OrderByDescending(CreationTime).Take(HistoryMaxMessages)` 再 `OrderBy(CreationTime)`；`HistoryMaxMessages <= 0` 时直接返回空
+- `QaAppService.AskAsync` 改为消费同一条事件流并拼接 `Delta`，返回原 `QaAnswerDto`（REST 契约与 P1 一致）；它不再直接依赖仓储与 `IRagService`
+- Task 4 不加新单测：Application 层需要 DI + 仓储宿主，按 §0.5 交给 Task 8 端到端验收（Swagger 手测 REST 路径 + 前端降级路径）
+- `dotnet build KnowVault.slnx` 0 错误 0 警告，`dotnet test` 32/32 通过
