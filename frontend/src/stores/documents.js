@@ -98,6 +98,24 @@ export const useDocumentStore = defineStore('documents', {
       await this.reloadKnowledgeBases(this.knowledgeBaseId === id ? '' : this.knowledgeBaseId)
     },
 
+    /**
+     * 删除文档（错误向上抛，由界面弹提示）。
+     * @param {string} id 文档 ID
+     */
+    async removeDocument(id) {
+      await documentApi.remove(id)
+      await this.refresh()
+    },
+
+    /**
+     * 重新处理文档（错误向上抛，由界面弹提示）。
+     * @param {string} id 文档 ID
+     */
+    async reprocessDocument(id) {
+      await documentApi.reprocess(id)
+      await this.refresh()
+    },
+
     /** 有 Pending/Processing 文档时每 2s 轮询一次（P1 没有 SignalR 推送）。 */
     ensurePolling() {
       // 状态枚举落库为 int：0 Pending / 1 Processing / 2 Ready / 3 Failed

@@ -40,9 +40,12 @@ namespace KnowVault.Ingest
 
 					rabbit.Host(new Uri(connectionString));
 
-					// 重试：覆盖「消息先于上传事务提交到达」这类瞬时失败（重试耗尽后进 error 队列，不会静默丢失）
-					rabbit.UseMessageRetry(retry => retry.Interval(5, TimeSpan.FromSeconds(2)));
-					rabbit.ConfigureEndpoints(busContext);
+					// 显式命名端点：失败重试 5 次（间隔 2s）后自动进 document-ingest_error，便于人工排查
+					rabbit.ReceiveEndpoint("document-ingest", endpoint =>
+					{
+						endpoint.UseMessageRetry(retry => retry.Interval(5, TimeSpan.FromSeconds(2)));
+						endpoint.ConfigureConsumer<DocumentIngestConsumer>(busContext);
+					});
 				});
 			});
 

@@ -175,6 +175,9 @@ namespace KnowVault.Tests
 				LastLimit = topK;
 				return Task.FromResult<IReadOnlyList<VectorSearchHit>>(_hits.Take(topK).ToList());
 			}
+
+			public Task DeleteByDocumentAsync(Guid tenantId, Guid knowledgeBaseId, Guid documentId, CancellationToken cancellationToken = default)
+				=> Task.CompletedTask;
 		}
 
 		private sealed class FakeChatService : ILlmChatService

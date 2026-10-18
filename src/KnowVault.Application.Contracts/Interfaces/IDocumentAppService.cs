@@ -24,5 +24,21 @@ namespace KnowVault.Application.Contracts
 		/// <param name="knowledgeBaseId">知识库 ID。</param>
 		/// <returns>文档列表（按创建时间倒序）。</returns>
 		Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId, CancellationToken cancellationToken);
+
+		/// <summary>
+		/// 删除文档及其切片、向量与原件
+		/// </summary>
+		/// <param name="id">文档 ID</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>任务</returns>
+		Task DeleteAsync(Guid id, CancellationToken cancellationToken);
+
+		/// <summary>
+		/// 重新处理文档：清旧切片/向量后重新排队
+		/// </summary>
+		/// <param name="id">文档 ID</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>任务</returns>
+		Task ReprocessAsync(Guid id, CancellationToken cancellationToken);
 	}
 }

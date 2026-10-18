@@ -23,4 +23,18 @@ export const documentApi = {
    * @returns {Promise<object[]>} 文档列表
    */
   list: (knowledgeBaseId) => http.get('/app/document', { params: { knowledgeBaseId } }),
+
+  /**
+   * 删除文档（后端同时清理切片、向量与原件）。
+   * @param {string} id 文档 ID
+   * @returns {Promise<void>}
+   */
+  remove: (id) => http.delete('/app/document/' + id),
+
+  /**
+   * 重新处理文档（后端清旧切片/向量后重新排队）。
+   * @param {string} id 文档 ID
+   * @returns {Promise<void>}
+   */
+  reprocess: (id) => http.post('/app/document/' + id + '/reprocess'),
 }

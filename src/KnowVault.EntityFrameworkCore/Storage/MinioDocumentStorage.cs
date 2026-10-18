@@ -107,5 +107,13 @@ namespace KnowVault.EntityFrameworkCore
 			memory.Position = 0;
 			return memory;
 		}
+
+		/// <inheritdoc />
+		public async Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default)
+		{
+			await _client.RemoveObjectAsync(new RemoveObjectArgs()
+				.WithBucket(_options.BucketName)
+				.WithObject(objectKey), cancellationToken);
+		}
 	}
 }

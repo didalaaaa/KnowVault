@@ -9,7 +9,7 @@ using Volo.Abp.Guids;
 namespace KnowVault.Ingest
 {
 	/// <summary>
-	/// 文档处理管线。失败一律记录到 <see cref="Document.Status"/>=Failed 并结束（P1 不做自动重试）。
+	/// 文档处理管线。失败直接抛出，由 MassTransit 重试；重试耗尽进 error 队列（P3）
 	/// </summary>
 	public class DocumentProcessor : IDocumentProcessor, ITransientDependency
 	{
@@ -72,17 +72,8 @@ namespace KnowVault.Ingest
 			activity?.SetTag("document.id", document.Id);
 			activity?.SetTag("document.knowledge_base_id", document.KnowledgeBaseId);
 
-			try
-			{
-				await ProcessInternalAsync(document, cancellationToken);
-			}
-			catch (Exception exception)
-			{
-				// P1 策略：把失败固化到文档上，事务照常提交，消息常 ACK（不重投）
-				_logger.LogError(exception, "文档 {DocumentId} 摄入失败", documentId);
-				document.MarkFailed(exception.Message);
-				await _documentRepository.UpdateAsync(document, autoSave: true, cancellationToken: cancellationToken);
-			}
+			// 失败不再在这里吞掉：交给消费者记录 Failed 后重新抛出，让 MassTransit 真正重试
+			await ProcessInternalAsync(document, cancellationToken);
 		}
 
 		private async Task ProcessInternalAsync(Document document, CancellationToken cancellationToken)
@@ -92,6 +83,7 @@ namespace KnowVault.Ingest
 				throw new InvalidOperationException("文档缺少对象存储键，无法解析。");
 			}
 
+			document.RecordAttempt();
 			document.MarkProcessing();
 			await _documentRepository.UpdateAsync(document, autoSave: true, cancellationToken: cancellationToken);
 

@@ -1,5 +1,6 @@
 using KnowVault.Application.Contracts;
 using KnowVault.Domain;
+using KnowVault.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,32 +15,44 @@ namespace KnowVault.Application
 	public class DocumentAppService : KnowVaultAppService, IDocumentAppService
 	{
 		private readonly IRepository<Document, Guid> _documentRepository;
+		private readonly IRepository<DocumentChunk, Guid> _chunkRepository;
 		private readonly IDocumentStorage _documentStorage;
+		private readonly IVectorStore _vectorStore;
 		private readonly IDocumentIngestPublisher _ingestPublisher;
 		private readonly IOptions<DocumentUploadOptions> _uploadOptions;
 		private readonly IUnitOfWorkManager _unitOfWorkManager;
+		private readonly KnowledgeBaseAccessChecker _accessChecker;
 		private readonly ILogger<DocumentAppService> _logger;
 
 		/// <summary>构造函数。</summary>
 		/// <param name="documentRepository">文档仓储。</param>
+		/// <param name="chunkRepository">切片仓储。</param>
 		/// <param name="documentStorage">对象存储。</param>
+		/// <param name="vectorStore">向量库。</param>
 		/// <param name="ingestPublisher">摄入消息发布者。</param>
 		/// <param name="uploadOptions">上传约束（白名单与大小上限）。</param>
 		/// <param name="unitOfWorkManager">工作单元管理器（用于「提交后再发消息」）。</param>
+		/// <param name="accessChecker">知识库访问检查器。</param>
 		/// <param name="logger">日志。</param>
 		public DocumentAppService(
 			IRepository<Document, Guid> documentRepository,
+			IRepository<DocumentChunk, Guid> chunkRepository,
 			IDocumentStorage documentStorage,
+			IVectorStore vectorStore,
 			IDocumentIngestPublisher ingestPublisher,
 			IOptions<DocumentUploadOptions> uploadOptions,
 			IUnitOfWorkManager unitOfWorkManager,
+			KnowledgeBaseAccessChecker accessChecker,
 			ILogger<DocumentAppService> logger)
 		{
 			_documentRepository = documentRepository;
+			_chunkRepository = chunkRepository;
 			_documentStorage = documentStorage;
+			_vectorStore = vectorStore;
 			_ingestPublisher = ingestPublisher;
 			_uploadOptions = uploadOptions;
 			_unitOfWorkManager = unitOfWorkManager;
+			_accessChecker = accessChecker;
 			_logger = logger;
 		}
 
@@ -51,8 +64,11 @@ namespace KnowVault.Application
 		/// 注意：该特性必须标在**实现类的方法**上（标在接口上不生效，会与显式控制器产生路由冲突）。
 		/// </remarks>
 		[RemoteService(IsEnabled = false)]
+		[Authorize(KnowVaultPermissions.Documents.Upload)]
 		public async Task<DocumentDto> UploadAsync(UploadDocumentInput input, CancellationToken cancellationToken)
 		{
+			await _accessChecker.EnsureAsync(input.KnowledgeBaseId, KnowledgeBaseRoleEnum.Editor, cancellationToken);
+
 			var fileName = input.File.FileName;
 			if (string.IsNullOrWhiteSpace(fileName))
 			{
@@ -112,14 +128,98 @@ namespace KnowVault.Application
 		public async Task<DocumentDto> GetAsync(Guid id, CancellationToken cancellationToken)
 		{
 			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
+			await _accessChecker.EnsureAsync(document.KnowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
 			return MapToDto(document);
 		}
 
 		/// <inheritdoc />
 		public async Task<List<DocumentDto>> GetListAsync(Guid knowledgeBaseId, CancellationToken cancellationToken)
 		{
+			await _accessChecker.EnsureAsync(knowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
 			var documents = await _documentRepository.GetListAsync(x => x.KnowledgeBaseId == knowledgeBaseId, cancellationToken: cancellationToken);
 			return documents.OrderByDescending(d => d.CreationTime).Select(MapToDto).ToList();
+		}
+
+		/// <inheritdoc />
+		[Authorize(KnowVaultPermissions.Documents.Delete)]
+		public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
+		{
+			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
+			await _accessChecker.EnsureAsync(document.KnowledgeBaseId, KnowledgeBaseRoleEnum.Editor, cancellationToken);
+
+			// 顺序很关键：向量 → 切片 → 文档 → 原件。
+			// 前面任一步失败都保留文档，用户可重试；原件最后删，失败只留下孤儿对象（P4 清理）
+			await _vectorStore.DeleteByDocumentAsync(
+				document.TenantId ?? Guid.Empty,
+				document.KnowledgeBaseId,
+				document.Id,
+				cancellationToken);
+
+			await _chunkRepository.DeleteAsync(
+				chunk => chunk.DocumentId == document.Id,
+				autoSave: true,
+				cancellationToken: cancellationToken);
+
+			await _documentRepository.DeleteAsync(document, autoSave: true, cancellationToken: cancellationToken);
+
+			if (!string.IsNullOrWhiteSpace(document.ObjectStorageKey))
+			{
+				try
+				{
+					await _documentStorage.DeleteAsync(document.ObjectStorageKey, cancellationToken);
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					// 文档元数据已删，不能因为对象存储失败回滚；留给后续孤儿清理
+					_logger.LogWarning(ex, "删除文档 {DocumentId} 的原件失败，可能留下孤儿对象：{ObjectKey}", document.Id, document.ObjectStorageKey);
+				}
+			}
+
+			_logger.LogInformation("文档 {DocumentId} 已删除（含切片与向量）", id);
+		}
+
+		/// <inheritdoc />
+		[Authorize(KnowVaultPermissions.Documents.Reprocess)]
+		public async Task ReprocessAsync(Guid id, CancellationToken cancellationToken)
+		{
+			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
+			await _accessChecker.EnsureAsync(document.KnowledgeBaseId, KnowledgeBaseRoleEnum.Editor, cancellationToken);
+
+			if (document.Status == DocumentStatusEnum.Processing)
+			{
+				throw new UserFriendlyException("文档正在处理中，请稍后再试");
+			}
+
+			// 先清旧切片与向量，否则重新摄入会叠加出重复 chunk / 重复向量
+			await _vectorStore.DeleteByDocumentAsync(
+				document.TenantId ?? Guid.Empty,
+				document.KnowledgeBaseId,
+				document.Id,
+				cancellationToken);
+
+			await _chunkRepository.DeleteAsync(
+				chunk => chunk.DocumentId == document.Id,
+				autoSave: true,
+				cancellationToken: cancellationToken);
+
+			document.MarkPending();
+			await _documentRepository.UpdateAsync(document, autoSave: true, cancellationToken: cancellationToken);
+
+			await PublishAfterCommitAsync(document.Id, document.TenantId, cancellationToken);
+			_logger.LogInformation("文档 {DocumentId} 已重新排队处理", document.Id);
+		}
+
+		private async Task PublishAfterCommitAsync(Guid documentId, Guid? tenantId, CancellationToken cancellationToken)
+		{
+			var unitOfWork = _unitOfWorkManager.Current;
+			if (unitOfWork is not null)
+			{
+				unitOfWork.OnCompleted(async () => await _ingestPublisher.PublishAsync(documentId, tenantId, cancellationToken));
+			}
+			else
+			{
+				await _ingestPublisher.PublishAsync(documentId, tenantId, cancellationToken);
+			}
 		}
 
 		private static DocumentDto MapToDto(Document document) => new()
@@ -130,6 +230,7 @@ namespace KnowVault.Application
 			SourceType = document.SourceType,
 			Status = document.Status,
 			ErrorMessage = document.ErrorMessage,
+			IngestAttemptCount = document.IngestAttemptCount,
 			ObjectStorageKey = document.ObjectStorageKey,
 			CreationTime = document.CreationTime
 		};

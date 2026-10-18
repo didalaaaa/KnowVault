@@ -23,5 +23,19 @@ namespace KnowVault.Domain
 			VectorFilter filter,
 			int topK,
 			CancellationToken cancellationToken = default);
+
+		/// <summary>
+		/// 按文档删除向量点（payload 过滤 tenantId + knowledgeBaseId + documentId）
+		/// </summary>
+		/// <param name="tenantId">租户 ID（单租户为 <see cref="Guid.Empty"/></param>
+		/// <param name="knowledgeBaseId">知识库 ID</param>
+		/// <param name="documentId">文档 ID</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>任务</returns>
+		Task DeleteByDocumentAsync(
+			Guid tenantId,
+			Guid knowledgeBaseId,
+			Guid documentId,
+			CancellationToken cancellationToken = default);
 	}
 }

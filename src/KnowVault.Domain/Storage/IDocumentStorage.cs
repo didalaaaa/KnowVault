@@ -20,5 +20,13 @@ namespace KnowVault.Domain
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>可读流（调用方负责释放）。</returns>
 		Task<Stream> GetAsync(string objectKey, CancellationToken cancellationToken = default);
+
+		/// <summary>
+		/// 删除对象；对象不存在时视为成功
+		/// </summary>
+		/// <param name="objectKey">对象键</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>任务</returns>
+		Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default);
 	}
 }

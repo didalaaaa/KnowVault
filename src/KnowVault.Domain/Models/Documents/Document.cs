@@ -23,6 +23,11 @@ namespace KnowVault.Domain
 
 		public string? ErrorMessage { get; set; }
 
+		/// <summary>
+		/// 已尝试摄入的次数（含首次）；失败重试时累加，便于排查
+		/// </summary>
+		public int IngestAttemptCount { get; private set; }
+
 		public Guid? TenantId { get; set; }
 
 		protected Document()
@@ -42,7 +47,11 @@ namespace KnowVault.Domain
 			TenantId = tenantId;
 		}
 
-		public void MarkProcessing() => Status = DocumentStatusEnum.Processing;
+		public void MarkProcessing()
+		{
+			Status = DocumentStatusEnum.Processing;
+			ErrorMessage = null;
+		}
 
 		public void MarkReady() => Status = DocumentStatusEnum.Ready;
 
@@ -50,6 +59,20 @@ namespace KnowVault.Domain
 		{
 			Status = DocumentStatusEnum.Failed;
 			ErrorMessage = error;
+		}
+
+		/// <summary>
+		/// 记录一次摄入尝试
+		/// </summary>
+		public void RecordAttempt() => IngestAttemptCount++;
+
+		/// <summary>
+		/// 重新排队：清掉上次失败原因，等待消费
+		/// </summary>
+		public void MarkPending()
+		{
+			Status = DocumentStatusEnum.Pending;
+			ErrorMessage = null;
 		}
 	}
 

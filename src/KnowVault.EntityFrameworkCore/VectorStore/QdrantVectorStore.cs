@@ -46,6 +46,16 @@ namespace KnowVault.EntityFrameworkCore
 					_logger.LogInformation("已创建 Qdrant collection {Collection}（维度 {Size}，Cosine）", _options.CollectionName, _options.VectorSize);
 				}
 
+				// 按 payload 过滤删除/检索必须建 keyword 索引，否则 Qdrant 会全量扫描甚至拒绝过滤
+				foreach (var field in new[] { ChunkPayload.TenantId, ChunkPayload.KnowledgeBaseId, ChunkPayload.DocumentId })
+				{
+					await _client.CreatePayloadIndexAsync(
+						_options.CollectionName,
+						field,
+						PayloadSchemaType.Keyword,
+						cancellationToken: cancellationToken);
+				}
+
 				_collectionEnsured = true;
 			}
 			finally
@@ -107,6 +117,29 @@ namespace KnowVault.EntityFrameworkCore
 				Score = point.Score,
 				Payload = point.Payload.ToDictionary(kv => kv.Key, kv => FromValue(kv.Value))
 			})];
+		}
+
+		/// <inheritdoc />
+		public async Task DeleteByDocumentAsync(
+			Guid tenantId,
+			Guid knowledgeBaseId,
+			Guid documentId,
+			CancellationToken cancellationToken = default)
+		{
+			await EnsureCollectionAsync(cancellationToken);
+
+			var filter = new Filter
+			{
+				Must =
+				{
+					MatchKeyword(ChunkPayload.TenantId, tenantId.ToString()),
+					MatchKeyword(ChunkPayload.KnowledgeBaseId, knowledgeBaseId.ToString()),
+					MatchKeyword(ChunkPayload.DocumentId, documentId.ToString())
+				}
+			};
+
+			await _client.DeleteAsync(_options.CollectionName, filter, wait: true, cancellationToken: cancellationToken);
+			_logger.LogInformation("已删除文档 {DocumentId} 的 Qdrant 向量点", documentId);
 		}
 
 		private static Value ToValue(object value) => value switch
