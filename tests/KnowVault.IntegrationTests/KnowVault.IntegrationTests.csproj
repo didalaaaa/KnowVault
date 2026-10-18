@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="FluentAssertions" Version="7.2.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers" Version="4.16.0" />
+    <PackageReference Include="Testcontainers.Minio" Version="4.15.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageReference Include="Testcontainers.RabbitMq" Version="4.16.0" />
+    <PackageReference Include="Volo.Abp.Autofac" Version="10.5.0" />
+    <PackageReference Include="Volo.Abp.TestBase" Version="10.5.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\KnowVault.Domain\KnowVault.Domain.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.Domain.Shared\KnowVault.Domain.Shared.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.Application\KnowVault.Application.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.Application.Contracts\KnowVault.Application.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.EntityFrameworkCore\KnowVault.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.Ai\KnowVault.Ai.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.Ingest\KnowVault.Ingest.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>
