@@ -1,5 +1,6 @@
 using System.Text;
 using KnowVault.Application.Contracts;
+using KnowVault.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 
 namespace KnowVault.Application
@@ -9,7 +10,7 @@ namespace KnowVault.Application
 	/// 问答应用服务：把流式编排（<see cref="IQaStreamService"/>）的事件流拼成一次性回答
 	/// ABP 动态生成 POST /api/app/qa/ask，与非流式客户端保持 P1 契约
 	/// </summary>
-	[Authorize]
+	[Authorize(KnowVaultPermissions.Qa.Ask)]
 	public class QaAppService : KnowVaultAppService, IQaAppService
 	{
 		private readonly IQaStreamService _qaStreamService;

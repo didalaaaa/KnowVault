@@ -3,6 +3,7 @@ using KnowVault.Domain;
 using KnowVault.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp;
+using Volo.Abp.Authorization;
 using Volo.Abp.Domain.Repositories;
 
 namespace KnowVault.Application
@@ -12,23 +13,34 @@ namespace KnowVault.Application
 	public class KnowledgeBaseAppService : KnowVaultAppService, IKnowledgeBaseAppService
 	{
 		private readonly IRepository<KnowledgeBase, Guid> _knowledgeBaseRepository;
+		private readonly IRepository<KnowledgeBaseMember, Guid> _memberRepository;
 		private readonly IRepository<Document, Guid> _documentRepository;
+		private readonly KnowledgeBaseAccessChecker _accessChecker;
 
 		/// <summary>构造函数。</summary>
 		/// <param name="knowledgeBaseRepository">知识库仓储。</param>
+		/// <param name="memberRepository">知识库成员仓储。</param>
 		/// <param name="documentRepository">文档仓储（统计就绪数与判空）。</param>
+		/// <param name="accessChecker">知识库访问检查器。</param>
 		public KnowledgeBaseAppService(
 			IRepository<KnowledgeBase, Guid> knowledgeBaseRepository,
-			IRepository<Document, Guid> documentRepository)
+			IRepository<KnowledgeBaseMember, Guid> memberRepository,
+			IRepository<Document, Guid> documentRepository,
+			KnowledgeBaseAccessChecker accessChecker)
 		{
 			_knowledgeBaseRepository = knowledgeBaseRepository;
+			_memberRepository = memberRepository;
 			_documentRepository = documentRepository;
+			_accessChecker = accessChecker;
 		}
 
 		/// <inheritdoc />
 		public async Task<List<KnowledgeBaseDto>> GetListAsync(CancellationToken cancellationToken)
 		{
-			var knowledgeBases = await _knowledgeBaseRepository.GetListAsync(cancellationToken: cancellationToken);
+			var accessibleIds = await _accessChecker.GetAccessibleIdsAsync(cancellationToken);
+			var knowledgeBases = await _knowledgeBaseRepository.GetListAsync(
+				kb => accessibleIds.Contains(kb.Id),
+				cancellationToken: cancellationToken);
 			var documents = await _documentRepository.GetListAsync(cancellationToken: cancellationToken);
 
 			return knowledgeBases
@@ -53,6 +65,7 @@ namespace KnowVault.Application
 		}
 
 		/// <inheritdoc />
+		[Authorize(KnowVaultPermissions.KnowledgeBases.Create)]
 		public async Task<KnowledgeBaseDto> CreateAsync(CreateKnowledgeBaseInput input, CancellationToken cancellationToken)
 		{
 			var knowledgeBase = new KnowledgeBase(
@@ -62,6 +75,18 @@ namespace KnowVault.Application
 				CurrentTenant.Id);
 
 			await _knowledgeBaseRepository.InsertAsync(knowledgeBase, autoSave: true, cancellationToken: cancellationToken);
+
+			// 创建者自动成为 Owner，否则新库建完自己都进不去
+			var ownerId = CurrentUser.Id ?? throw new AbpAuthorizationException("未登录，无法创建知识库。");
+			await _memberRepository.InsertAsync(
+				new KnowledgeBaseMember(
+					GuidGenerator.Create(),
+					knowledgeBase.Id,
+					ownerId,
+					KnowledgeBaseRoleEnum.Owner,
+					CurrentTenant.Id),
+				autoSave: true,
+				cancellationToken: cancellationToken);
 
 			return new KnowledgeBaseDto
 			{
@@ -75,6 +100,8 @@ namespace KnowVault.Application
 		/// <inheritdoc />
 		public async Task<KnowledgeBaseDto> UpdateAsync(UpdateKnowledgeBaseInput input, CancellationToken cancellationToken)
 		{
+			await _accessChecker.EnsureAsync(input.Id, KnowledgeBaseRoleEnum.Owner, cancellationToken);
+
 			var knowledgeBase = await _knowledgeBaseRepository.GetAsync(input.Id, cancellationToken: cancellationToken);
 			knowledgeBase.Update(input.Name.Trim(), Normalize(input.Description));
 			await _knowledgeBaseRepository.UpdateAsync(knowledgeBase, autoSave: true, cancellationToken: cancellationToken);
@@ -93,12 +120,14 @@ namespace KnowVault.Application
 		{
 			if (id == KnowVaultConsts.DefaultKnowledgeBaseId) throw new UserFriendlyException("默认知识库不可删除");
 
+			await _accessChecker.EnsureAsync(id, KnowledgeBaseRoleEnum.Owner, cancellationToken);
+
 			// 先取一次：不存在时给出「找不到」而不是静默成功
 			await _knowledgeBaseRepository.GetAsync(id, cancellationToken: cancellationToken);
 
-			// 文档删除留 P3，因此当前只允许删空库，避免留下无主文档与向量
+			// 只允许删空库，避免留下无主文档与向量
 			var hasDocument = await _documentRepository.AnyAsync(document => document.KnowledgeBaseId == id, cancellationToken: cancellationToken);
-			if (hasDocument) throw new UserFriendlyException("知识库下仍有文档，请先清空（文档删除在 P3 提供）");
+			if (hasDocument) throw new UserFriendlyException("知识库下仍有文档，请先删除库内文档");
 
 			await _knowledgeBaseRepository.DeleteAsync(id, autoSave: true, cancellationToken: cancellationToken);
 		}

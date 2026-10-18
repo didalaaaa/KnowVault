@@ -61,6 +61,7 @@ namespace KnowVault.EntityFrameworkCore
 		#region KnowVault 业务实体
 
 		public DbSet<KnowledgeBase> KnowledgeBases { get; set; }
+		public DbSet<KnowledgeBaseMember> KnowledgeBaseMembers { get; set; }
 		public DbSet<Document> Documents { get; set; }
 		public DbSet<DocumentChunk> DocumentChunks { get; set; }
 		public DbSet<Conversation> Conversations { get; set; }

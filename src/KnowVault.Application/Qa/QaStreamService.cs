@@ -30,6 +30,7 @@ namespace KnowVault.Application
 		private readonly IRepository<Message, Guid> _messageRepository;
 		private readonly IUnitOfWorkManager _unitOfWorkManager;
 		private readonly IOptions<AiOptions> _aiOptions;
+		private readonly KnowledgeBaseAccessChecker _accessChecker;
 
 		/// <summary>
 		/// 构造函数
@@ -39,23 +40,29 @@ namespace KnowVault.Application
 		/// <param name="messageRepository">消息仓储</param>
 		/// <param name="unitOfWorkManager">工作单元管理器</param>
 		/// <param name="aiOptions">AI 配置（历史轮数）</param>
+		/// <param name="accessChecker">知识库访问检查器</param>
 		public QaStreamService(
 			IRagService ragService,
 			IRepository<Conversation, Guid> conversationRepository,
 			IRepository<Message, Guid> messageRepository,
 			IUnitOfWorkManager unitOfWorkManager,
-			IOptions<AiOptions> aiOptions)
+			IOptions<AiOptions> aiOptions,
+			KnowledgeBaseAccessChecker accessChecker)
 		{
 			_ragService = ragService;
 			_conversationRepository = conversationRepository;
 			_messageRepository = messageRepository;
 			_unitOfWorkManager = unitOfWorkManager;
 			_aiOptions = aiOptions;
+			_accessChecker = accessChecker;
 		}
 
 		/// <inheritdoc />
 		public async IAsyncEnumerable<QaStreamEventDto> AskStreamAsync(AskQuestionInput input, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			var knowledgeBaseId = input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId;
+			await _accessChecker.EnsureAsync(knowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
+
 			using var activity = ActivitySource.StartActivity("qa.ask");
 			activity?.SetTag("qa.knowledge_base_id", input.KnowledgeBaseId);
 			activity?.SetTag("qa.question_length", input.Question.Length);
@@ -77,7 +84,7 @@ namespace KnowVault.Application
 			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
 			var streamResult = await _ragService.AnswerStreamAsync(new RagRequest
 			{
-				KnowledgeBaseId = input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId,
+				KnowledgeBaseId = knowledgeBaseId,
 				TenantId = CurrentTenant.Id ?? Guid.Empty,
 				ConversationId = conversation.Id,
 				Question = input.Question,

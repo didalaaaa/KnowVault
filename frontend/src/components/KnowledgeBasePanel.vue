@@ -19,6 +19,7 @@
           </template>
         </n-thing>
         <template #suffix>
+          <n-button size="tiny" quaternary :disabled="kb.id === defaultKnowledgeBaseId" @click="openMembers(kb)">成员</n-button>
           <n-button size="tiny" quaternary @click="openEdit(kb)">编辑</n-button>
           <n-popconfirm @positive-click="remove(kb)">
             <template #trigger>
@@ -51,15 +52,53 @@
         </div>
       </template>
     </n-modal>
+
+    <n-modal
+      v-model:show="membersVisible"
+      preset="card"
+      :title="'成员管理 · ' + (activeKb?.name || '')"
+      style="width: 560px"
+    >
+      <n-list bordered>
+        <n-list-item v-for="member in members" :key="member.userId">
+          <div class="member-row">
+            <span class="member-name">{{ member.userName }}</span>
+            <n-tag size="tiny">{{ roleText(member.role) }}</n-tag>
+            <n-button size="tiny" quaternary type="error" @click="removeMember(member)">移除</n-button>
+          </div>
+        </n-list-item>
+        <n-empty v-if="members.length === 0" description="还没有成员" />
+      </n-list>
+
+      <n-divider>添加 / 调整成员</n-divider>
+      <n-form :model="memberForm" label-placement="left" label-width="70">
+        <n-form-item label="用户 ID">
+          <n-input v-model:value="memberForm.userId" placeholder="Identity 用户 GUID" />
+        </n-form-item>
+        <n-form-item label="角色">
+          <n-select v-model:value="memberForm.role" :options="roleOptions" />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <div class="kb-form-footer">
+          <n-button @click="membersVisible = false">关闭</n-button>
+          <n-button type="primary" :loading="memberSaving" :disabled="!memberForm.userId.trim()" @click="saveMember">
+            保存成员
+          </n-button>
+        </div>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive } from 'vue'
 import {
-  NButton, NList, NListItem, NThing, NTag, NModal, NForm, NFormItem, NInput, NPopconfirm, useMessage,
+  NButton, NList, NListItem, NThing, NTag, NModal, NForm, NFormItem, NInput, NPopconfirm,
+  NSelect, NDivider, NEmpty, useMessage,
 } from 'naive-ui'
 import { useDocumentStore } from '../stores/documents'
+import { knowledgeBaseMemberApi } from '../api/knowledgeBaseMembers'
 
 const documents = useDocumentStore()
 const message = useMessage()
@@ -71,6 +110,21 @@ const formVisible = ref(false)
 const saving = ref(false)
 const editingId = ref('')
 const form = reactive({ name: '', description: '' })
+
+const membersVisible = ref(false)
+const membersLoading = ref(false)
+const memberSaving = ref(false)
+const members = ref([])
+const activeKb = ref(null)
+const memberForm = reactive({ userId: '', role: 1 })
+
+const roleOptions = [
+  { label: 'Viewer（只读 + 提问）', value: 1 },
+  { label: 'Editor（上传 / 删除 / 重处理）', value: 2 },
+  { label: 'Owner（管成员 / 删库）', value: 3 },
+]
+
+const roleText = (role) => ({ 1: 'Viewer', 2: 'Editor', 3: 'Owner' })[role] ?? '未知'
 
 /** 打开「新建」表单。 */
 function openCreate() {
@@ -124,6 +178,66 @@ async function remove(kb) {
 }
 
 /**
+ * 打开成员管理。
+ * @param {object} kb 知识库
+ */
+async function openMembers(kb) {
+  activeKb.value = kb
+  memberForm.userId = ''
+  memberForm.role = 1
+  membersVisible.value = true
+  await loadMembers()
+}
+
+/** 拉取当前知识库成员。 */
+async function loadMembers() {
+  if (!activeKb.value) return
+  membersLoading.value = true
+  try {
+    members.value = await knowledgeBaseMemberApi.list(activeKb.value.id)
+  } catch (e) {
+    message.error(describeError(e))
+  } finally {
+    membersLoading.value = false
+  }
+}
+
+/** 新增成员或调整角色。 */
+async function saveMember() {
+  if (!activeKb.value) return
+  memberSaving.value = true
+  try {
+    await knowledgeBaseMemberApi.set({
+      knowledgeBaseId: activeKb.value.id,
+      userId: memberForm.userId.trim(),
+      role: memberForm.role,
+    })
+    memberForm.userId = ''
+    await loadMembers()
+    message.success('已保存')
+  } catch (e) {
+    message.error(describeError(e))
+  } finally {
+    memberSaving.value = false
+  }
+}
+
+/**
+ * 移除成员。
+ * @param {object} member 成员
+ */
+async function removeMember(member) {
+  if (!activeKb.value) return
+  try {
+    await knowledgeBaseMemberApi.remove(activeKb.value.id, member.userId)
+    await loadMembers()
+    message.success('已移除')
+  } catch (e) {
+    message.error(describeError(e))
+  }
+}
+
+/**
  * 把未知错误整理成一行可读文案（ABP 的 UserFriendlyException 文案在 error.message）。
  * @param {any} e 错误对象
  * @returns {string} 错误文案
@@ -139,4 +253,6 @@ function describeError(e) {
 .kb-title { font-weight: 600; }
 .kb-meta { color: #888; font-size: 12px; }
 .kb-form-footer { display: flex; justify-content: flex-end; gap: 8px; }
+.member-row { display: flex; align-items: center; gap: 8px; }
+.member-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

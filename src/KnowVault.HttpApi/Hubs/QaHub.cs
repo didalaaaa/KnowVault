@@ -1,4 +1,5 @@
 using KnowVault.Application.Contracts;
+using KnowVault.Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -11,7 +12,7 @@ namespace KnowVault.HttpApi
 	/// Hub 方法不能声明 CancellationToken（SignalR 会把它当成客户端参数），
 	/// 因此取消令牌取自 <c>Context.ConnectionAborted</c> 并显式传给下游
 	/// </remarks>
-	[Authorize]
+	[Authorize(KnowVaultPermissions.Qa.Ask)]
 	public class QaHub : Hub
 	{
 		/// <summary>
