@@ -1,0 +1,73 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  backend:
+    name: Backend build and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore KnowVault.slnx
+
+      - name: Build
+        run: dotnet build KnowVault.slnx --no-restore -warnaserror
+
+      - name: Unit tests
+        run: dotnet test tests/KnowVault.Tests/KnowVault.Tests.csproj --no-build
+
+      - name: Integration tests
+        run: dotnet test tests/KnowVault.IntegrationTests/KnowVault.IntegrationTests.csproj --no-build
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+  format:
+    name: Enum naming and analyzers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore KnowVault.slnx
+
+      - name: Verify IDE1006
+        run: dotnet format analyzers KnowVault.slnx --no-restore --verify-no-changes --diagnostics IDE1006
