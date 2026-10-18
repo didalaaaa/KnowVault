@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Volo.Abp.DependencyInjection;
@@ -13,23 +15,32 @@ namespace KnowVault.Ai
 	[ExposeServices(typeof(ILlmChatService))]
 	public class DeepSeekChatService : ILlmChatService, ITransientDependency
 	{
+		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
+
 		private readonly Kernel _kernel;
+		private readonly AiOptions _options;
 		private readonly ILogger<DeepSeekChatService> _logger;
 
 		/// <summary>
 		/// 构造函数
 		/// </summary>
 		/// <param name="kernel">由 Ai 模块构建的 Semantic Kernel 实例</param>
+		/// <param name="options">AI 配置（模型名）</param>
 		/// <param name="logger">日志</param>
-		public DeepSeekChatService(Kernel kernel, ILogger<DeepSeekChatService> logger)
+		public DeepSeekChatService(Kernel kernel, IOptions<AiOptions> options, ILogger<DeepSeekChatService> logger)
 		{
 			_kernel = kernel;
+			_options = options.Value;
 			_logger = logger;
 		}
 
 		/// <inheritdoc />
 		public async IAsyncEnumerable<string> CompleteStreamAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			using var activity = ActivitySource.StartActivity("llm.complete");
+			activity?.SetTag("llm.model", _options.DeepSeekModel);
+			activity?.SetTag("llm.history_count", messages.Count);
+
 			var chat = _kernel.GetRequiredService<IChatCompletionService>();
 			var history = new ChatHistory();
 			history.AddSystemMessage(systemPrompt);

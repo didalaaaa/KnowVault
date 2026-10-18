@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using KnowVault.Domain;
+using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
@@ -11,6 +13,8 @@ namespace KnowVault.Ingest
 	/// </summary>
 	public class DocumentProcessor : IDocumentProcessor, ITransientDependency
 	{
+		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
+
 		private readonly IRepository<Document, Guid> _documentRepository;
 		private readonly IRepository<DocumentChunk, Guid> _chunkRepository;
 		private readonly IDocumentStorage _storage;
@@ -63,6 +67,10 @@ namespace KnowVault.Ingest
 				// 交给 MassTransit 的重试策略即可在提交后重新投递（重试耗尽会进 error 队列，不会无声消失）。
 				throw new InvalidOperationException($"文档 {documentId} 当前不可见（可能上传事务尚未提交），交由重试策略重新投递。");
 			}
+
+			using var activity = ActivitySource.StartActivity("ingest.process");
+			activity?.SetTag("document.id", document.Id);
+			activity?.SetTag("document.knowledge_base_id", document.KnowledgeBaseId);
 
 			try
 			{

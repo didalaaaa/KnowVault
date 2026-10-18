@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using KnowVault.Domain;
+using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
@@ -12,6 +14,8 @@ namespace KnowVault.Ai
 	{
 		// 重排候选数上限：一次多取几十条没有收益，还要为 rerank 付费
 		private const int MaxCandidateCount = 100;
+
+		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
 
 		private readonly AiOptions _options;
 		private readonly IEmbeddingService _embeddingService;
@@ -91,11 +95,17 @@ namespace KnowVault.Ai
 		/// <returns>引用切片。</returns>
 		private async Task<IReadOnlyList<RagRetrievedChunk>> RetrieveAsync(RagRequest request, CancellationToken cancellationToken)
 		{
+			using var activity = ActivitySource.StartActivity("rag.retrieve");
+			activity?.SetTag("rag.knowledge_base_id", request.KnowledgeBaseId);
+
 			// top-k 上限 8（TECH_STACK §9：top-k≈5–8）
 			var topK = Math.Clamp(request.TopK <= 0 ? _options.TopK : request.TopK, 1, 8);
 
 			// 重排要「宽召回 + 精排」：召回数不小于最终 topK，否则重排没有可选空间
 			var candidateCount = _options.RerankEnabled ? Math.Clamp(_options.RerankCandidateCount, topK, MaxCandidateCount) : topK;
+			activity?.SetTag("rag.top_k", topK);
+			activity?.SetTag("rag.candidate_count", candidateCount);
+			activity?.SetTag("rag.rerank", _options.RerankEnabled);
 
 			var vectors = await _embeddingService.EmbedAsync([request.Question], cancellationToken);
 			var hits = await _vectorStore.SearchAsync(
@@ -113,6 +123,8 @@ namespace KnowVault.Ai
 				Content = ChunkPayload.ReadString(hit.Payload, ChunkPayload.Content),
 				Score = hit.Score
 			}).ToList();
+
+			activity?.SetTag("rag.hit_count", chunks.Count);
 
 			_logger.LogInformation(
 				"检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}，候选 {CandidateCount}）",

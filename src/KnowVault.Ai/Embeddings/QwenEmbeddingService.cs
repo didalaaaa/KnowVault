@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using KnowVault.Domain;
+using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
@@ -17,6 +19,8 @@ namespace KnowVault.Ai
 	{
 		// 保守批大小：兼容模式上限以实测为准，超限会返回 400，宁可多跑几批
 		private const int MaxBatchSize = 10;
+
+		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
 
 		private readonly AiOptions _options;
 		private readonly IHttpClientFactory _httpClientFactory;
@@ -41,6 +45,9 @@ namespace KnowVault.Ai
 			IReadOnlyList<string> texts,
 			CancellationToken cancellationToken = default)
 		{
+			using var activity = ActivitySource.StartActivity("embedding.embed");
+			activity?.SetTag("embedding.batch_size", texts.Count);
+
 			if (texts.Count == 0)
 			{
 				return Array.Empty<float[]>();

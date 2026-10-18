@@ -23,7 +23,15 @@ namespace KnowVault.HttpApi.Host
 						loggerConfiguration
 							.ReadFrom.Configuration(context.Configuration)
 							.ReadFrom.Services(services)
+							.Enrich.With<ActivityTraceEnricher>()
 							.WriteTo.Async(c => c.AbpStudio(services));
+
+						// Seq 地址由 Aspire 注入；本地单独起 API 时可读 appsettings 的 Seq:ServerUrl
+						var seqUrl = context.Configuration["Seq:ServerUrl"];
+						if (!string.IsNullOrWhiteSpace(seqUrl))
+						{
+							loggerConfiguration.WriteTo.Seq(seqUrl);
+						}
 					});
 				await builder.AddApplicationAsync<KnowVaultHttpApiHostModule>();
 				var app = builder.Build();

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -22,6 +23,8 @@ namespace KnowVault.Application
 	[RemoteService(IsEnabled = false)]
 	public class QaStreamService : KnowVaultAppService, IQaStreamService
 	{
+		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
+
 		private readonly IRagService _ragService;
 		private readonly IRepository<Conversation, Guid> _conversationRepository;
 		private readonly IRepository<Message, Guid> _messageRepository;
@@ -53,6 +56,10 @@ namespace KnowVault.Application
 		/// <inheritdoc />
 		public async IAsyncEnumerable<QaStreamEventDto> AskStreamAsync(AskQuestionInput input, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
+			using var activity = ActivitySource.StartActivity("qa.ask");
+			activity?.SetTag("qa.knowledge_base_id", input.KnowledgeBaseId);
+			activity?.SetTag("qa.question_length", input.Question.Length);
+
 			Conversation conversation;
 			IReadOnlyList<LlmChatMessage> history;
 
@@ -64,6 +71,8 @@ namespace KnowVault.Application
 				await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true, cancellationToken);
 				await unitOfWork.CompleteAsync(cancellationToken);
 			}
+
+			activity?.SetTag("qa.conversation_id", conversation.Id);
 
 			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
 			var streamResult = await _ragService.AnswerStreamAsync(new RagRequest

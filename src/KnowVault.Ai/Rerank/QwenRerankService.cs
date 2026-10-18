@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
@@ -18,6 +20,8 @@ namespace KnowVault.Ai
 	{
 		// 与 Embedding 不同：重排走 DashScope 原生服务路径，不是 OpenAI 兼容端点
 		private const string RerankPath = "services/rerank/text-rerank/text-rerank";
+
+		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
 
 		private readonly AiOptions _options;
 		private readonly IHttpClientFactory _httpClientFactory;
@@ -42,6 +46,9 @@ namespace KnowVault.Ai
 		/// <inheritdoc />
 		public async Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 		{
+			using var activity = ActivitySource.StartActivity("rerank.rerank");
+			activity?.SetTag("rerank.document_count", documents.Count);
+
 			if (documents.Count == 0) return [];
 
 			EnsureConfigured();

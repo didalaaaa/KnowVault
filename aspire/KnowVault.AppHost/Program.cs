@@ -74,8 +74,9 @@ var rabbitmq = builder.AddRabbitMQ("rabbitmq")
     .WithImage("rabbitmq:3-management")
     .WithDataVolume("kv-rabbitmq-data");
 
-// Seq：日志可视化（全链路接入留 P3，此处先起服务）
+// Seq：日志可视化 + OTLP trace 接收端（P3 全链路接入）
 var seq = builder.AddSeq("seq");
+var seqEndpoint = seq.GetEndpoint("http").Property(EndpointProperty.Url);
 
 // MinIO：S3 兼容对象存储，存原始文档。
 // 官方镜像必须显式给 server 子命令，否则容器起不来；控制台端口 9001。
@@ -108,6 +109,9 @@ var api = builder.AddProject("knowvault-api", "../../src/KnowVault.HttpApi.Host/
     .WithEnvironment("Redis__Configuration", redis)
     .WithReference(rabbitmq)          // MassTransit 用 GetConnectionString("rabbitmq")，这个键名是对的
     .WithEnvironment("App:CorsOrigins", "http://localhost:5173")
+    // Seq：日志地址 + OTLP/HTTP trace 端点（exporter 需要完整的 /v1/traces 路径）
+    .WithEnvironment("Seq__ServerUrl", seqEndpoint)
+    .WithEnvironment("Observability__OtlpEndpoint", ReferenceExpression.Create($"{seqEndpoint}/ingest/otlp/v1/traces"))
     // QdrantVectorStore 走 gRPC，必须注入 6334 的 grpc 端点（不是 6333 的 REST 端点）
     .WithEnvironment("Qdrant__Endpoint", qdrant.GetEndpoint("grpc"))
     // MinIO 容器端口由 DCP 代理，宿主端口是动态的 → 必须注入 HostAndPort，写死 localhost:9000 会连不上

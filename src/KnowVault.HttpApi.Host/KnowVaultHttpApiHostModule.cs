@@ -136,6 +136,9 @@ namespace KnowVault.HttpApi.Host
 
 			// SignalR 服务端在 .NET 共享框架里，不需要额外 NuGet 包；Hub 在 OnApplicationInitialization 末端映射
 			context.Services.AddSignalR();
+
+			// 链路追踪：ASP.NET Core / HttpClient / EF Core + 自定义 ActivitySource
+			context.Services.AddKnowVaultObservability(configuration);
 		}
 
 		private void ConfigureStudio(IHostEnvironment hostingEnvironment)
