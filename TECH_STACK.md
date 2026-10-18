@@ -57,7 +57,7 @@ KnowVault.slnx
 ├─ aspire/
 │  └─ KnowVault.AppHost              // Aspire 编排：Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq + API
 ├─ frontend/                          // Vue3 + Vite + JS + Naive UI
-└─ tests/                             // （待建）Testcontainers 集成测试
+└─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
 ```
 
 > **说明（当前实现）**：以上是 P0 用 ABP 分层模板**实际落地**的结构（`KnowVault.slnx`）。相比早期设想，主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（而非 `KnowVault.Web`），并多出 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层；`tests/` 在 **P1** 先落 `KnowVault.Tests`（纯函数单测），Testcontainers 集成测试仍留 P3。
@@ -76,7 +76,7 @@ KnowVault.slnx
 - **Message 消息**：`Id, ConversationId, Role(User/Assistant), Content, CitationsJson, CreatedAt`
 - **租户/用户**：由 ABP 的 Identity + 租户模块提供
 
-> 权限（角色 + 知识库级访问控制）放**二期**。MVP 先保证 `知识库.TenantId` 隔离。
+> 权限：P3 已落 **系统角色（Admin/Member/Viewer）+ 知识库成员（Owner/Editor/Viewer）** 双层控制，默认知识库对所有登录用户开放写权限，其余知识库按成员表校验；详见 §9.3。
 
 ---
 
@@ -105,7 +105,7 @@ KnowVault.slnx
 | **P0 骨架** | 建解决方案（ABP 分层）+ Aspire 编排（Postgres/Redis/Qdrant/MinIO/RMQ/Seq）+ Vue3 脚手架 + 最小上传/问答 API | 项目能跑起来，界面能连上后端 |
 | **P1 最小闭环** | 上传→解析→切片→向量化→Qdrant 写入；提问→检索→DeepSeek→引用溯源；文档解析 Worker 接 RabbitMQ | ✅ MVP 达成，可 demo |
 | **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
-| **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限、GitHub Actions CI | 面试深度 + 可讲"坑" |
+| **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限、GitHub Actions CI | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
 | **P4 打磨讲故事** | README（架构图+选型理由）、demo 视频、面试话术 doc | 竞争加分 |
 
 ---
@@ -172,6 +172,17 @@ KnowVault.slnx
 - **API 认证失败语义**：`/api` 前缀下把 Cookie 方案的 challenge 改写成 **401 + `WWW-Authenticate: Bearer`**（其它路径保持跳登录页），前端 axios 据此清 token 回登录态。
 - **执行计划**：见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`
 
+### 9.3 P3 实现细节定稿（2026-10-18）
+
+- **可观测**：Serilog 日志经 `Serilog.Sinks.Seq` 直送 Seq；OpenTelemetry trace 用 **OTLP/HTTP protobuf** 送 Seq 的 `/ingest/otlp/v1/traces`（Seq 本地 gRPC 需 HTTPS，不能走 HTTP）；EF Core 插桩包锁 `OpenTelemetry.Instrumentation.EntityFrameworkCore 1.17.0-beta.1`（beta，目标 net10.0）。自定义 `ActivitySource` 名 `KnowVault`，span：`qa.ask` / `rag.retrieve` / `embedding.embed` / `llm.complete` / `rerank.rerank` / `ingest.process`。
+- **权限双层**：系统角色 `Admin` / `Member` / `Viewer` 由 `KnowVaultIdentityDataSeedContributor` 种子并授权；知识库成员表 `AppKnowledgeBaseMembers`（`KnowledgeBaseId + UserId` 唯一，角色 `Viewer=1 / Editor=2 / Owner=3`）。`KnowledgeBaseAccessChecker` 统一判定：Admin 短路；默认知识库对所有登录用户等价 Editor；其余库查成员表，越权抛 `AbpAuthorizationException`。
+- **成员管理**：`IKnowledgeBaseMemberAppService` 提供列表/设置/移除；仅 Owner 可操作；默认库拒绝；删除最后一个 Owner 拒绝。
+- **文档生命周期**：`DELETE /api/app/document/{id}`（Qdrant points → chunks → document → MinIO 原文件；MinIO 失败只 warning）与 `POST /api/app/document/{id}/reprocess`（清旧向量/切片 → `MarkPending` → 提交后发消息）。`Document.IngestAttemptCount` 记录尝试次数。
+- **摄入重试**：`document-ingest` 端点显式 `UseMessageRetry(5 × 2s)`；Consumer 在**独立 UoW** 落 `Failed` 后 rethrow，耗尽后进 `document-ingest_error`。
+- **集成测试**：`tests/KnowVault.IntegrationTests` 用 Testcontainers 起 Postgres/RabbitMQ/MinIO/Qdrant；Embedding 与消息发布用 fake；`AbpIntegratedTest` 服务级测试，`AddAlwaysAllowAuthorization` 绕过授权拦截器但保留 ACL 真实校验。本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，CI 不设该变量。
+- **CI**：`.github/workflows/ci.yml` 三 job：backend（build 警告即错 + 单测 + 集成测试）、frontend（npm ci + build）、format（`dotnet format analyzers ... --diagnostics IDE1006`）。
+- **执行计划**：见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`
+
 ## 10. P1 执行计划
 
 - 详见 [`docs/plans/2026-10-05-knowvault-p1-mvp.md`](docs/plans/2026-10-05-knowvault-p1-mvp.md)：含冻结规格、14 个任务的文件级改动、完整代码与逐项验证命令、风险登记与完成定义。
@@ -180,3 +191,8 @@ KnowVault.slnx
 
 - 详见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md)：含冻结规格（六项决策 + 默认项 D1–D8）、8 个任务的文件级改动、15 项端到端验收、风险登记与完成定义。
 - **状态：已完成（2026-10-14）**。逐项命令与实测输出写在该文件 §5「Task 8 —— 端到端验收」：`dotnet build KnowVault.slnx` 0 错误 0 警告、`dotnet test tests\KnowVault.Tests` 32/32、`dotnet format style` 无新增违规、47 个改动文件行尾全部合规（CRLF 无 BOM）、`npm run build` 通过。
+
+## 12. P3 执行计划
+
+- 详见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)：含冻结规格（五项决策）、T0–T7 文件级改动、12 项端到端验收、风险登记与完成定义。
+- **状态：代码实现完成（2026-10-18）**：build 0 警告 0 错误、单测 33/33、集成测试 2/2、`npm run build` 通过；Seq trace / 权限 403 / 5 次重试进 error queue 需按该文件 §2 手工验收。

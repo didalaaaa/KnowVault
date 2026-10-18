@@ -49,10 +49,10 @@ KnowVault.slnx
 ├─ aspire/
 │  └─ KnowVault.AppHost              // Aspire 编排：Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq + API
 ├─ frontend/                          // Vue3 + Vite + JS + Naive UI
-└─ tests/                             // P1：KnowVault.Tests（纯函数单测）；Testcontainers 集成测试待建（P3）
+└─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
 ```
 
-> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测），Testcontainers 集成测试仍留 P3。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`；**P2** 的冻结规格与执行计划见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`（流式 Hub 在 `src/KnowVault.HttpApi/Hubs/`，重排与流式实现在 `src/KnowVault.Ai/Rerank/` 与 `src/KnowVault.Ai/Chat/`）。
+> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Testcontainers 四件套）。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`；**P2** 的冻结规格与执行计划见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`（流式 Hub 在 `src/KnowVault.HttpApi/Hubs/`，重排与流式实现在 `src/KnowVault.Ai/Rerank/` 与 `src/KnowVault.Ai/Chat/`）；**P3** 见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`（OTel/Seq、角色+知识库 ACL、文档删除/重处理、摄入重试、Testcontainers、CI）。
 
 ---
 
@@ -231,7 +231,8 @@ dotnet test
 ## 七、待办/注意
 
 - DeepSeek / Qwen 的 API Key：**P1 已确认会配置**（端到端真跑）。Key 一律走环境变量 `Ai__DeepSeekApiKey` / `Ai__QwenApiKey`（由 `aspire/KnowVault.AppHost` 从本地 `.env`/进程环境映射），严禁进仓库或硬编码。
-- `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）。**P1** 新增 `tests/KnowVault.Tests`（切片/解析/payload/Prompt 的**纯函数单测**）；Testcontainers 集成测试仍按 `TECH_STACK.md` §6 留 P3。
+- `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）。**P1** 新增 `tests/KnowVault.Tests`（切片/解析/payload/Prompt 的**纯函数单测**）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Postgres/RabbitMQ/MinIO/Qdrant 容器；本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，CI 用真实 MinIO）。
 - **P1 冻结规格与执行计划**：`docs/plans/2026-10-05-knowvault-p1-mvp.md`（含 14 个任务的文件级改动、代码与逐项验收命令）。规格变更必须先改该文档的 §0 再改代码。
 - **P2 冻结规格与执行计划**：`docs/plans/2026-10-14-knowvault-p2-mvp.md`（含 6 项决策、8 个任务的文件级改动、15 项端到端验收）。规格变更必须先改该文档的 §0 再改代码。P2 起 SignalR 服务端零 NuGet 包（.NET 10 共享框架自带），前端新增 npm `@microsoft/signalr ^10.0.11`；重排新增 `Ai:QwenRerankBaseUrl` / `Ai:QwenRerankModel=qwen3-rerank`（`gte-rerank` 已下线）。
 - **P2 已完成（2026-10-14）**：15 项端到端验收通过并逐项留证（见该文档 §2 / §5）。两条实测结论后续写 AppService 时会用到：①ABP 动态 API 把 `UpdateAsync(输入DTO)` 映射为 `PUT /api/app/{服务名}`（**路由不带 `{id}`**，实体 ID 走请求体），只有 `DeleteAsync(Guid id)` 才是 `DELETE /api/app/{服务名}/{id}`；②`/api` 前缀的认证失败已改写为 401 + `WWW-Authenticate: Bearer`（其它路径仍跳登录页）。
+- **P3 冻结规格与执行计划**：`docs/plans/2026-10-18-knowvault-p3-mvp.md`（含 5 项决策、T0–T7 文件级改动、12 项端到端验收）。P3 新增：Seq sink + OTLP/HTTP protobuf trace（EF 插桩锁 `1.17.0-beta.1`）；系统角色 `Admin/Member/Viewer` + 知识库成员表 `AppKnowledgeBaseMembers`（Owner/Editor/Viewer）；文档删除/重新处理；`document-ingest` 5×2s 重试 + `document-ingest_error`；Testcontainers 四件套；GitHub Actions 三 job。**权限缓存**：改角色/成员后需重新登录或等待缓存过期再验收 403。

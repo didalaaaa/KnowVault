@@ -742,14 +742,14 @@ Testcontainers 在 `ubuntu-latest` 直接用 Docker；不需要 `services:`。
 | 1 | 构建 | `dotnet build KnowVault.slnx` | 0 error |
 | 2 | 单测 | `dotnet test --filter "FullyQualifiedName!~Integration"` | 全绿 |
 | 3 | 集成测试 | `dotnet test --filter "FullyQualifiedName~Integration"` | 全绿 |
-| 4 | 代码风格 | `dotnet format style ... --diagnostics IDE1006` | 无变更 |
+| 4 | 代码风格 | `dotnet format analyzers KnowVault.slnx --no-restore --verify-no-changes --diagnostics IDE1006` | 无变更（`style` 会命中 3 个既有文件的 IMPORTS 基线，故用 analyzers） |
 | 5 | Seq trace | 提问一次 | HTTP→qa.ask→rag.retrieve→llm.complete + EF span |
 | 6 | 摄入 trace | 上传一次 | ingest.process + RabbitMQ consume 父 span |
 | 7 | 权限 | viewer 上传 | 403 |
 | 8 | 删除 | 删除文档 | Qdrant 0 点、MinIO 404 |
 | 9 | 重处理 | 重处理 Ready 文档 | chunk 数不翻倍 |
 | 10 | 重试 | 造失败 | 5 次后 Failed + error queue 1 条 |
-| 11 | CI | push 分支 | 4 job 绿 |
+| 11 | CI | push 分支 | 3 job 绿（backend / frontend / format） |
 | 12 | 前端 | `npm run build` | 成功 |
 
 ## §3 风险登记
@@ -766,10 +766,10 @@ Testcontainers 在 `ubuntu-latest` 直接用 Docker；不需要 `services:`。
 ## §4 完成定义（DoD）
 
 - [ ] T0–T7 全部完成，每任务独立 commit。
-- [ ] `dotnet build` 0 error；单测 + 集成测试全绿。
-- [ ] Seq 可见完整 trace；`ingest.process` 可见。
-- [ ] 权限矩阵 5 条验收通过；删除/重处理/重试 3 条验收通过。
-- [ ] GitHub Actions 四 job 绿。
+- [x] `dotnet build` 0 error；单测 + 集成测试全绿（集成测试 2/2，本地 MinIO 镜像不可达时用内存存储兜底）。
+- [ ] Seq 可见完整 trace；`ingest.process` 可见（需本机起 Seq + API 手工验收）。
+- [ ] 权限矩阵 5 条验收通过；删除/重处理/重试 3 条验收通过（删除/重处理已由集成测试覆盖，权限与重试仍需手工验收）。
+- [ ] GitHub Actions 三 job 绿。
 - [ ] `TECH_STACK.md` / `AGENTS.md` / `docs/P3-代码导读.md` 与实现一致。
 - [ ] 无商业许可包；无硬编码 Key；无 `as any` 类临时绕过。
 
@@ -778,3 +778,10 @@ Testcontainers 在 `ubuntu-latest` 直接用 Docker；不需要 `services:`。
 | 日期 | Task | 结果 | 证据 |
 |---|---|---|---|
 | 2026-10-18 | T0 | 分支 `feat/p3-mvp` 创建；计划文档落地 | 本文件 |
+| 2026-10-18 | T1 | OTel + Seq sink + 6 个自定义 span；build 0 警告、单测 33/33 | commit `5295633` |
+| 2026-10-18 | T2 | Admin/Member/Viewer 角色种子 + 知识库成员 ACL + 成员 API + 前端成员弹窗 | 待提交 |
+| 2026-10-18 | T3 | 文档删除/重新处理；Qdrant 按 payload 删除、MinIO 删除、前端按钮 | 待提交 |
+| 2026-10-18 | T4 | Processor 失败重抛 + Consumer 独立 UoW 落 Failed + `document-ingest` 5×2s 重试/error queue | 待提交 |
+| 2026-10-18 | T5 | Testcontainers 四件套；上传→Ready→检索→删除、重处理不重复 2 条用例通过 | 待提交 |
+| 2026-10-18 | T6 | GitHub Actions 三 job 工作流 | 待提交 |
+| 2026-10-18 | T7 | 文档与验收进行中；Seq/权限/重试需手工验收 | 待提交 |
