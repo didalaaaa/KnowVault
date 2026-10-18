@@ -118,8 +118,9 @@ namespace KnowVault.Ai
 				"检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}，候选 {CandidateCount}）",
 				request.KnowledgeBaseId, chunks.Count, topK, candidateCount);
 
-			var reranked = await RerankAsync(request.Question, chunks, topK, cancellationToken);
-			return reranked.Take(topK).ToList();
+			// 重排只打分（top_n 传全量），保留前 topK 条由本地负责
+			var reranked = await RerankAsync(request.Question, chunks, cancellationToken);
+			return [.. reranked.Take(topK)];
 		}
 
 		/// <summary>
@@ -130,10 +131,7 @@ namespace KnowVault.Ai
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>增量文本流。</returns>
 		/// <exception cref="AiCallException">模型没有产出任何文本。</exception>
-		private async IAsyncEnumerable<string> StreamWithEmptyCheckAsync(
-			string systemPrompt,
-			IReadOnlyList<LlmChatMessage> messages,
-			[EnumeratorCancellation] CancellationToken cancellationToken)
+		private async IAsyncEnumerable<string> StreamWithEmptyCheckAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, [EnumeratorCancellation] CancellationToken cancellationToken)
 		{
 			var totalLength = 0;
 			await foreach (var delta in _chatService.CompleteStreamAsync(systemPrompt, messages, cancellationToken).WithCancellation(cancellationToken))
@@ -150,23 +148,21 @@ namespace KnowVault.Ai
 		/// </summary>
 		/// <param name="question">用户问题。</param>
 		/// <param name="chunks">向量检索得到的候选切片（按相似度降序）。</param>
-		/// <param name="topK">重排后需要保留的条数。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
-		/// <returns>重排后的切片；重排不可用时返回原列表。</returns>
-		private async Task<List<RagRetrievedChunk>> RerankAsync(string question, List<RagRetrievedChunk> chunks, int topK, CancellationToken cancellationToken)
+		/// <returns>按相关性降序的切片；重排不可用时返回原列表。</returns>
+		private async Task<List<RagRetrievedChunk>> RerankAsync(string question, List<RagRetrievedChunk> chunks, CancellationToken cancellationToken)
 		{
 			if (!_options.RerankEnabled || chunks.Count <= 1) return chunks;
 
 			try
 			{
 				var documents = chunks.Select(chunk => chunk.Content).ToList();
-				var results = await _rerankService.RerankAsync(question, documents, topK, cancellationToken);
+				var results = await _rerankService.RerankAsync(question, documents, cancellationToken);
 				if (results.Count == 0) return chunks;
 
-				return results
+				return [.. results
 					.Where(result => result.Index >= 0 && result.Index < chunks.Count)
-					.Select(result => chunks[result.Index].WithScore(result.Score))
-					.ToList();
+					.Select(result => chunks[result.Index].WithScore(result.Score))];
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{

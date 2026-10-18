@@ -51,9 +51,7 @@ namespace KnowVault.Application
 		}
 
 		/// <inheritdoc />
-		public async IAsyncEnumerable<QaStreamEventDto> AskStreamAsync(
-			AskQuestionInput input,
-			[EnumeratorCancellation] CancellationToken cancellationToken = default)
+		public async IAsyncEnumerable<QaStreamEventDto> AskStreamAsync(AskQuestionInput input, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
 			Conversation conversation;
 			IReadOnlyList<LlmChatMessage> history;
@@ -63,11 +61,8 @@ namespace KnowVault.Application
 			{
 				conversation = await ResolveConversationAsync(input, cancellationToken);
 				history = await LoadHistoryAsync(conversation.Id, cancellationToken);
-				await _messageRepository.InsertAsync(
-					new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question),
-					autoSave: true,
-					cancellationToken: cancellationToken);
-				await unitOfWork.CompleteAsync();
+				await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true, cancellationToken);
+				await unitOfWork.CompleteAsync(cancellationToken);
 			}
 
 			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
@@ -115,7 +110,7 @@ namespace KnowVault.Application
 						citationsJson: JsonSerializer.Serialize(citations)),
 					autoSave: true,
 					cancellationToken: cancellationToken);
-				await unitOfWork.CompleteAsync();
+				await unitOfWork.CompleteAsync(cancellationToken);
 			}
 
 			yield return new QaStreamEventDto { Kind = QaStreamEventKindEnum.Completed, ConversationId = conversation.Id };
@@ -155,12 +150,11 @@ namespace KnowVault.Application
 				message => message.ConversationId == conversationId,
 				cancellationToken: cancellationToken);
 
-			return messages
+			return [.. messages
 				.OrderByDescending(message => message.CreationTime)
 				.Take(maxMessages)
 				.OrderBy(message => message.CreationTime)
-				.Select(message => new LlmChatMessage { Role = message.Role, Content = message.Content })
-				.ToList();
+				.Select(message => new LlmChatMessage { Role = message.Role, Content = message.Content })];
 		}
 	}
 }

@@ -96,6 +96,26 @@ namespace KnowVault.Tests
 
 			Assert.Equal(1, rerank.CallCount);
 			Assert.Equal(20, store.LastLimit);
+			Assert.Equal(2, rerank.LastCandidateCount);
+		}
+
+		/// <summary>
+		/// 重排只负责打分：返回条数多于 topK 时由本地裁剪，顺序完全照重排返回的顺序
+		/// </summary>
+		[Fact]
+		public async Task Rerank_returns_more_than_topK_is_trimmed_locally()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0), Hit("乙", 0.80, 1), Hit("丙", 0.70, 2)]);
+			var rerank = new FakeRerankService([new RerankResult { Index = 2, Score = 0.99 }, new RerankResult { Index = 1, Score = 0.50 }, new RerankResult { Index = 0, Score = 0.10 }]);
+			var service = CreateService(store, rerank);
+
+			var answer = await service.AnswerAsync(new RagRequest { Question = "问题", TopK = 2 });
+
+			Assert.Equal(2, answer.Citations.Count);
+			Assert.Equal("丙", answer.Citations[0].Title);
+			Assert.Equal(0.99, answer.Citations[0].Score, 4);
+			Assert.Equal("乙", answer.Citations[1].Title);
+			Assert.Equal(0.50, answer.Citations[1].Score, 4);
 		}
 
 		/// <summary>
@@ -182,9 +202,13 @@ namespace KnowVault.Tests
 			/// <summary>调用次数，用于断言开关是否生效</summary>
 			public int CallCount { get; private set; }
 
-			public Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, int topN, CancellationToken cancellationToken = default)
+			/// <summary>最后一次请求的候选条数，用于断言候选全量交给重排打分</summary>
+			public int LastCandidateCount { get; private set; }
+
+			public Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 			{
 				CallCount++;
+				LastCandidateCount = documents.Count;
 				if (_exception is not null) throw _exception;
 				return Task.FromResult(_results!);
 			}

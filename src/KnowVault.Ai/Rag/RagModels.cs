@@ -31,7 +31,7 @@ namespace KnowVault.Ai
 		public string Answer { get; set; } = default!;
 
 		/// <summary>引用溯源。</summary>
-		public IReadOnlyList<RagCitation> Citations { get; set; } = Array.Empty<RagCitation>();
+		public IReadOnlyList<RagCitation> Citations { get; set; } = [];
 	}
 
 	/// <summary>引用溯源。</summary>

@@ -161,7 +161,7 @@ KnowVault.slnx
 - **挂 Hub 的位置**：ABP 提供 `UseConfiguredEndpoints(IApplicationBuilder, Action<IEndpointRouteBuilder>)` 重载（10.5.0 XML 文档核实）→ 用 `app.UseConfiguredEndpoints(endpoints => endpoints.MapHub<QaHub>(QaHub.Route))`，不要再写 `UseEndpoints`。
 - **重排（Rerank）**：DashScope 文本重排接口，**经典域名** `https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank`，模型 **`qwen3-rerank`**；`gte-rerank` 已于 2026-05-30 下线（2026-10-14 实测 HTTP 403 `AccessDenied`），`gte-rerank-v2` 仍可用但非默认。
 - **重排不属于 OpenAI 兼容模式**：必须单独配置 `Ai:QwenRerankBaseUrl`，**不能**复用 `QwenBaseUrl` 的 `/compatible-mode/v1`；调用失败或返回空时 **fail-open** 退回向量检索顺序。
-- **重排策略**：宽召回 + 精排（`RerankCandidateCount = 20` → 取 topK ≤ 8），默认开启；引用中的 `Score` 语义由「余弦相似度」变为「重排相关性分（0~1，仅请求内相对可比）」。
+- **重排策略**：宽召回 + 精排（`RerankCandidateCount = 20` → 取 topK ≤ 8），默认开启；请求把**全部候选**交给服务端打分（`top_n` = 候选数），最终条数由 `RagService` 本地 `Take(topK)` 裁剪——对端是否按其 `top_n` 语义裁剪不可依赖；引用中的 `Score` 语义由「余弦相似度」变为「重排相关性分（0~1，仅请求内相对可比）」。
 - **多轮历史**：只做「Prompt 带最近 `HistoryMaxMessages = 6` 条历史」（3 轮往返），**不做**会话列表侧边栏；历史以独立消息注入（最后一条用户消息仍是「资料片段 + 问题」），渲染前剥掉助手旧回答里的 `[编号]` 标记，System prompt 增加「历史只用于理解指代，事实依据必须来自本次资料片段」。
 - **流式实现**：`ILlmChatService` 只保留 `CompleteStreamAsync`（SK `GetStreamingChatMessageContentsAsync`）；REST 问答入口改为把同一条流拼成整段文本，两条入口共用一份检索 / 重排 / 落库实现。
 - **UoW 与流式的冲突**：ABP 的 UoW 拦截器在方法返回时就结束工作单元，而 `async IAsyncEnumerable` 的真正工作发生在枚举期间 → 流式编排服务**不依赖环境 UoW**，每次落库显式 `Begin(requiresNew: true)`；该类用 `[RemoteService(IsEnabled = false)]` 保证不被生成动态 API 控制器。

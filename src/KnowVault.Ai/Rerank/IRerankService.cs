@@ -14,9 +14,12 @@ namespace KnowVault.Ai
 		/// </summary>
 		/// <param name="query">用户问题</param>
 		/// <param name="documents">候选文档正文，顺序即返回结果中 <see cref="RerankResult.Index"/> 的语义</param>
-		/// <param name="topN">返回条数上限</param>
 		/// <param name="cancellationToken">取消令牌</param>
 		/// <returns>按相关性降序的重排结果</returns>
-		Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, int topN, CancellationToken cancellationToken = default);
+		/// <remarks>
+		/// 接口把全部候选交给服务端打分，不传条数上限；最终保留几条由调用方本地裁剪。
+		/// 对端是否按其 <c>top_n</c> 语义裁剪属于实现细节，不能当作我们的契约。
+		/// </remarks>
+		Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default);
 	}
 }

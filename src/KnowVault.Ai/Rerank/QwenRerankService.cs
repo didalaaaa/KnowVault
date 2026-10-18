@@ -40,11 +40,7 @@ namespace KnowVault.Ai
 		}
 
 		/// <inheritdoc />
-		public async Task<IReadOnlyList<RerankResult>> RerankAsync(
-			string query,
-			IReadOnlyList<string> documents,
-			int topN,
-			CancellationToken cancellationToken = default)
+		public async Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 		{
 			if (documents.Count == 0) return [];
 
@@ -59,8 +55,8 @@ namespace KnowVault.Ai
 				input = new { query, documents },
 				parameters = new
 				{
-					// top_n 不能超过候选数，否则部分服务实现会报参数错误
-					top_n = Math.Clamp(topN, 1, documents.Count),
+					// top_n 传全量：服务端只负责打分，最终保留几条由调用方本地裁剪
+					top_n = documents.Count,
 					return_documents = false
 				}
 			});

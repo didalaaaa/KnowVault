@@ -41,6 +41,7 @@
 - **D6** Hub 路由固定 `/signalr/qa`；Vite dev 通过 `/signalr` 代理（`ws: true`）转发，避免跨域与证书问题。
 - **D7** 前端在 SignalR 连接失败时**降级回 REST 非流式提问**（`POST /api/app/qa/ask`），保证演示环境网络抖动时仍能出答案。
 - **D8** 知识库致命错误（删默认库、删非空库、重名）沿用仓库既有做法：`UserFriendlyException` + 中文文案（与 `DocumentAppService` 一致），不新增错误码与本地化资源。
+- **D9** 重排只负责**打分**：请求把全部候选交给服务端（`top_n = documents.Count`），最终保留条数（topK ≤ 8）由 `RagService.RetrieveAsync` 本地 `Take(topK)` 决定；`IRerankService.RerankAsync` 因此**不含**条数参数。理由：对端是「只评前 N 条」还是「评完再截前 N 条」属实现细节，把裁剪权留在本地，我们自己拿到的就是全量分数（2026-10-16 调整，原计划由调用方传 `topN`）。
 
 ### 0.3 风险与已核实结论（本轮已实测）
 
@@ -196,10 +197,13 @@ namespace KnowVault.Ai
 		/// </summary>
 		/// <param name="query">用户问题</param>
 		/// <param name="documents">候选文档正文，顺序即返回结果中的下标语义</param>
-		/// <param name="topN">返回条数上限</param>
 		/// <param name="cancellationToken">取消令牌</param>
 		/// <returns>按相关性降序的重排结果</returns>
-		Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, int topN, CancellationToken cancellationToken = default);
+		/// <remarks>
+		/// 接口把全部候选交给服务端打分，不传条数上限；最终保留几条由调用方本地裁剪。
+		/// 对端是否按其 <c>top_n</c> 语义裁剪属于实现细节，不能当作我们的契约。
+		/// </remarks>
+		Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default);
 	}
 }
 ```
@@ -261,7 +265,7 @@ namespace KnowVault.Ai
 		public QwenRerankService(IHttpClientFactory httpClientFactory, IOptions<AiOptions> options, ILogger<QwenRerankService> logger) { ... }
 
 		/// <inheritdoc />
-		public async Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, int topN, CancellationToken cancellationToken = default)
+		public async Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 		{
 			if (documents.Count == 0) return [];
 			var baseUrl = _options.QwenRerankBaseUrl.TrimEnd('/');
@@ -269,7 +273,7 @@ namespace KnowVault.Ai
 			{
 				model = _options.QwenRerankModel,
 				input = new { query, documents },
-				parameters = new { top_n = Math.Clamp(topN, 1, documents.Count), return_documents = false }
+				parameters = new { top_n = documents.Count, return_documents = false }
 			};
 			using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/{RerankPath}");
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.QwenApiKey);
@@ -300,7 +304,8 @@ var topK = Math.Clamp(request.TopK <= 0 ? _options.TopK : request.TopK, 1, 8);
 var candidates = _options.RerankEnabled ? Math.Clamp(_options.RerankCandidateCount, topK, 100) : topK;
 var hits = await _vectorStore.SearchAsync(vectors[0], filter, candidates, cancellationToken);
 var chunks = hits.Select(MapChunk).OrderByDescending(chunk => chunk.Score).ToList();
-chunks = await RerankAsync(request.Question, chunks, topK, cancellationToken);
+chunks = await RerankAsync(request.Question, chunks, cancellationToken);
+// 唯一的裁剪点：重排只打分，保留前 topK 条由本地决定
 chunks = chunks.Take(topK).ToList();
 ```
 
@@ -308,13 +313,13 @@ chunks = chunks.Take(topK).ToList();
 /// <summary>
 /// 调重排服务重排候选切片，失败时退回向量检索顺序（fail-open）
 /// </summary>
-private async Task<List<RagRetrievedChunk>> RerankAsync(string question, List<RagRetrievedChunk> chunks, int topK, CancellationToken cancellationToken)
+private async Task<List<RagRetrievedChunk>> RerankAsync(string question, List<RagRetrievedChunk> chunks, CancellationToken cancellationToken)
 {
 	if (!_options.RerankEnabled || chunks.Count <= 1) return chunks;
 	try
 	{
 		var documents = chunks.Select(chunk => chunk.Content).ToList();
-		var results = await _rerankService.RerankAsync(question, documents, topK, cancellationToken);
+		var results = await _rerankService.RerankAsync(question, documents, cancellationToken);
 		if (results.Count == 0) return chunks;
 		// 重排分替换向量分：它才是本轮引用的真实相关性依据
 		return results.Where(result => result.Index >= 0 && result.Index < chunks.Count)
@@ -334,7 +339,7 @@ private async Task<List<RagRetrievedChunk>> RerankAsync(string question, List<Ra
 **Step 7：测试（先红后绿）**
 
 - `QwenRerankResponseParserTests`：正常响应（断言降序与下标映射）、缺 `index` 的条目被跳过、`output` 缺失返回空、空数组；
-- `RagServiceRerankTests`：手写 fake `IRerankService` 返回颠倒的下标 → 断言 `Citations` 顺序与 `Score` 被替换；fake 抛 `AiCallException` → 断言退回向量分顺序且不抛；`RerankEnabled=false` → 不调用重排（fake 记录调用次数为 0）。
+- `RagServiceRerankTests`：手写 fake `IRerankService` 返回颠倒的下标 → 断言 `Citations` 顺序与 `Score` 被替换；fake 抛 `AiCallException` → 断言退回向量分顺序且不抛；`RerankEnabled=false` → 不调用重排（fake 记录调用次数为 0）；重排返回条数多于 topK → 断言本地只保留前 topK 条，且候选是**全量**交给重排（fake 记录候选数）。
 
 **验收**：单测全绿；`appsettings.json` 的 `Ai` 节含 `QwenRerankBaseUrl` / `QwenRerankModel=qwen3-rerank` / `RerankCandidateCount`；真实提问时日志出现重排调用。
 
@@ -963,3 +968,11 @@ Task DeleteAsync(Guid id, CancellationToken cancellationToken);
 - **本机 `.env` 的 `QWEN_RERANK_MODEL` 仍是 `gte-rerank`**（已下线，403）→ 本机改成 `qwen3-rerank`（`.env` 不入库；`.env.example` 与 `appsettings.json` 默认值 Task 0 已改）
 
 **本机验收产物（全部在 `%TEMP%`，不入库）**：`knowvault-run-api.ps1`（启动配方）、`kv-stage1.ps1`~`kv-stage3.ps1`（HTTP 验收）、`kv-stream.js`（SignalR 流式与停止生成）、`kv-check.sql`（消息落库核对）。经验：本机 `pwsh` 是 Windows PowerShell **5.1**（`Invoke-RestMethod` 没有 `-SkipCertificateCheck`），统一改用 `curl.exe -k`；含中文的脚本必须存成 **UTF-8 带 BOM**，否则 5.1 按 ANSI 解析会吃掉引号；命令行参数里的中文会被 5.1 转成 ANSI，所以请求体一律先写成 UTF-8 文件再 `--data-binary @文件`；重启 API 必须先 `Stop-Process -Name KnowVault.HttpApi.Host`（杀后台 job 不会杀掉子进程）。
+
+### 补记 —— 重排 `top_n` 传全量、裁剪收敛到本地（2026-10-16）
+
+- **起因**：复核「引用顺序 / 分数」链路时发现，`top_n` 若传 topK，「服务端只评前 N 条」与「评完再截前 N 条」两种实现会给出不同结果，且被截掉的分数我们拿不到，无法自证「落选的更低」
+- **改动**：`QwenRerankService` 的 `parameters.top_n` 由 `Math.Clamp(topN, 1, documents.Count)` 改为 `documents.Count`（全量打分）；`IRerankService.RerankAsync` 去掉 `int topN` 参数，契约写进接口 `<remarks>`；裁剪点收敛到 `RagService.RetrieveAsync` 的 `Take(topK)`（`:123`）
+- **澄清**：P2 落地时 `RetrieveAsync` 就已 `Take(topK)`（§5 Task 1 记录里也有），所以这**不是缺陷修复**，而是把「谁负责裁剪」显式化——原计划把 topK 交给对端，等于把裁剪权外包给不可依赖的实现细节
+- **影响面**：`RagService.RerankAsync` 私有方法随之去掉 `topK` 参数；`tests/KnowVault.Tests/RagServiceRerankTests.cs` 的假重排服务同步改签名，新增 1 条「返回条数多于 topK 时本地裁剪 + 候选全量传给重排」用例（32 → 33）
+- **未变**：fail-open、宽召回候选数（`RerankCandidateCount=20`）、引用 `Score` 语义、前端展示；也**未**新增数据库迁移与配置项

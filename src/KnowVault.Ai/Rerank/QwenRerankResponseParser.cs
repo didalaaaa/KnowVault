@@ -30,7 +30,7 @@ namespace KnowVault.Ai
 			}
 
 			// 服务端当前就按分数降序返回，但排序是我们的契约，不能依赖对端行为
-			return results.OrderByDescending(result => result.Score).ToList();
+			return [.. results.OrderByDescending(result => result.Score)];
 		}
 	}
 }

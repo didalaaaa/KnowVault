@@ -28,10 +28,7 @@ namespace KnowVault.Ai
 		}
 
 		/// <inheritdoc />
-		public async IAsyncEnumerable<string> CompleteStreamAsync(
-			string systemPrompt,
-			IReadOnlyList<LlmChatMessage> messages,
-			[EnumeratorCancellation] CancellationToken cancellationToken = default)
+		public async IAsyncEnumerable<string> CompleteStreamAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
 			var chat = _kernel.GetRequiredService<IChatCompletionService>();
 			var history = new ChatHistory();
