@@ -1,41 +1,71 @@
 <template>
   <div class="kb-panel">
     <div class="kb-header">
-      <span class="kb-title">知识库</span>
-      <n-button size="small" type="primary" @click="openCreate">新建</n-button>
+      <div>
+        <span class="kb-eyebrow">Workspace</span>
+        <h2 class="kb-title">知识库</h2>
+        <p class="kb-subtitle">按团队或主题组织文档，并通过成员角色控制访问</p>
+      </div>
+      <n-button type="primary" class="kb-create" @click="openCreate">
+        <template #icon><KvIcon name="plus" :size="15" /></template>
+        新建
+      </n-button>
     </div>
 
-    <n-list bordered>
-      <n-list-item v-for="kb in documents.knowledgeBases" :key="kb.id">
-        <n-thing :title="kb.name">
-          <template #description>
-            <span>{{ kb.description || '（无描述）' }}</span>
-          </template>
-          <template #footer>
-            <span class="kb-meta">已就绪文档 {{ kb.readyDocumentCount }}</span>
-            <n-tag v-if="kb.id === defaultKnowledgeBaseId" size="small" type="success" style="margin-left: 8px">
-              默认
-            </n-tag>
-          </template>
-        </n-thing>
-        <template #suffix>
-          <n-button size="tiny" quaternary :disabled="kb.id === defaultKnowledgeBaseId" @click="openMembers(kb)">成员</n-button>
-          <n-button size="tiny" quaternary @click="openEdit(kb)">编辑</n-button>
+    <div class="kb-grid">
+      <article v-for="kb in documents.knowledgeBases" :key="kb.id" class="kb-card">
+        <div class="kb-card-head">
+          <span class="kb-icon"><KvIcon name="layers" :size="18" :stroke-width="1.7" /></span>
+          <div class="kb-name-row">
+            <h3 :title="kb.name">{{ kb.name }}</h3>
+            <n-tag v-if="kb.id === defaultKnowledgeBaseId" size="small" type="success" :bordered="false">默认</n-tag>
+          </div>
+        </div>
+
+        <p class="kb-desc">{{ kb.description || '（无描述）' }}</p>
+
+        <div class="kb-card-meta">
+          <span class="meta-item">
+            <KvIcon name="file-text" :size="13" />
+            已就绪 <strong>{{ kb.readyDocumentCount }}</strong> 篇
+          </span>
+        </div>
+
+        <div class="kb-card-actions">
+          <n-button size="tiny" quaternary :disabled="kb.id === defaultKnowledgeBaseId" @click="openMembers(kb)">
+            <template #icon><KvIcon name="users" :size="13" /></template>
+            成员
+          </n-button>
+          <n-button size="tiny" quaternary @click="openEdit(kb)">
+            <template #icon><KvIcon name="pencil" :size="13" /></template>
+            编辑
+          </n-button>
+          <span class="spacer"></span>
           <n-popconfirm @positive-click="remove(kb)">
             <template #trigger>
-              <n-button size="tiny" quaternary :disabled="kb.id === defaultKnowledgeBaseId">删除</n-button>
+              <n-button size="tiny" quaternary type="error" :disabled="kb.id === defaultKnowledgeBaseId">
+                <template #icon><KvIcon name="trash" :size="13" /></template>
+                删除
+              </n-button>
             </template>
             删除后不可恢复；知识库下还有文档时后端会拒绝。确认删除「{{ kb.name }}」？
           </n-popconfirm>
-        </template>
-      </n-list-item>
-    </n-list>
+        </div>
+      </article>
+
+      <div v-if="documents.knowledgeBases.length === 0" class="kb-empty">
+        <KvIcon name="book-open" :size="22" :stroke-width="1.6" />
+        <p>还没有知识库</p>
+        <span>新建一个知识库，开始整理你的资料</span>
+      </div>
+    </div>
 
     <n-modal
       v-model:show="formVisible"
       preset="card"
       :title="editingId ? '编辑知识库' : '新建知识库'"
-      style="width: 420px"
+      class="kv-modal"
+      style="width: min(420px, calc(100vw - 32px))"
     >
       <n-form :model="form">
         <n-form-item label="名称">
@@ -57,18 +87,21 @@
       v-model:show="membersVisible"
       preset="card"
       :title="'成员管理 · ' + (activeKb?.name || '')"
-      style="width: 560px"
+      class="kv-modal"
+      style="width: min(560px, calc(100vw - 32px))"
     >
-      <n-list bordered>
-        <n-list-item v-for="member in members" :key="member.userId">
-          <div class="member-row">
+      <div class="member-list">
+        <div v-if="membersLoading" class="member-empty">正在加载成员…</div>
+        <template v-else>
+          <div v-for="member in members" :key="member.userId" class="member-row">
+            <span class="member-avatar">{{ initial(member.userName) }}</span>
             <span class="member-name">{{ member.userName }}</span>
-            <n-tag size="tiny">{{ roleText(member.role) }}</n-tag>
+            <n-tag size="tiny" :bordered="false">{{ roleText(member.role) }}</n-tag>
             <n-button size="tiny" quaternary type="error" @click="removeMember(member)">移除</n-button>
           </div>
-        </n-list-item>
-        <n-empty v-if="members.length === 0" description="还没有成员" />
-      </n-list>
+          <div v-if="members.length === 0" class="member-empty">还没有成员</div>
+        </template>
+      </div>
 
       <n-divider>添加 / 调整成员</n-divider>
       <n-form :model="memberForm" label-placement="left" label-width="70">
@@ -94,9 +127,10 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import {
-  NButton, NList, NListItem, NThing, NTag, NModal, NForm, NFormItem, NInput, NPopconfirm,
-  NSelect, NDivider, NEmpty, useMessage,
+  NButton, NTag, NModal, NForm, NFormItem, NInput, NPopconfirm,
+  NSelect, NDivider, useMessage,
 } from 'naive-ui'
+import KvIcon from './KvIcon.vue'
 import { useDocumentStore } from '../stores/documents'
 import { knowledgeBaseMemberApi } from '../api/knowledgeBaseMembers'
 
@@ -125,6 +159,9 @@ const roleOptions = [
 ]
 
 const roleText = (role) => ({ 1: 'Viewer', 2: 'Editor', 3: 'Owner' })[role] ?? '未知'
+
+/** 取用户名首字符作为头像占位。 */
+const initial = (name) => (name || '?').trim().charAt(0).toUpperCase()
 
 /** 打开「新建」表单。 */
 function openCreate() {
@@ -248,11 +285,244 @@ function describeError(e) {
 </script>
 
 <style scoped>
-.kb-panel { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
-.kb-header { display: flex; align-items: center; justify-content: space-between; }
-.kb-title { font-weight: 600; }
-.kb-meta { color: #888; font-size: 12px; }
-.kb-form-footer { display: flex; justify-content: flex-end; gap: 8px; }
-.member-row { display: flex; align-items: center; gap: 8px; }
-.member-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-panel {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.kb-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.kb-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--kv-primary);
+}
+
+.kb-title {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--kv-text);
+}
+
+.kb-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--kv-text-3);
+}
+
+.kb-create {
+  flex: none;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.kb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.kb-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--kv-border);
+  border-radius: 16px;
+  background: var(--kv-surface);
+  box-shadow: var(--kv-shadow-sm);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.kb-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--kv-border-strong);
+  box-shadow: var(--kv-shadow-md);
+}
+
+.kb-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.kb-icon {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9eae5;
+  border-radius: 10px;
+  color: var(--kv-primary);
+  background: var(--kv-primary-soft);
+}
+
+.kb-name-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-name-row h3 {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--kv-text);
+}
+
+.kb-desc {
+  min-height: 40px;
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--kv-text-2);
+}
+
+.kb-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--kv-text-3);
+}
+
+.meta-item strong {
+  font-weight: 650;
+  color: var(--kv-text);
+}
+
+.kb-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--kv-border);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.kb-empty {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--kv-border-strong);
+  border-radius: 16px;
+  color: var(--kv-text-3);
+}
+
+.kb-empty p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kv-text-2);
+}
+
+.kb-empty span {
+  font-size: 11px;
+}
+
+.kb-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.member-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--kv-border);
+  border-radius: 10px;
+  background: var(--kv-surface-soft);
+}
+
+.member-avatar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--kv-primary-soft);
+  color: var(--kv-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.member-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.member-empty {
+  padding: 22px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--kv-text-3);
+}
+
+.kv-modal :deep(.n-card-header) {
+  padding-bottom: 6px;
+}
+
+@media (max-width: 640px) {
+  .kb-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .kb-title {
+    font-size: 21px;
+  }
+
+  .kb-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
+import './styles/main.css'
 
 // KnowVault 前端入口（Vue 3 + JavaScript，不使用 TypeScript）
 const app = createApp(App)

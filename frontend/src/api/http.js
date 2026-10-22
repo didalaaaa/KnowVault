@@ -21,6 +21,16 @@ http.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // ABP 的 CSRF 防护：浏览器带上 XSRF-TOKEN Cookie 后，写请求必须回传同名令牌头，
+  // 否则上传等 POST 会被 400 拒绝（curl 没有 Cookie，所以不会触发）
+  const xsrf = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('XSRF-TOKEN='))
+    ?.slice('XSRF-TOKEN='.length)
+  if (xsrf) {
+    config.headers.RequestVerificationToken = decodeURIComponent(xsrf)
+  }
   return config
 })
 
