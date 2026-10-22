@@ -55,9 +55,7 @@ namespace KnowVault.Application
 			}
 
 			var userId = _currentUser.Id ?? throw new AbpAuthorizationException("未登录，无法访问知识库。");
-			var member = await _memberRepository.FirstOrDefaultAsync(
-				x => x.KnowledgeBaseId == knowledgeBaseId && x.UserId == userId,
-				cancellationToken: cancellationToken);
+			var member = await _memberRepository.FirstOrDefaultAsync(x => x.KnowledgeBaseId == knowledgeBaseId && x.UserId == userId, cancellationToken: cancellationToken);
 
 			return member?.Role ?? throw new AbpAuthorizationException("无权访问该知识库。");
 		}
@@ -95,9 +93,7 @@ namespace KnowVault.Application
 			var result = new HashSet<Guid> { KnowVaultConsts.DefaultKnowledgeBaseId };
 			if (_currentUser.Id is not { } userId) return result;
 
-			var members = await _memberRepository.GetListAsync(
-				x => x.UserId == userId,
-				cancellationToken: cancellationToken);
+			var members = await _memberRepository.GetListAsync(x => x.UserId == userId, cancellationToken: cancellationToken);
 
 			foreach (var member in members)
 			{

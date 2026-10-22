@@ -155,11 +155,7 @@ namespace KnowVault.Application
 				document.Id,
 				cancellationToken);
 
-			await _chunkRepository.DeleteAsync(
-				chunk => chunk.DocumentId == document.Id,
-				autoSave: true,
-				cancellationToken: cancellationToken);
-
+			await _chunkRepository.DeleteAsync(chunk => chunk.DocumentId == document.Id, autoSave: true, cancellationToken: cancellationToken);
 			await _documentRepository.DeleteAsync(document, autoSave: true, cancellationToken: cancellationToken);
 
 			if (!string.IsNullOrWhiteSpace(document.ObjectStorageKey))
@@ -197,10 +193,7 @@ namespace KnowVault.Application
 				document.Id,
 				cancellationToken);
 
-			await _chunkRepository.DeleteAsync(
-				chunk => chunk.DocumentId == document.Id,
-				autoSave: true,
-				cancellationToken: cancellationToken);
+			await _chunkRepository.DeleteAsync(chunk => chunk.DocumentId == document.Id, autoSave: true, cancellationToken: cancellationToken);
 
 			document.MarkPending();
 			await _documentRepository.UpdateAsync(document, autoSave: true, cancellationToken: cancellationToken);

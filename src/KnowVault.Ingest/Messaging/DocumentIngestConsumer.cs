@@ -44,6 +44,7 @@ namespace KnowVault.Ingest
 		public async Task Consume(ConsumeContext<DocumentIngestRequested> context)
 		{
 			var message = context.Message;
+			var cancellationToken = context.CancellationToken;
 			_logger.LogInformation("开始摄入文档 {DocumentId}（租户 {TenantId}）", message.DocumentId, message.TenantId);
 
 			try
@@ -52,22 +53,19 @@ namespace KnowVault.Ingest
 				using (_currentTenant.Change(message.TenantId))
 				using (var unitOfWork = _unitOfWorkManager.Begin(requiresNew: true))
 				{
-					await _processor.ProcessAsync(message.DocumentId, context.CancellationToken);
-					await unitOfWork.CompleteAsync();
+					await _processor.ProcessAsync(message.DocumentId, cancellationToken);
+					await unitOfWork.CompleteAsync(cancellationToken);
 				}
 			}
 			catch (Exception exception) when (exception is not OperationCanceledException)
 			{
 				// 外层 UoW 会随异常回滚，Failed 状态必须单独提交，否则重试期间前端看不到失败原因
-				await RecordFailureAsync(message, exception, context.CancellationToken);
+				await RecordFailureAsync(message, exception, cancellationToken);
 				throw;
 			}
 		}
 
-		private async Task RecordFailureAsync(
-			DocumentIngestRequested message,
-			Exception exception,
-			CancellationToken cancellationToken)
+		private async Task RecordFailureAsync(DocumentIngestRequested message, Exception exception, CancellationToken cancellationToken)
 		{
 			_logger.LogError(exception, "文档 {DocumentId} 摄入失败，将按重试策略重新投递", message.DocumentId);
 
@@ -83,7 +81,7 @@ namespace KnowVault.Ingest
 						await _documentRepository.UpdateAsync(document, autoSave: true, cancellationToken: cancellationToken);
 					}
 
-					await unitOfWork.CompleteAsync();
+					await unitOfWork.CompleteAsync(cancellationToken);
 				}
 			}
 			catch (Exception recordException)

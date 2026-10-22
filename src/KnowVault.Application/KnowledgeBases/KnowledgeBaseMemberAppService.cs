@@ -40,9 +40,7 @@ namespace KnowVault.Application
 			await _accessChecker.EnsureAsync(knowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
 			if (knowledgeBaseId == KnowVaultConsts.DefaultKnowledgeBaseId) return [];
 
-			var members = await _memberRepository.GetListAsync(
-				x => x.KnowledgeBaseId == knowledgeBaseId,
-				cancellationToken: cancellationToken);
+			var members = await _memberRepository.GetListAsync(x => x.KnowledgeBaseId == knowledgeBaseId, cancellationToken: cancellationToken);
 			if (members.Count == 0) return [];
 
 			var names = new Dictionary<Guid, string>();
@@ -55,7 +53,7 @@ namespace KnowVault.Application
 				}
 			}
 
-			return members
+			return [..members
 				.OrderByDescending(x => x.Role)
 				.ThenBy(x => names[x.UserId])
 				.Select(x => new KnowledgeBaseMemberDto
@@ -63,8 +61,7 @@ namespace KnowVault.Application
 					UserId = x.UserId,
 					UserName = names[x.UserId],
 					Role = x.Role
-				})
-				.ToList();
+				})];
 		}
 
 		/// <inheritdoc />
@@ -79,9 +76,7 @@ namespace KnowVault.Application
 			if (!Enum.IsDefined(input.Role)) throw new UserFriendlyException("无效的知识库角色");
 
 			var user = await _userRepository.GetAsync(input.UserId, cancellationToken: cancellationToken);
-			var member = await _memberRepository.FirstOrDefaultAsync(
-				x => x.KnowledgeBaseId == input.KnowledgeBaseId && x.UserId == input.UserId,
-				cancellationToken: cancellationToken);
+			var member = await _memberRepository.FirstOrDefaultAsync(x => x.KnowledgeBaseId == input.KnowledgeBaseId && x.UserId == input.UserId, cancellationToken: cancellationToken);
 
 			if (member is null)
 			{
@@ -117,16 +112,12 @@ namespace KnowVault.Application
 
 			await _accessChecker.EnsureAsync(knowledgeBaseId, KnowledgeBaseRoleEnum.Owner, cancellationToken);
 
-			var member = await _memberRepository.FirstOrDefaultAsync(
-				x => x.KnowledgeBaseId == knowledgeBaseId && x.UserId == userId,
-				cancellationToken: cancellationToken);
+			var member = await _memberRepository.FirstOrDefaultAsync(x => x.KnowledgeBaseId == knowledgeBaseId && x.UserId == userId, cancellationToken: cancellationToken);
 			if (member is null) return;
 
 			if (member.Role == KnowledgeBaseRoleEnum.Owner)
 			{
-				var ownerCount = await _memberRepository.CountAsync(
-					x => x.KnowledgeBaseId == knowledgeBaseId && x.Role == KnowledgeBaseRoleEnum.Owner,
-					cancellationToken: cancellationToken);
+				var ownerCount = await _memberRepository.CountAsync(x => x.KnowledgeBaseId == knowledgeBaseId && x.Role == KnowledgeBaseRoleEnum.Owner, cancellationToken: cancellationToken);
 				if (ownerCount <= 1) throw new UserFriendlyException("至少保留一个知识库 Owner");
 			}
 

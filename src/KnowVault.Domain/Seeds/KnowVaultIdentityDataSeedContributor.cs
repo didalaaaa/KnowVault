@@ -1,5 +1,4 @@
 using KnowVault.Domain.Shared;
-using Microsoft.Extensions.Logging;
 using Volo.Abp;
 using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;

@@ -37,18 +37,18 @@ namespace KnowVault.IntegrationTests
 		/// <inheritdoc />
 		public async Task InitializeAsync()
 		{
-			_postgres = new PostgreSqlBuilder("postgres:16-alpine")
+			_postgres = new PostgreSqlBuilder("postgres:16")
 				.WithDatabase("knowvault_test")
 				.WithUsername("postgres")
 				.WithPassword("postgres")
 				.Build();
 
-			_rabbitMq = new RabbitMqBuilder("rabbitmq:3-management-alpine")
+			_rabbitMq = new RabbitMqBuilder("rabbitmq:3-management")
 				.WithUsername("guest")
 				.WithPassword("guest")
 				.Build();
 
-			_minio = new MinioBuilder("minio/minio:RELEASE.2025-04-22T22-12-26Z")
+			_minio = new MinioBuilder("minio/minio:RELEASE.2025-09-07T16-13-09Z")
 				.WithUsername("minioadmin")
 				.WithPassword("minioadmin")
 				.Build();
