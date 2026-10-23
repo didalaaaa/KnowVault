@@ -103,6 +103,10 @@ namespace KnowVault.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
+                    b.Property<string>("SourceFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<int>("SourceType")
                         .HasColumnType("integer");
 
@@ -119,6 +123,8 @@ namespace KnowVault.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KnowledgeBaseId", "SourceFileName");
 
                     b.HasIndex("KnowledgeBaseId", "Status");
 

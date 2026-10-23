@@ -4,6 +4,7 @@ using KnowVault.Domain;
 using KnowVault.Domain.Shared;
 using KnowVault.Ingest;
 using Microsoft.Extensions.DependencyInjection;
+using Volo.Abp;
 using Volo.Abp.Content;
 using Volo.Abp.Domain.Entities;
 using Volo.Abp.Domain.Repositories;
@@ -115,6 +116,49 @@ namespace KnowVault.IntegrationTests
 			secondCount.Should().Be(firstCount);
 
 			await documentAppService.DeleteAsync(document.Id, default);
+		}
+
+		/// <summary>
+		/// 同一知识库内同名文件（忽略大小写）重复上传应被拒绝，且不会产生第二条文档
+		/// </summary>
+		[Fact]
+		public async Task Upload_with_duplicate_file_name_should_be_rejected()
+		{
+			var documentAppService = GetRequiredService<IDocumentAppService>();
+			var documentRepository = GetRequiredService<IRepository<Document, Guid>>();
+
+			var fileName = $"duplicate-{Guid.NewGuid():N}.md";
+			var first = await documentAppService.UploadAsync(new UploadDocumentInput
+			{
+				KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId,
+				Title = "去重测试",
+				File = new RemoteStreamContent(
+					new MemoryStream(System.Text.Encoding.UTF8.GetBytes("第一篇内容")),
+					fileName,
+					"text/markdown")
+			}, default);
+
+			try
+			{
+				var duplicateUpload = async () => await documentAppService.UploadAsync(new UploadDocumentInput
+				{
+					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId,
+					Title = "去重测试副本",
+					File = new RemoteStreamContent(
+						new MemoryStream(System.Text.Encoding.UTF8.GetBytes("第二篇内容")),
+						fileName.ToUpperInvariant(),
+						"text/markdown")
+				}, default);
+
+				await duplicateUpload.Should().ThrowAsync<UserFriendlyException>().WithMessage("*同名文件*");
+
+				var documents = await documentRepository.GetListAsync(x => x.KnowledgeBaseId == KnowVaultConsts.DefaultKnowledgeBaseId && x.SourceFileName == fileName);
+				documents.Should().ContainSingle();
+			}
+			finally
+			{
+				await documentAppService.DeleteAsync(first.Id, default);
+			}
 		}
 	}
 }

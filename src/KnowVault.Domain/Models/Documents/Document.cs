@@ -14,6 +14,11 @@ namespace KnowVault.Domain
 
 		public string Title { get; set; } = default!;
 
+		/// <summary>
+		/// 上传时的原始文件名（含扩展名），用于同一知识库内按文件名去重
+		/// </summary>
+		public string? SourceFileName { get; set; }
+
 		public DocumentSourceTypeEnum SourceType { get; set; }
 
 		/// <summary>MinIO 中的对象存储 Key / object name。</summary>
@@ -39,12 +44,14 @@ namespace KnowVault.Domain
 			Guid knowledgeBaseId,
 			string title,
 			DocumentSourceTypeEnum sourceType,
-			Guid? tenantId = null) : base(id)
+			Guid? tenantId = null,
+			string? sourceFileName = null) : base(id)
 		{
 			KnowledgeBaseId = knowledgeBaseId;
 			Title = title;
 			SourceType = sourceType;
 			TenantId = tenantId;
+			SourceFileName = sourceFileName;
 		}
 
 		public void MarkProcessing()

@@ -69,7 +69,8 @@ namespace KnowVault.Application
 		{
 			await _accessChecker.EnsureAsync(input.KnowledgeBaseId, KnowledgeBaseRoleEnum.Editor, cancellationToken);
 
-			var fileName = input.File.FileName;
+			// 浏览器可能带路径（如 C:\fakepath\a.pdf），只取文件名本身
+			var fileName = Path.GetFileName(input.File.FileName?.Trim() ?? string.Empty);
 			if (string.IsNullOrWhiteSpace(fileName))
 			{
 				throw new UserFriendlyException("上传文件缺少文件名。");
@@ -93,7 +94,9 @@ namespace KnowVault.Application
 
 			var sourceType = DocumentSourceTypeResolver.FromExtension(extension) ?? throw new UserFriendlyException($"无法识别文件类型：{extension}");
 			var title = string.IsNullOrWhiteSpace(input.Title) ? (Path.GetFileNameWithoutExtension(fileName) ?? "未命名文档") : input.Title;
-			var document = new Document(GuidGenerator.Create(), input.KnowledgeBaseId, title, sourceType, CurrentTenant.Id);
+
+			await EnsureFileNameAvailableAsync(input.KnowledgeBaseId, fileName, cancellationToken);
+			var document = new Document(GuidGenerator.Create(), input.KnowledgeBaseId, title, sourceType, CurrentTenant.Id, fileName);
 
 			await _documentStorage.EnsureBucketAsync(cancellationToken);
 
@@ -200,6 +203,26 @@ namespace KnowVault.Application
 
 			await PublishAfterCommitAsync(document.Id, document.TenantId, cancellationToken);
 			_logger.LogInformation("文档 {DocumentId} 已重新排队处理", document.Id);
+		}
+
+		/// <summary>
+		/// 同一知识库内按原始文件名（忽略大小写）去重，命中时拒绝上传并给出已有文档信息
+		/// </summary>
+		/// <param name="knowledgeBaseId">目标知识库。</param>
+		/// <param name="fileName">本次上传的文件名（含扩展名）。</param>
+		/// <param name="cancellationToken">取消令牌。</param>
+		/// <returns>任务</returns>
+		/// <exception cref="UserFriendlyException">知识库内已存在同名文件。</exception>
+		private async Task EnsureFileNameAvailableAsync(Guid knowledgeBaseId, string fileName, CancellationToken cancellationToken)
+		{
+			var normalizedFileName = fileName.ToLowerInvariant();
+			var duplicate = await _documentRepository.FindAsync(
+				x => x.KnowledgeBaseId == knowledgeBaseId && x.SourceFileName != null && x.SourceFileName.ToLower() == normalizedFileName,
+				cancellationToken: cancellationToken);
+			if (duplicate is null) return;
+
+			_logger.LogInformation("拒绝重复上传：知识库 {KnowledgeBaseId} 已存在同名文件 {FileName}（文档 {DocumentId}）", knowledgeBaseId, fileName, duplicate.Id);
+			throw new UserFriendlyException($"该知识库中已存在同名文件「{duplicate.SourceFileName}」（文档「{duplicate.Title}」，上传于 {duplicate.CreationTime:yyyy-MM-dd HH:mm}）。如需更新内容，请先删除旧文档；如需重新解析，请使用「重新处理」");
 		}
 
 		private async Task PublishAfterCommitAsync(Guid documentId, Guid? tenantId, CancellationToken cancellationToken)

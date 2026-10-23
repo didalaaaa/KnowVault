@@ -20,6 +20,7 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 			builder.ConfigureByConvention();
 
 			builder.Property(x => x.Title).HasMaxLength(256).IsRequired();
+			builder.Property(x => x.SourceFileName).HasMaxLength(256);
 			builder.Property(x => x.ObjectStorageKey).HasMaxLength(512);
 
 			// 枚举以 int 落库，避免存字符串带来的排序与迁移成本
@@ -28,6 +29,9 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 
 			// 文档列表按知识库 + 状态过滤
 			builder.HasIndex(x => new { x.KnowledgeBaseId, x.Status });
+
+			// 上传去重按知识库 + 原始文件名查找
+			builder.HasIndex(x => new { x.KnowledgeBaseId, x.SourceFileName });
 		}
 	}
 }

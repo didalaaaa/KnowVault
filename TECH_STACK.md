@@ -70,7 +70,7 @@ KnowVault.slnx
 > 后续开多租户 = 开开关，数据模型无需返工。所有表都带 `TenantId`。
 
 - **KnowledgeBase 知识库**：`Id, Name, Description, TenantId, CreatedAt`
-- **Document 文档**：`Id, KnowledgeBaseId, Title, SourceType, ObjectStorageKey, Status(Pending/Processing/Ready/Failed), ErrorMessage, CreatedAt`
+- **Document 文档**：`Id, KnowledgeBaseId, Title, SourceFileName, SourceType, ObjectStorageKey, Status(Pending/Processing/Ready/Failed), ErrorMessage, CreatedAt`
 - **DocumentChunk 切片**：`Id(==Qdrant pointId), DocumentId, ChunkIndex, Content` —— 内容与溯源信息存进 Qdrant payload；文档元数据存 PostgreSQL
 - **Conversation 会话**：`Id, Title, TenantId, CreatedAt`
 - **Message 消息**：`Id, ConversationId, Role(User/Assistant), Content, CitationsJson, CreatedAt`
@@ -182,6 +182,13 @@ KnowVault.slnx
 - **集成测试**：`tests/KnowVault.IntegrationTests` 用 Testcontainers 起 Postgres/RabbitMQ/MinIO/Qdrant；Embedding 与消息发布用 fake；`AbpIntegratedTest` 服务级测试，`AddAlwaysAllowAuthorization` 绕过授权拦截器但保留 ACL 真实校验。本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，CI 不设该变量。
 - **CI**：`.github/workflows/ci.yml` 三 job：backend（build 警告即错 + 单测 + 集成测试）、frontend（npm ci + build）、format（`dotnet format analyzers ... --diagnostics IDE1006`）。
 - **执行计划**：见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`
+
+### 9.4 文档去重定稿（2026-10-23）
+
+- **范围**：同一知识库内按**原始文件名（含扩展名，忽略大小写）**去重；不同知识库允许同名文件。
+- **行为**：上传前查询 `Document.SourceFileName`，命中直接拒绝（`UserFriendlyException`），提示已有文档标题与上传时间，引导删除旧文档或使用「重新处理」；不覆盖、不批量跳过，也不写入对象存储。
+- **不做**：文件内容 hash / 近似去重留后续优化；存量文档 `SourceFileName` 为空且不回填，因此旧文档不会被新上传命中。
+- **存储**：`AppDocuments` 新增可空 `SourceFileName`（varchar 256）与 `(KnowledgeBaseId, SourceFileName)` 索引；文件名先经 `Path.GetFileName` 去掉浏览器可能带上的路径。
 
 ## 10. P1 执行计划
 
