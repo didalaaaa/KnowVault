@@ -10,6 +10,8 @@ export const useDocumentStore = defineStore('documents', {
     documents: [],
     uploading: false,
     polling: false,
+    // 正在删除的文档 ID；非空时界面显示全局遮罩并禁止其它操作
+    deletingId: '',
     error: '',
   }),
 
@@ -84,12 +86,17 @@ export const useDocumentStore = defineStore('documents', {
     },
 
     /**
-     * 删除文档（错误向上抛，由界面弹提示）。
+     * 删除文档（错误向上抛，由界面弹提示）；整个过程中 deletingId 非空，界面据此加全局遮罩
      * @param {string} id 文档 ID
      */
     async removeDocument(id) {
-      await documentApi.remove(id)
-      await this.refresh()
+      this.deletingId = id
+      try {
+        await documentApi.remove(id)
+        await this.refresh()
+      } finally {
+        this.deletingId = ''
+      }
     },
 
     /**

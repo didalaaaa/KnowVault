@@ -2,7 +2,7 @@
   <n-config-provider :theme-overrides="themeOverrides" :locale="zhCN" :date-locale="dateZhCN">
     <n-message-provider>
       <LoginPanel v-if="!auth.isAuthenticated" />
-      <div v-else class="app-shell">
+      <div v-else class="app-shell" :inert="documents.deletingId ? true : undefined">
         <header class="app-header">
           <div class="header-inner">
             <div class="brand">
@@ -44,13 +44,21 @@
           </div>
         </main>
       </div>
+
+      <!-- 删除进行中：全局遮罩阻断所有操作，避免并发改动其它数据 -->
+      <div v-if="auth.isAuthenticated && documents.deletingId" class="global-mask" role="status" aria-live="polite">
+        <div class="global-mask-card">
+          <n-spin :size="22" />
+          <span>正在删除文档，请稍候…</span>
+        </div>
+      </div>
     </n-message-provider>
   </n-config-provider>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { NConfigProvider, NMessageProvider, NButton, NTabs, NTabPane, zhCN, dateZhCN } from 'naive-ui'
+import { NConfigProvider, NMessageProvider, NButton, NTabs, NTabPane, NSpin, zhCN, dateZhCN } from 'naive-ui'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginPanel from './components/LoginPanel.vue'
 import DocumentPanel from './components/DocumentPanel.vue'
@@ -183,6 +191,30 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.global-mask {
+  position: fixed;
+  inset: 0;
+  /* 高于 Naive UI 弹层（约 2000），低于消息提示（6000） */
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  background: rgba(23, 34, 29, 0.3);
+  backdrop-filter: blur(2px);
+  cursor: progress;
+}
+
+.global-mask-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: var(--kv-shadow-md);
+  font-size: 13.5px;
+  color: var(--kv-text-2);
 }
 
 .app-header {

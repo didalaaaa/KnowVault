@@ -50,16 +50,9 @@
             <template #icon><KvIcon name="rotate" :size="13" /></template>
             重新处理
           </n-button>
-          <n-popconfirm
-            :positive-button-props="{
-              loading: deletingId === doc.id,
-              disabled: deletingId !== '',
-            }"
-            :negative-button-props="{ disabled: deletingId !== '' }"
-            @positive-click="() => remove(doc)"
-          >
+          <n-popconfirm @positive-click="confirmRemove(doc)">
             <template #trigger>
-              <n-button size="tiny" quaternary type="error" :loading="deletingId === doc.id">
+              <n-button size="tiny" quaternary type="error">
                 <template #icon><KvIcon name="trash" :size="13" /></template>
                 删除
               </n-button>
@@ -79,16 +72,13 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { NSelect, NUpload, NButton, NAlert, NPopconfirm, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import { useDocumentStore } from '../stores/documents'
 
 const store = useDocumentStore()
 const message = useMessage()
-
-// 正在删除的文档 ID；非空时确认按钮显示 loading，避免重复提交
-const deletingId = ref('')
 
 const kbOptions = computed(() =>
   store.knowledgeBases.map((kb) => ({ label: kb.name, value: kb.id })),
@@ -128,22 +118,24 @@ async function reprocess(doc) {
 }
 
 /**
+ * 确认删除：气泡立即关闭，处理中状态由全局遮罩承担；失败时弹错误提示
+ * @param {object} doc 文档
+ */
+function confirmRemove(doc) {
+  remove(doc)
+}
+
+/**
  * 删除文档。
  * @param {object} doc 文档
- * @returns {Promise<boolean>} 是否删除成功；返回 false 时确认框保持打开，便于重试
  */
 async function remove(doc) {
-  if (deletingId.value) return false
-  deletingId.value = doc.id
+  if (store.deletingId) return
   try {
     await store.removeDocument(doc.id)
     message.success('已删除')
-    return true
   } catch (e) {
     message.error(describeError(e))
-    return false
-  } finally {
-    deletingId.value = ''
   }
 }
 
