@@ -12,7 +12,7 @@
 | 后端框架 | **.NET 10 (LTS)** + **ABP.VNext 10.x** |
 | AI 编排 | **Semantic Kernel** (.NET 1.x 稳定线) |
 | 大模型 (生成) | **DeepSeek**（`deepseek-chat`） |
-| Embedding + Rerank | **Qwen / 阿里云百炼**（`text-embedding-v3/v4` + `gte-rerank`） |
+| Embedding + Rerank | **SiliconFlow / 硅基流动**（`BAAI/bge-m3` + `BAAI/bge-reranker-v2-m3`） |
 | 向量数据库 | **Qdrant**（自托管，Docker 一键起） |
 | 主库 / ORM | **PostgreSQL** + EF Core |
 | 缓存 | **Redis** |
@@ -30,11 +30,12 @@
 ## 2. 模型分工（跨厂商混合路由）
 
 - **生成（回答）**：DeepSeek `deepseek-chat` —— 省钱、中文/推理好。
-- **向量化（Embedding）**：Qwen `text-embedding-v3` —— 语义检索的"坐标"。
-- **重排（Rerank）**：Qwen `gte-rerank` —— 提升检索召回，二期叠加。
+- **向量化（Embedding）**：SiliconFlow（硅基流动）`BAAI/bge-m3` —— 1024 维，语义检索的"坐标"。
+- **重排（Rerank）**：SiliconFlow `BAAI/bge-reranker-v2-m3` —— 提升检索召回。
 
 > 选型说明：DeepSeek 官方未稳定提供 embedding/rerank，因此这三环不能全靠 DeepSeek；
-> embedding + rerank 必须由 Qwen（或本地 Ollama）承担。跨厂商各取所长。
+> embedding + rerank 由 SiliconFlow 统一承担，生成仍走 DeepSeek。跨厂商各取所长。
+> **换 embedding 模型必须重建向量库**（维度或语义空间变化会导致检索失真）；只换 rerank 模型不需要重新向量化。
 
 ---
 
@@ -85,9 +86,9 @@ KnowVault.slnx
 **只做这一条闭环，跑通为止：**
 
 ```
-上传文档 → 解析(PDF/Word/Excel/Markdown/网页) → 切片 → Qwen向量化
+上传文档 → 解析(PDF/Word/Excel/Markdown/网页) → 切片 → SiliconFlow 向量化
    → 写入 Qdrant（带文档/知识库元数据）
-用户提问 → Qwen向量化 → Qdrant 语义检索(top-k)
+用户提问 → SiliconFlow 向量化 → Qdrant 语义检索(top-k)
    → 组装 Prompt(top-k 切片 + 问题) → DeepSeek 生成
    → 返回答案 + 引用出处
 ```
@@ -116,14 +117,14 @@ KnowVault.slnx
 - **Docker Desktop**（跑 Postgres / Redis / Qdrant / MinIO / RabbitMQ / Seq）
   - 不用 Aspire 时（本机验收路径）：复用 P1 遗留的手工容器 `kv-postgres` / `kv-redis` / `kv-qdrant` / `kv-rabbitmq` / `kv-minio`，`docker start kv-*` 即可（数据在容器可写层）；**Postgres 映射在宿主 5433**；仓库内**没有** docker-compose 文件，配置走环境变量覆盖 `ConnectionStrings__Default` / `ConnectionStrings__rabbitmq` / `Minio__*` / `Redis__Configuration` / `Qdrant__Endpoint`
 - **Aspire** 一键编排启动全部依赖
-- 模型：`DeepSeek` + `Qwen` 的 **API Key**（环境变量，不进仓库）
+- 模型：`DeepSeek` + `SiliconFlow` 的 **API Key**（环境变量，不进仓库）
 - 可选：本地 Ollama 用于离线 fallback
 
 ---
 
 ## 8. 待确认的开放项
 
-- [x] DeepSeek / Qwen 的 Key 已确认会配置（P1 端到端真跑；Key 走环境变量 `Ai__*`，严禁进仓库）
+- [x] DeepSeek / SiliconFlow 的 Key 已确认会配置（P1 端到端真跑；Key 走环境变量 `Ai__*`，严禁进仓库）
 - [ ] 前端首期用 `Naive UI` 的中文主题模板，还是从零写
 
 ---
@@ -142,7 +143,7 @@ KnowVault.slnx
 
 - **消息**：`MassTransit 8.5.7`（Apache-2.0）+ `MassTransit.RabbitMQ`；**进程内 consumer**（Host 内消费，队列仍走 RabbitMQ），consumer/processor 写在 `KnowVault.Ingest` 且保持宿主无关，P3 可平移为独立 Worker。
   - ⚠️ **禁止升到 9.x**：9.2.3 的 nuspec 无 license 表达式、只有 `licenseUrl=https://massient.com/license`（Massient 商业产品）；8.5.7 为 Apache-2.0 且带 `net10.0` 目标组。
-- **向量库**：官方 `Qdrant.Client 1.19`；接口 `IVectorStore` 在 `KnowVault.Domain`，实现 `QdrantVectorStore` 在 `KnowVault.EntityFrameworkCore`；单一 collection `knowvault_chunks`，1024 维（`text-embedding-v3`）、Cosine；gRPC 端口 **6334**（不是 REST 的 6333）。
+- **向量库**：官方 `Qdrant.Client 1.19`；接口 `IVectorStore` 在 `KnowVault.Domain`，实现 `QdrantVectorStore` 在 `KnowVault.EntityFrameworkCore`；单一 collection `knowvault_chunks`，1024 维（当前为 `BAAI/bge-m3`）、Cosine；gRPC 端口 **6334**（不是 REST 的 6333）。
 - **payload 字段**：`tenantId / knowledgeBaseId / documentId / chunkIndex / content / documentTitle / headingPath / sourceType`；**`tenantId` 为 null 时归一化为 `Guid.Empty`**（Qdrant 无法 match null，单租户运行时必然命中这一条）；pointId = `DocumentChunk.Id`（UUID 字符串）。
 - **对象存储**：`Minio` SDK 自封装 `IDocumentStorage`（接口在 Domain，实现在 EntityFrameworkCore），bucket `knowvault`，对象键 `{tenantId|host}/{knowledgeBaseId}/{documentId}{ext}`；**不用** ABP BlobStoring 的 S3 兼容 provider。
   - 说明：MinIO 服务端是 AGPL-3.0，但仓库只通过 Docker 运行**未修改的官方镜像**、用自己 Apache-2.0 的 SDK 调用，不构成对仓库代码的许可传染。
@@ -159,8 +160,8 @@ KnowVault.slnx
 - **流式输出**：`SignalR` 服务端在 .NET 10 共享框架内（**零 NuGet 包**），前端用 npm `@microsoft/signalr ^10.0.11`（MIT）；Hub 路由 `/signalr/qa`，方法名 `Ask`，返回 `IAsyncEnumerable<QaStreamEventDto>`（`Started` / `Delta` / `Completed` 三帧），客户端用 `connection.stream()` 消费。
 - **SignalR 鉴权**：WebSocket 无法携带自定义请求头，JS 客户端只能把令牌放 query string；而 **OpenIddict 的验证处理不读取 query string**（实测 `openiddict.validation.aspnetcore 7.5.0` 的 DLL 里 `access_token` 命中 0 次）→ Host 在 `UseAuthentication()` **之前**插一层中间件，只对 hub 路径把 `?access_token=` 搬运成 `Authorization: Bearer`。
 - **挂 Hub 的位置**：ABP 提供 `UseConfiguredEndpoints(IApplicationBuilder, Action<IEndpointRouteBuilder>)` 重载（10.5.0 XML 文档核实）→ 用 `app.UseConfiguredEndpoints(endpoints => endpoints.MapHub<QaHub>(QaHub.Route))`，不要再写 `UseEndpoints`。
-- **重排（Rerank）**：DashScope 文本重排接口，**经典域名** `https://dashscope.aliyuncs.com/api/v1/services/rerank/text-rerank/text-rerank`，模型 **`qwen3-rerank`**；`gte-rerank` 已于 2026-05-30 下线（2026-10-14 实测 HTTP 403 `AccessDenied`），`gte-rerank-v2` 仍可用但非默认。
-- **重排不属于 OpenAI 兼容模式**：必须单独配置 `Ai:QwenRerankBaseUrl`，**不能**复用 `QwenBaseUrl` 的 `/compatible-mode/v1`；调用失败或返回空时 **fail-open** 退回向量检索顺序。
+- **重排（Rerank）**：SiliconFlow `POST {SiliconFlowBaseUrl}/rerank`，模型 **`BAAI/bge-reranker-v2-m3`**（2026-10-23 由 Qwen `qwen3-rerank` 切换而来）；响应为顶层 `results[{index, relevance_score}]`，解析后按分数降序。
+- **重排与 Embedding 同源**：共用 `Ai:SiliconFlowBaseUrl`（`https://api.siliconflow.cn/v1`）与同一个 Bearer Key；调用失败或返回空时 **fail-open** 退回向量检索顺序。
 - **重排策略**：宽召回 + 精排（`RerankCandidateCount = 20` → 取 topK ≤ 8），默认开启；请求把**全部候选**交给服务端打分（`top_n` = 候选数），最终条数由 `RagService` 本地 `Take(topK)` 裁剪——对端是否按其 `top_n` 语义裁剪不可依赖；引用中的 `Score` 语义由「余弦相似度」变为「重排相关性分（0~1，仅请求内相对可比）」。
 - **多轮历史**：只做「Prompt 带最近 `HistoryMaxMessages = 6` 条历史」（3 轮往返），**不做**会话列表侧边栏；历史以独立消息注入（最后一条用户消息仍是「资料片段 + 问题」），渲染前剥掉助手旧回答里的 `[编号]` 标记，System prompt 增加「历史只用于理解指代，事实依据必须来自本次资料片段」。
 - **流式实现**：`ILlmChatService` 只保留 `CompleteStreamAsync`（SK `GetStreamingChatMessageContentsAsync`）；REST 问答入口改为把同一条流拼成整段文本，两条入口共用一份检索 / 重排 / 落库实现。
@@ -189,6 +190,16 @@ KnowVault.slnx
 - **行为**：上传前查询 `Document.SourceFileName`，命中直接拒绝（`UserFriendlyException`），提示已有文档标题与上传时间，引导删除旧文档或使用「重新处理」；不覆盖、不批量跳过，也不写入对象存储。
 - **不做**：文件内容 hash / 近似去重留后续优化；存量文档 `SourceFileName` 为空且不回填，因此旧文档不会被新上传命中。
 - **存储**：`AppDocuments` 新增可空 `SourceFileName`（varchar 256）与 `(KnowledgeBaseId, SourceFileName)` 索引；文件名先经 `Path.GetFileName` 去掉浏览器可能带上的路径。
+
+### 9.5 Embedding / Rerank 切换 SiliconFlow（2026-10-23）
+
+- **范围**：向量化与重排统一改走 SiliconFlow，Qwen / DashScope 的代码与配置直接移除（不保留双实现）；生成仍用 DeepSeek。
+- **模型**：Embedding=`BAAI/bge-m3`（1024 维，与 Qdrant 的 `VectorSize=1024` 一致）；Rerank=`BAAI/bge-reranker-v2-m3`。
+- **端点**：两者共用 `Ai:SiliconFlowBaseUrl=https://api.siliconflow.cn/v1`，分别为 `POST /embeddings` 与 `POST /rerank`，鉴权均为 `Authorization: Bearer {SiliconFlowApiKey}`。
+- **请求差异**：Embedding 与 OpenAI 兼容（`model/input/encoding_format`），**不能传 `dimensions`**（bge-m3 不支持，会 400）；Rerank 响应是顶层 `results[{index,relevance_score}]`，不是 `output.results`。
+- **配置键**：`Ai:SiliconFlowApiKey` / `SiliconFlowBaseUrl` / `SiliconFlowEmbeddingModel` / `SiliconFlowRerankModel`；本地 `.env` 对应 `SILICONFLOW_API_KEY` / `SILICONFLOW_BASE_URL` / `SILICONFLOW_EMBEDDING_MODEL` / `SILICONFLOW_RERANK_MODEL`，由 AppHost 映射为 `Ai__*`。
+- **不需要数据迁移**：切换时历史文档已删除；今后如需更换 embedding 模型（维度或语义空间变化）必须重新向量化，只换 rerank 模型则不需要。
+- **执行计划**：见 [`docs/plans/2026-10-23-siliconflow-model-switch.md`](docs/plans/2026-10-23-siliconflow-model-switch.md)
 
 ## 10. P1 执行计划
 

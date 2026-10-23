@@ -1,8 +1,8 @@
 namespace KnowVault.Domain
 {
 	/// <summary>
-	/// 文本向量化（Embedding）契约。
-	/// 接口放 Domain（Ingest 与 Ai 都要用），实现放 <c>KnowVault.Ai</c>（Qwen）。
+	/// 文本向量化（Embedding）契约
+	/// 接口放 Domain（Ingest 与 Ai 都要用），实现放 <c>KnowVault.Ai</c>（SiliconFlow）
 	/// </summary>
 	public interface IEmbeddingService
 	{

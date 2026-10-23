@@ -3,7 +3,7 @@ using KnowVault.Domain;
 namespace KnowVault.IntegrationTests
 {
 	/// <summary>
-	/// 固定 1024 维向量，避免集成测试真实调用 Qwen
+	/// 固定 1024 维向量，避免集成测试真实调用 SiliconFlow
 	/// </summary>
 	public sealed class FakeEmbeddingService : IEmbeddingService
 	{

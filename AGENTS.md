@@ -22,7 +22,7 @@
 | 后端 | .NET 10 (LTS) + ABP.VNext + Semantic Kernel |
 | 数据 | PostgreSQL + EF Core ｜ Redis ｜ MinIO ｜ Qdrant |
 | 异步 | RabbitMQ / MassTransit 8.5.7（Apache-2.0；**9.x 为商业许可，勿用**） |
-| AI 模型 | **DeepSeek**（生成） + **Qwen**（Embedding + Rerank，跨厂商路由） |
+| AI 模型 | **DeepSeek**（生成） + **SiliconFlow**（Embedding + Rerank，跨厂商路由） |
 | 前端 | Vue 3 + Vite + **JavaScript**（不用 TS）+ Naive UI + Pinia |
 | 本地编排 | .NET Aspire｜Docker Compose |
 | 可观测 | OpenTelemetry + Seq + Serilog |
@@ -106,7 +106,7 @@ KnowVault.slnx
   - 判据只看「花括号里有几条语句」：**单条语句但本身跨多行**（方法调用/对象初始化器换行、lambda 体、`await` 链分行）时**仍用大括号并分行**——硬塞成同行会把条件挤到屏幕外，反而更难读。
   - 反向要求：只要是**只有一条语句、且能写成一行**的 `if`，就**不要**写成块体（不要再写 `if (x)` + `{` + `return;` + `}`）。
   - 边界：空体 `if`（`{ }` 或 `;`）保持现状不适用；`for` / `foreach` / `while` / `using` / `try` / `catch` **不在本条规则内**（本仓现状一律带大括号，不强制内联）；`.editorconfig` 未设 `csharp_prefer_braces`，此风格**不参与构建 / `dotnet format`**，靠人工与 review 保证。
-- **异步方法一律带 `CancellationToken`（强制执行）**：凡是返回 `Task` / `Task<T>` / `ValueTask` / `ValueTask<T>` / `IAsyncEnumerable<T>` 的方法，签名里**必须有** `CancellationToken`，并且把它**逐层透传**下去——从 API 入口一路传到最底层（EF 仓储、MinIO / Qdrant 客户端、DeepSeek / Qwen 的 HTTP 调用）。
+- **异步方法一律带 `CancellationToken`（强制执行）**：凡是返回 `Task` / `Task<T>` / `ValueTask` / `ValueTask<T>` / `IAsyncEnumerable<T>` 的方法，签名里**必须有** `CancellationToken`，并且把它**逐层透传**下去——从 API 入口一路传到最底层（EF 仓储、MinIO / Qdrant 客户端、DeepSeek / SiliconFlow 的 HTTP 调用）。
   - **参数形态**：命名固定 `cancellationToken`（不用 `ct` / `token`），位置排在**最后一个参数**（`params` 除外）。
   - **`= default` 的取舍**：控制器 Action / AppService 这类**由 API 入口直接分派**的方法**不加默认值**（ABP 会从当前 HTTP 请求自动注入 `CancellationToken`，强制由入口传入，见 `src/KnowVault.Application/Documents/DocumentAppService.cs:54`）；多层内部的 Domain / Ai / EF 实现（仓储、`IRagService`、`ILlmChatService`、`IDocumentStorage`、`IVectorStore` 等）按仓库既有惯例给 `= default`，便于测试与非 HTTP 场景调用。
   - **必须真的透传**：调用链上任何 `await` 的异步方法都要把本层拿到的 `cancellationToken` 传下去，**不允许吞掉或漏传**——这是客户端断开 / 超时能真正取消的前提，也是"入口传参"这条规范的目的所在。参考已正确的链路：`src/KnowVault.Application/Documents/DocumentAppService.cs:54`（入口）→ `:82` `EnsureBucketAsync(cancellationToken)` / `:88` `PutAsync(…, cancellationToken)` / `:92` 与 `:103`（EF / 发布）；`src/KnowVault.Ai/Rag/RagService.cs:38`（`= default`）→ `:43` `EmbedAsync(…, cancellationToken)`、`:44-48` `SearchAsync(…, cancellationToken)`、`:63` `CompleteAsync(…, cancellationToken)`；ABP 仓储的令牌走**命名参数** `cancellationToken: cancellationToken`（如 `src/KnowVault.Ingest/Processing/DocumentProcessor.cs:59`、`:76`、`:88`），因为前面还有 `autoSave` 等可选参数。
@@ -190,7 +190,7 @@ KnowVault.slnx
 - **切片 Chunking**：按段落/标题层级 + 固定长度；默认 chunk≈500–800 token、overlap≈50–100；参数可配置，并保留段落/标题 metadata 供引用溯源。
   - P1 以**字符数近似 token**（默认 1000 字符 / overlap 120）：中文没有可靠 .NET tokenizer，不为此引入 tiktoken 类依赖；超长单段按句子边界硬切、此时不叠加 overlap。
 - **检索 + 组装**：按 `tenantId + knowledgeBaseId` 做 payload 过滤（P2 起改为「宽召回约 20 条 → 重排精排 → 取 top-k≈5–8」）；System prompt 规定「只根据资料回答、资料不足就说不知道、标注来源」；把 top-k 切片 + 问题交给 DeepSeek，返回 `answer + citations`。
-- **模型路由**：生成=DeepSeek，向量化/重排=Qwen。统一封装成 OpenAI 兼容调用层，便于日后换厂商。
+- **模型路由**：生成=DeepSeek，向量化/重排=SiliconFlow（`BAAI/bge-m3` + `BAAI/bge-reranker-v2-m3`）。统一封装成 OpenAI 兼容调用层，便于日后换厂商；换 embedding 模型必须重新向量化，只换 rerank 模型不需要。
 - **文档解析库**：PDF=`PdfPig`、Word=`DocumentFormat.OpenXml`、Excel=`.xlsx`→**`ClosedXML`**（弃 NPOI）、Markdown=`Markdig`、HTML=`HtmlAgilityPack`。P1 的「网页」指**上传 .html 文件**，不做 URL 抓取。
   - ⚠️ **禁止用 iTextSharp（AGPL 许可，会污染整个项目的开源许可）。**
 - 会话/消息：**从第一天就持久化 `Conversation` + `Message`（含 `CitationsJson`）**。
@@ -214,7 +214,7 @@ dotnet test
 ```
 
 - 依赖用 **Aspire** 启动，避免手工起容器。
-- **API Key（DeepSeek/Qwen）放环境变量**，**严禁进仓库/hardcode**（用 `.env` + 环境变量注入；变量清单参照根目录 `.env.example`）。
+- **API Key（DeepSeek/SiliconFlow）放环境变量**，**严禁进仓库/hardcode**（用 `.env` + 环境变量注入；变量清单参照根目录 `.env.example`）。
 - 提交/PR 前保证 `dotnet build` 无错误、`dotnet test` 通过。
 
 ---
@@ -230,10 +230,11 @@ dotnet test
 
 ## 七、待办/注意
 
-- DeepSeek / Qwen 的 API Key：**P1 已确认会配置**（端到端真跑）。Key 一律走环境变量 `Ai__DeepSeekApiKey` / `Ai__QwenApiKey`（由 `aspire/KnowVault.AppHost` 从本地 `.env`/进程环境映射），严禁进仓库或硬编码。
+- DeepSeek / SiliconFlow 的 API Key：**P1 已确认会配置**（端到端真跑）。Key 一律走环境变量 `Ai__DeepSeekApiKey` / `Ai__SiliconFlowApiKey`（由 `aspire/KnowVault.AppHost` 从本地 `.env`/进程环境映射），严禁进仓库或硬编码。
 - `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）。**P1** 新增 `tests/KnowVault.Tests`（切片/解析/payload/Prompt 的**纯函数单测**）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Postgres/RabbitMQ/MinIO/Qdrant 容器；本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，CI 用真实 MinIO）。
 - **P1 冻结规格与执行计划**：`docs/plans/2026-10-05-knowvault-p1-mvp.md`（含 14 个任务的文件级改动、代码与逐项验收命令）。规格变更必须先改该文档的 §0 再改代码。
-- **P2 冻结规格与执行计划**：`docs/plans/2026-10-14-knowvault-p2-mvp.md`（含 6 项决策、8 个任务的文件级改动、15 项端到端验收）。规格变更必须先改该文档的 §0 再改代码。P2 起 SignalR 服务端零 NuGet 包（.NET 10 共享框架自带），前端新增 npm `@microsoft/signalr ^10.0.11`；重排新增 `Ai:QwenRerankBaseUrl` / `Ai:QwenRerankModel=qwen3-rerank`（`gte-rerank` 已下线）。
+- **P2 冻结规格与执行计划**：`docs/plans/2026-10-14-knowvault-p2-mvp.md`（含 6 项决策、8 个任务的文件级改动、15 项端到端验收）。规格变更必须先改该文档的 §0 再改代码。P2 起 SignalR 服务端零 NuGet 包（.NET 10 共享框架自带），前端新增 npm `@microsoft/signalr ^10.0.11`；重排配置按 §七「Embedding / Rerank 切换 SiliconFlow」执行（与 Embedding 共用 `Ai:SiliconFlowBaseUrl`）。
 - **P2 已完成（2026-10-14）**：15 项端到端验收通过并逐项留证（见该文档 §2 / §5）。两条实测结论后续写 AppService 时会用到：①ABP 动态 API 把 `UpdateAsync(输入DTO)` 映射为 `PUT /api/app/{服务名}`（**路由不带 `{id}`**，实体 ID 走请求体），只有 `DeleteAsync(Guid id)` 才是 `DELETE /api/app/{服务名}/{id}`；②`/api` 前缀的认证失败已改写为 401 + `WWW-Authenticate: Bearer`（其它路径仍跳登录页）。
 - **P3 冻结规格与执行计划**：`docs/plans/2026-10-18-knowvault-p3-mvp.md`（含 5 项决策、T0–T7 文件级改动、12 项端到端验收）。P3 新增：Seq sink + OTLP/HTTP protobuf trace（EF 插桩锁 `1.17.0-beta.1`）；系统角色 `Admin/Member/Viewer` + 知识库成员表 `AppKnowledgeBaseMembers`（Owner/Editor/Viewer）；文档删除/重新处理；`document-ingest` 5×2s 重试 + `document-ingest_error`；Testcontainers 四件套；GitHub Actions 三 job。**权限缓存**：改角色/成员后需重新登录或等待缓存过期再验收 403。
 - **文档去重（2026-10-23）**：同一知识库内按原始文件名（忽略大小写）拒绝重复上传；`Document.SourceFileName` 可空、存量不回填，详见 `TECH_STACK.md` §9.4。
+- **Embedding / Rerank 切换 SiliconFlow（2026-10-23）**：向量化 `BAAI/bge-m3`（1024 维）+ 重排 `BAAI/bge-reranker-v2-m3`，共用 `Ai:SiliconFlowBaseUrl=https://api.siliconflow.cn/v1` 与 `Ai:SiliconFlowApiKey`；Qwen/DashScope 代码与配置已移除，历史数据已清空无需迁移。详见 `TECH_STACK.md` §9.5 与 `docs/plans/2026-10-23-siliconflow-model-switch.md`。

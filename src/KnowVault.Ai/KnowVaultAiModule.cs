@@ -16,10 +16,10 @@ namespace KnowVault.Ai
 		{
 			var configuration = context.Services.GetConfiguration();
 
-			// 模型路由配置：DeepSeek（生成）+ Qwen（Embedding/Rerank）
+			// 模型路由配置：DeepSeek（生成）+ SiliconFlow（Embedding/Rerank）
 			Configure<AiOptions>(configuration.GetSection("Ai"));
 
-			// Qwen Embedding 走 HttpClient 直调 OpenAI 兼容端点，需要工厂来统一管理连接
+			// SiliconFlow Embedding/Rerank 走 HttpClient 直调 HTTP 端点，需要工厂来统一管理连接
 			context.Services.AddHttpClient();
 
 			// Kernel 用工厂构建：DeepSeek 走 OpenAI 兼容连接器（endpoint 指向 DeepSeek 官方地址）

@@ -2,8 +2,8 @@ namespace KnowVault.Ai
 {
 
 	/// <summary>
-	/// AI 模型配置（跨厂商混合路由）。
-	/// 环境变量参照 <c>.env.example</c>（DeepSeek/Qwen 的 Key 严禁进仓库）。
+	/// AI 模型配置（跨厂商混合路由）
+	/// 环境变量参照 <c>.env.example</c>（DeepSeek / SiliconFlow 的 Key 严禁进仓库）
 	/// </summary>
 	public class AiOptions
 	{
@@ -12,21 +12,19 @@ namespace KnowVault.Ai
 		public string DeepSeekBaseUrl { get; set; } = "https://api.deepseek.com";
 		public string DeepSeekModel { get; set; } = "deepseek-chat";
 
-		// ---- Qwen / 阿里云百炼：Embedding + Rerank ----
-		public string QwenApiKey { get; set; } = string.Empty;
-		public string QwenBaseUrl { get; set; } = "https://dashscope.aliyuncs.com/compatible-mode/v1";
-		public string QwenEmbeddingModel { get; set; } = "text-embedding-v3";
+		// ---- SiliconFlow：Embedding + Rerank ----
+		public string SiliconFlowApiKey { get; set; } = string.Empty;
+		public string SiliconFlowBaseUrl { get; set; } = "https://api.siliconflow.cn/v1";
 		/// <summary>
-		/// 重排服务的基础地址
-		/// 重排不属于 OpenAI 兼容模式，不能复用 QwenBaseUrl（那是 /compatible-mode/v1）
+		/// 向量模型
+		/// bge-m3 固定输出 1024 维，必须与 Qdrant:VectorSize 保持一致
 		/// </summary>
-		public string QwenRerankBaseUrl { get; set; } = "https://dashscope.aliyuncs.com/api/v1";
-
+		public string SiliconFlowEmbeddingModel { get; set; } = "BAAI/bge-m3";
 		/// <summary>
-		/// 重排模型名
-		/// gte-rerank 已于 2026-05-30 下线（实测 HTTP 403），改用 qwen3-rerank
+		/// 重排模型
+		/// 与 Embedding 共用 SiliconFlowBaseUrl，端点为 /rerank
 		/// </summary>
-		public string QwenRerankModel { get; set; } = "qwen3-rerank";
+		public string SiliconFlowRerankModel { get; set; } = "BAAI/bge-reranker-v2-m3";
 
 		// ---- 检索参数 ----
 		public int TopK { get; set; } = 5;

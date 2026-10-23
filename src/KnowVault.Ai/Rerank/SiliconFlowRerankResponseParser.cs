@@ -3,9 +3,9 @@ using System.Text.Json;
 namespace KnowVault.Ai
 {
 	/// <summary>
-	/// DashScope 文本重排接口响应的解析（纯函数，便于单测）
+	/// SiliconFlow 文本重排接口响应的解析（纯函数，便于单测）
 	/// </summary>
-	public static class QwenRerankResponseParser
+	public static class SiliconFlowRerankResponseParser
 	{
 		/// <summary>
 		/// 解析重排响应并按 relevance_score 降序返回
@@ -18,8 +18,10 @@ namespace KnowVault.Ai
 			using var document = JsonDocument.Parse(json);
 			var results = new List<RerankResult>();
 
-			if (!document.RootElement.TryGetProperty("output", out var output)) return results;
-			if (!output.TryGetProperty("results", out var items) || items.ValueKind != JsonValueKind.Array) return results;
+			if (!document.RootElement.TryGetProperty("results", out var items) || items.ValueKind != JsonValueKind.Array)
+			{
+				return results;
+			}
 
 			foreach (var item in items.EnumerateArray())
 			{

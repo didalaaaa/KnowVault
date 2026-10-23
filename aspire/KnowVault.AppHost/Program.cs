@@ -123,15 +123,14 @@ var api = builder.AddProject("knowvault-api", "../../src/KnowVault.HttpApi.Host/
 	.WithEnvironment("Minio__AccessKey", Env("MINIO_ROOT_USER") ?? "minioadmin")
 	.WithEnvironment("Minio__SecretKey", Env("MINIO_ROOT_PASSWORD") ?? "minioadmin")
 	.WithEnvironment("Minio__UseSsl", "false")
-	// 模型路由：DeepSeek 生成 + Qwen 向量化（短名 → Ai__ 配置键的映射）
+	// 模型路由：DeepSeek 生成 + SiliconFlow 向量化/重排（短名 → Ai__ 配置键的映射）
 	.WithEnvironment("Ai__DeepSeekApiKey", Env("DEEPSEEK_API_KEY") ?? string.Empty)
 	.WithEnvironment("Ai__DeepSeekBaseUrl", Env("DEEPSEEK_BASE_URL") ?? "https://api.deepseek.com")
 	.WithEnvironment("Ai__DeepSeekModel", Env("DEEPSEEK_MODEL") ?? "deepseek-chat")
-	.WithEnvironment("Ai__QwenApiKey", Env("QWEN_API_KEY") ?? string.Empty)
-	.WithEnvironment("Ai__QwenBaseUrl", Env("QWEN_BASE_URL") ?? "https://dashscope.aliyuncs.com/compatible-mode/v1")
-	.WithEnvironment("Ai__QwenEmbeddingModel", Env("QWEN_EMBEDDING_MODEL") ?? "text-embedding-v3")
-	// 重排独立于 OpenAI 兼容模式：走经典域名 /api/v1，模型用 qwen3-rerank（gte-rerank 已下线）
-	.WithEnvironment("Ai__QwenRerankBaseUrl", Env("QWEN_RERANK_BASE_URL") ?? "https://dashscope.aliyuncs.com/api/v1")
-	.WithEnvironment("Ai__QwenRerankModel", Env("QWEN_RERANK_MODEL") ?? "qwen3-rerank");
+	.WithEnvironment("Ai__SiliconFlowApiKey", Env("SILICONFLOW_API_KEY") ?? string.Empty)
+	.WithEnvironment("Ai__SiliconFlowBaseUrl", Env("SILICONFLOW_BASE_URL") ?? "https://api.siliconflow.cn/v1")
+	.WithEnvironment("Ai__SiliconFlowEmbeddingModel", Env("SILICONFLOW_EMBEDDING_MODEL") ?? "BAAI/bge-m3")
+	// Embedding 与 Rerank 共用 /v1 基础地址，重排端点为 /v1/rerank
+	.WithEnvironment("Ai__SiliconFlowRerankModel", Env("SILICONFLOW_RERANK_MODEL") ?? "BAAI/bge-reranker-v2-m3");
 
 builder.Build().Run();
