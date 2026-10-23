@@ -14,25 +14,21 @@ export const useDocumentStore = defineStore('documents', {
   }),
 
   actions: {
-    /** 初始化：取知识库列表并选中默认知识库（后端已把默认库排在最前）。 */
-    async init() {
+    /**
+     * 拉取知识库列表（含「已就绪 N 篇」计数）与当前知识库的文档列表；首次调用会选中默认知识库（后端已把默认库排在最前）。
+     * 计数由后端在知识库列表里算好，所以文档每次刷新都要一并带上，否则轮询期间一直是旧值。
+     * @param {string} [preferredId] 期望选中的知识库 ID；缺省保持当前选中项
+     */
+    async refresh(preferredId) {
       try {
         this.knowledgeBases = await knowledgeBaseApi.list()
-        this.knowledgeBaseId = this.knowledgeBases[0]?.id || ''
-        await this.refresh()
-      } catch (e) {
-        this.error = e?.response?.data?.error?.message || e?.message || '加载知识库失败'
-      }
-    },
-
-    /** 拉取当前知识库的文档列表。 */
-    async refresh() {
-      if (!this.knowledgeBaseId) return
-      try {
-        this.documents = await documentApi.list(this.knowledgeBaseId)
+        const target = preferredId ?? this.knowledgeBaseId
+        const exists = this.knowledgeBases.some((kb) => kb.id === target)
+        this.knowledgeBaseId = exists ? target : this.knowledgeBases[0]?.id || ''
+        this.documents = this.knowledgeBaseId ? await documentApi.list(this.knowledgeBaseId) : []
         this.ensurePolling()
       } catch (e) {
-        this.error = e?.response?.data?.error?.message || e?.message || '加载文档失败'
+        this.error = e?.response?.data?.error?.message || e?.message || '加载知识库失败'
       }
     },
 
@@ -57,24 +53,13 @@ export const useDocumentStore = defineStore('documents', {
     },
 
     /**
-     * 重新拉取知识库列表；preferredId 仍在列表里时优先选中它。
-     * @param {string} [preferredId] 期望选中的知识库 ID
-     */
-    async reloadKnowledgeBases(preferredId) {
-      this.knowledgeBases = await knowledgeBaseApi.list()
-      const exists = this.knowledgeBases.some((kb) => kb.id === preferredId)
-      this.knowledgeBaseId = exists ? preferredId : this.knowledgeBases[0]?.id || ''
-      await this.refresh()
-    },
-
-    /**
      * 新建知识库并选中它（错误向上抛，由界面弹提示）。
      * @param {{name: string, description?: string}} payload 名称与描述
      * @returns {Promise<object>} 新建的知识库
      */
     async createKnowledgeBase(payload) {
       const created = await knowledgeBaseApi.create(payload)
-      await this.reloadKnowledgeBases(created.id)
+      await this.refresh(created.id)
       return created
     },
 
@@ -85,7 +70,7 @@ export const useDocumentStore = defineStore('documents', {
      */
     async updateKnowledgeBase(payload) {
       const updated = await knowledgeBaseApi.update(payload)
-      await this.reloadKnowledgeBases(this.knowledgeBaseId)
+      await this.refresh()
       return updated
     },
 
@@ -95,7 +80,7 @@ export const useDocumentStore = defineStore('documents', {
      */
     async removeKnowledgeBase(id) {
       await knowledgeBaseApi.remove(id)
-      await this.reloadKnowledgeBases(this.knowledgeBaseId === id ? '' : this.knowledgeBaseId)
+      await this.refresh()
     },
 
     /**

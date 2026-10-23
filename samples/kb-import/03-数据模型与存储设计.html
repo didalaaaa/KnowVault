@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>KnowVault 数据模型与存储设计</title>
+  <style>
+    body { font-family: sans-serif; }
+    .decorative { color: #888; }
+  </style>
+</head>
+<body>
+  <nav class="decorative">
+    <p>这段导航文字不应出现在解析结果里，因为 HTML 解析器会整块摘除 nav、footer、script 与 style 节点，避免站点装饰文案污染向量。</p>
+  </nav>
+
+  <h1>KnowVault 数据模型与存储设计</h1>
+
+  <h2>实体总览</h2>
+  <p>KnowVault 采用结构按多租户设计、先只跑一个租户的策略。ABP 的多租户是一等公民，后续开启多租户只是打开开关，数据模型无需返工，所有业务表都带 TenantId 列。核心实体一共五个，分别是知识库、文档、文档切片、会话和消息。</p>
+
+  <h3>字段清单</h3>
+  <p>下面表格列出知识库、文档与切片三个实体的字段。文档状态是一个四值枚举，取值依次为 Pending、Processing、Ready 与 Failed，解析失败时把原因写入 ErrorMessage 字段。切片的主键被复用为 Qdrant 的向量点标识，这是引用溯源能够反向定位到具体向量的关键设计。</p>
+
+  <table>
+    <thead>
+      <tr>
+        <td>实体</td>
+        <td>字段</td>
+        <td>说明</td>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>KnowledgeBase 知识库</td>
+        <td>Id、Name、Description、TenantId、CreatedAt</td>
+        <td>P1 阶段由 DbMigrator 种子一个固定标识的默认知识库</td>
+      </tr>
+      <tr>
+        <td>Document 文档</td>
+        <td>Id、KnowledgeBaseId、Title、SourceType、ObjectStorageKey、Status、ErrorMessage、IngestAttemptCount、CreatedAt</td>
+        <td>SourceType 由扩展名推断；IngestAttemptCount 记录摄入尝试次数</td>
+      </tr>
+      <tr>
+        <td>DocumentChunk 切片</td>
+        <td>Id、DocumentId、ChunkIndex、Content</td>
+        <td>切片 Id 等于 Qdrant 点 Id，使用 UUID 字符串形式</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>会话与消息两个实体不进表格：Conversation 有 Id、Title、TenantId 与 CreatedAt 四个字段；Message 有 Id、ConversationId、Role、Content、CitationsJson 与 CreatedAt，其中 Role 的取值是 User 与 Assistant，引用溯源结果以 JSON 形式存在 CitationsJson 字段。这两个实体从项目第一天就开始持久化，为 P2 的多轮历史打底。</p>
+
+  <h2>元数据落在哪一侧</h2>
+  <p>这是一个容易被问到的分工问题。文档的元数据存在 PostgreSQL，切片的内容与溯源信息存在 Qdrant 的 payload 里。也就是说 PostgreSQL 里不保存切片正文全文，检索时命中的文本来自向量库的 payload 字段 content。</p>
+
+  <h2>对象存储的键规则</h2>
+  <p>原始上传文件放在 MinIO 的 bucket knowvault 里，对象键的格式是租户标识或 host、知识库标识、文档标识加扩展名三段拼接。租户为空时用字符串 host 占位。上传白名单允许七种扩展名，分别是 .pdf、.docx、.xlsx、.md、.markdown、.html 与 .htm，单文件上限 50MB。</p>
+
+  <h2>访问控制</h2>
+  <p>权限是双层结构。第一层是系统角色，分为 Admin、Member 与 Viewer 三种，由身份数据种子贡献者创建并授权。第二层是知识库成员表 AppKnowledgeBaseMembers，成员角色分为 Viewer、Editor 与 Owner，数值分别是 1、2、3，知识库标识与用户标识的组合唯一。判定逻辑集中在 KnowledgeBaseAccessChecker 一个类里。</p>
+  <blockquote>判定顺序是：Admin 直接短路放行；默认知识库对所有登录用户等价于 Editor；其余知识库查成员表，越权时抛出 AbpAuthorizationException，对外表现为 403。</blockquote>
+
+  <h3>成员管理的约束</h3>
+  <ul>
+    <li>只有 Owner 可以增删改成员，Editor 与 Viewer 无权操作成员列表。</li>
+    <li>默认知识库拒绝成员管理操作。</li>
+    <li>删除最后一个 Owner 会被拒绝，避免知识库失去管理者。</li>
+    <li>修改角色或成员后需要重新登录或等待缓存过期才能生效，权限判断存在缓存。</li>
+  </ul>
+
+  <footer class="decorative">
+    <p>页脚文字同样会被 HTML 解析器摘除，不会进入知识库。</p>
+  </footer>
+</body>
+</html>

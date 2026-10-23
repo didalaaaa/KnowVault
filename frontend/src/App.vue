@@ -166,7 +166,7 @@ watch(
   (isAuthenticated) => {
     if (isAuthenticated) {
       chat.checkConnection()
-      documents.init()
+      documents.refresh()
     }
   },
   { immediate: true },

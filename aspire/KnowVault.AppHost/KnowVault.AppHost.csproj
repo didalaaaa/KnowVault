@@ -5,6 +5,8 @@
   <Sdk Name="Aspire.AppHost.Sdk" Version="13.5.3" />
 
   <PropertyGroup>
+    <!-- 启用 user secrets：Aspire 把自动生成的数据库密码持久化到这里，避免每次重启换密码导致 28P01 -->
+    <UserSecretsId>2edbfce9-2b27-4ae1-8351-fc91797e0ddb</UserSecretsId>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

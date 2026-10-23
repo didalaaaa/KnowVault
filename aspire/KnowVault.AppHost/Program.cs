@@ -115,6 +115,9 @@ var api = builder.AddProject("knowvault-api", "../../src/KnowVault.HttpApi.Host/
 	.WithEnvironment("Observability__OtlpEndpoint", ReferenceExpression.Create($"{seqEndpoint}/ingest/otlp/v1/traces"))
 	// QdrantVectorStore 走 gRPC，必须注入 6334 的 grpc 端点（不是 6333 的 REST 端点）
 	.WithEnvironment("Qdrant__Endpoint", qdrant.GetEndpoint("grpc"))
+	// Aspire 的 Qdrant 集成会给容器注入 QDRANT__SERVICE__API_KEY（13.5.3 没有关闭开关，Key 存在 AppHost user secrets 里），
+	// 而 GetEndpoint 只给裸地址、不含凭据 → 必须把同一个 Key 注入 Qdrant:ApiKey，否则 gRPC 调用报 Unauthenticated
+	.WithEnvironment("Qdrant__ApiKey", ReferenceExpression.Create($"{qdrant.Resource.ApiKeyParameter}"))
 	// MinIO 容器端口由 DCP 代理，宿主端口是动态的 → 必须注入 HostAndPort，写死 localhost:9000 会连不上
 	.WithEnvironment("Minio__Endpoint", minio.GetEndpoint("http").Property(EndpointProperty.HostAndPort))
 	.WithEnvironment("Minio__AccessKey", Env("MINIO_ROOT_USER") ?? "minioadmin")
