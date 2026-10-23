@@ -91,3 +91,4 @@ desktop.ini
 # ---------- 日志 ----------
 *.log
 logs/
+/.obsidian

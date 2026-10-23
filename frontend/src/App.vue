@@ -329,6 +329,8 @@ onUnmounted(() => {
 .app-tabs :deep(.n-tabs-pane-wrapper) {
   flex: 1;
   min-height: 0;
+  /* 面板贴满 pane 且带阴影，wrapper 默认的 square overflow 裁切会在底部两角露出灰色直角 */
+  border-radius: var(--kv-radius-lg);
 }
 
 .app-tabs :deep(.n-tab-pane) {
