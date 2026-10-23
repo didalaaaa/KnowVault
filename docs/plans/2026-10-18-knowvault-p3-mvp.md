@@ -785,3 +785,4 @@ Testcontainers 在 `ubuntu-latest` 直接用 Docker；不需要 `services:`。
 | 2026-10-18 | T5 | Testcontainers 四件套；上传→Ready→检索→删除、重处理不重复 2 条用例通过 | 待提交 |
 | 2026-10-18 | T6 | GitHub Actions 三 job 工作流 | 待提交 |
 | 2026-10-18 | T7 | 文档与验收进行中；Seq/权限/重试需手工验收 | 待提交 |
+| 2026-10-23 | T6 | GitHub Actions CI 已移除（不使用 GitHub；后续考虑 Gitee Go） | 本次变更 |

@@ -129,6 +129,7 @@ KnowVault.slnx
 - **C# 公开/受保护成员（类、方法、属性、枚举值）用 XML 文档注释**：
   - 类/接口：`<summary>` 说明职责（一句话）。
   - 方法：`<summary>` + `<param name="x">…</param>` + `<returns>…</returns>`。
+  - **`<returns>` 只写返回值语义**：返回非泛型 `Task`（无返回值的异步方法）时写空的 `<returns></returns>`，**不要写 `<returns>任务</returns>`**；`Task<T>` 则描述 `T` 的含义。
   - 属性/字段/枚举值：`<summary>` 说明含义、取值范围或约束。
   - 构造函数：`<summary>` + 逐个 `<param>`。
   - 常用标签：`<see cref="..."/>`、`<remarks>`、`<c>code</c>`、`<exception cref="...">`。
@@ -235,6 +236,6 @@ dotnet test
 - **P1 冻结规格与执行计划**：`docs/plans/2026-10-05-knowvault-p1-mvp.md`（含 14 个任务的文件级改动、代码与逐项验收命令）。规格变更必须先改该文档的 §0 再改代码。
 - **P2 冻结规格与执行计划**：`docs/plans/2026-10-14-knowvault-p2-mvp.md`（含 6 项决策、8 个任务的文件级改动、15 项端到端验收）。规格变更必须先改该文档的 §0 再改代码。P2 起 SignalR 服务端零 NuGet 包（.NET 10 共享框架自带），前端新增 npm `@microsoft/signalr ^10.0.11`；重排配置按 §七「Embedding / Rerank 切换 SiliconFlow」执行（与 Embedding 共用 `Ai:SiliconFlowBaseUrl`）。
 - **P2 已完成（2026-10-14）**：15 项端到端验收通过并逐项留证（见该文档 §2 / §5）。两条实测结论后续写 AppService 时会用到：①ABP 动态 API 把 `UpdateAsync(输入DTO)` 映射为 `PUT /api/app/{服务名}`（**路由不带 `{id}`**，实体 ID 走请求体），只有 `DeleteAsync(Guid id)` 才是 `DELETE /api/app/{服务名}/{id}`；②`/api` 前缀的认证失败已改写为 401 + `WWW-Authenticate: Bearer`（其它路径仍跳登录页）。
-- **P3 冻结规格与执行计划**：`docs/plans/2026-10-18-knowvault-p3-mvp.md`（含 5 项决策、T0–T7 文件级改动、12 项端到端验收）。P3 新增：Seq sink + OTLP/HTTP protobuf trace（EF 插桩锁 `1.17.0-beta.1`）；系统角色 `Admin/Member/Viewer` + 知识库成员表 `AppKnowledgeBaseMembers`（Owner/Editor/Viewer）；文档删除/重新处理；`document-ingest` 5×2s 重试 + `document-ingest_error`；Testcontainers 四件套；GitHub Actions 三 job。**权限缓存**：改角色/成员后需重新登录或等待缓存过期再验收 403。
+- **P3 冻结规格与执行计划**：`docs/plans/2026-10-18-knowvault-p3-mvp.md`（含 5 项决策、T0–T7 文件级改动、12 项端到端验收）。P3 新增：Seq sink + OTLP/HTTP protobuf trace（EF 插桩锁 `1.17.0-beta.1`）；系统角色 `Admin/Member/Viewer` + 知识库成员表 `AppKnowledgeBaseMembers`（Owner/Editor/Viewer）；文档删除/重新处理；`document-ingest` 5×2s 重试 + `document-ingest_error`；Testcontainers 四件套；CI 暂未接入（不使用 GitHub，后续考虑 Gitee Go）。**权限缓存**：改角色/成员后需重新登录或等待缓存过期再验收 403。
 - **文档去重（2026-10-23）**：同一知识库内按原始文件名（忽略大小写）拒绝重复上传；`Document.SourceFileName` 可空、存量不回填，详见 `TECH_STACK.md` §9.4。
 - **Embedding / Rerank 切换 SiliconFlow（2026-10-23）**：向量化 `BAAI/bge-m3`（1024 维）+ 重排 `BAAI/bge-reranker-v2-m3`，共用 `Ai:SiliconFlowBaseUrl=https://api.siliconflow.cn/v1` 与 `Ai:SiliconFlowApiKey`；Qwen/DashScope 代码与配置已移除，历史数据已清空无需迁移。详见 `TECH_STACK.md` §9.5 与 `docs/plans/2026-10-23-siliconflow-model-switch.md`。

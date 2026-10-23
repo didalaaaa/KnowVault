@@ -23,7 +23,7 @@
 | 本地编排 | **.NET Aspire** |
 | 测试 | **xUnit** + **Testcontainers** + FluentAssertions |
 | 前端 | **Vue 3** + Vite + **JS**（不用 TS）+ **Naive UI** + Pinia + Axios + ECharts |
-| DevOps | **Docker Compose** + GitHub Actions |
+| DevOps | **Docker Compose**（CI 暂未接入，后续考虑 Gitee Go） |
 
 ---
 
@@ -106,7 +106,7 @@ KnowVault.slnx
 | **P0 骨架** | 建解决方案（ABP 分层）+ Aspire 编排（Postgres/Redis/Qdrant/MinIO/RMQ/Seq）+ Vue3 脚手架 + 最小上传/问答 API | 项目能跑起来，界面能连上后端 |
 | **P1 最小闭环** | 上传→解析→切片→向量化→Qdrant 写入；提问→检索→DeepSeek→引用溯源；文档解析 Worker 接 RabbitMQ | ✅ MVP 达成，可 demo |
 | **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
-| **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限、GitHub Actions CI | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
+| **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
 | **P4 打磨讲故事** | README（架构图+选型理由）、demo 视频、面试话术 doc | 竞争加分 |
 
 ---
@@ -180,8 +180,8 @@ KnowVault.slnx
 - **成员管理**：`IKnowledgeBaseMemberAppService` 提供列表/设置/移除；仅 Owner 可操作；默认库拒绝；删除最后一个 Owner 拒绝。
 - **文档生命周期**：`DELETE /api/app/document/{id}`（Qdrant points → chunks → document → MinIO 原文件；MinIO 失败只 warning）与 `POST /api/app/document/{id}/reprocess`（清旧向量/切片 → `MarkPending` → 提交后发消息）。`Document.IngestAttemptCount` 记录尝试次数。
 - **摄入重试**：`document-ingest` 端点显式 `UseMessageRetry(5 × 2s)`；Consumer 在**独立 UoW** 落 `Failed` 后 rethrow，耗尽后进 `document-ingest_error`。
-- **集成测试**：`tests/KnowVault.IntegrationTests` 用 Testcontainers 起 Postgres/RabbitMQ/MinIO/Qdrant；Embedding 与消息发布用 fake；`AbpIntegratedTest` 服务级测试，`AddAlwaysAllowAuthorization` 绕过授权拦截器但保留 ACL 真实校验。本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，CI 不设该变量。
-- **CI**：`.github/workflows/ci.yml` 三 job：backend（build 警告即错 + 单测 + 集成测试）、frontend（npm ci + build）、format（`dotnet format analyzers ... --diagnostics IDE1006`）。
+- **集成测试**：`tests/KnowVault.IntegrationTests` 用 Testcontainers 起 Postgres/RabbitMQ/MinIO/Qdrant；Embedding 与消息发布用 fake；`AbpIntegratedTest` 服务级测试，`AddAlwaysAllowAuthorization` 绕过授权拦截器但保留 ACL 真实校验。本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，集成测试不设该变量。
+- **CI**：暂未接入（不使用 GitHub Actions；后续考虑迁移到 Gitee Go）。
 - **执行计划**：见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`
 
 ### 9.4 文档去重定稿（2026-10-23）

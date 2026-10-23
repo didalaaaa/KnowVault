@@ -10,7 +10,9 @@ using Volo.Abp.Uow;
 
 namespace KnowVault.Application
 {
-	/// <summary>文档应用服务：上传原件到对象存储 → 落库(Pending) → 发消息触发异步摄入。</summary>
+	/// <summary>
+	/// 文档应用服务：上传原件到对象存储 → 落库(Pending) → 发消息触发异步摄入
+	/// </summary>
 	[Authorize]
 	public class DocumentAppService : KnowVaultAppService, IDocumentAppService
 	{
@@ -24,16 +26,18 @@ namespace KnowVault.Application
 		private readonly KnowledgeBaseAccessChecker _accessChecker;
 		private readonly ILogger<DocumentAppService> _logger;
 
-		/// <summary>构造函数。</summary>
-		/// <param name="documentRepository">文档仓储。</param>
-		/// <param name="chunkRepository">切片仓储。</param>
-		/// <param name="documentStorage">对象存储。</param>
-		/// <param name="vectorStore">向量库。</param>
-		/// <param name="ingestPublisher">摄入消息发布者。</param>
-		/// <param name="uploadOptions">上传约束（白名单与大小上限）。</param>
-		/// <param name="unitOfWorkManager">工作单元管理器（用于「提交后再发消息」）。</param>
-		/// <param name="accessChecker">知识库访问检查器。</param>
-		/// <param name="logger">日志。</param>
+		/// <summary>
+		/// 构造函数
+		/// </summary>
+		/// <param name="documentRepository">文档仓储</param>
+		/// <param name="chunkRepository">切片仓储</param>
+		/// <param name="documentStorage">对象存储</param>
+		/// <param name="vectorStore">向量库</param>
+		/// <param name="ingestPublisher">摄入消息发布者</param>
+		/// <param name="uploadOptions">上传约束（白名单与大小上限）</param>
+		/// <param name="unitOfWorkManager">工作单元管理器（用于「提交后再发消息」）</param>
+		/// <param name="accessChecker">知识库访问检查器</param>
+		/// <param name="logger">日志</param>
 		public DocumentAppService(
 			IRepository<Document, Guid> documentRepository,
 			IRepository<DocumentChunk, Guid> chunkRepository,
@@ -111,7 +115,7 @@ namespace KnowVault.Application
 			await _documentRepository.InsertAsync(document, autoSave: true, cancellationToken: cancellationToken);
 
 			// 必须等当前 UoW 提交后再发消息：否则消费者可能先于提交去查这行文档，
-			// 读到 null 就把消息白跑一趟（实测症状：文档永远停在 Pending，日志出现「文档 xxx 不存在，跳过处理」）。
+			// 读到 null 就把消息白跑一趟（实测症状：文档永远停在 Pending，日志出现「文档 xxx 不存在，跳过处理」）
 			var unitOfWork = _unitOfWorkManager.Current;
 			if (unitOfWork is not null)
 			{
@@ -150,7 +154,7 @@ namespace KnowVault.Application
 			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
 			await _accessChecker.EnsureAsync(document.KnowledgeBaseId, KnowledgeBaseRoleEnum.Editor, cancellationToken);
 
-			// 顺序很关键：向量 → 切片 → 文档 → 原件。
+			// 顺序很关键：向量 → 切片 → 文档 → 原件
 			// 前面任一步失败都保留文档，用户可重试；原件最后删，失败只留下孤儿对象（P4 清理）
 			await _vectorStore.DeleteByDocumentAsync(
 				document.TenantId ?? Guid.Empty,
@@ -208,11 +212,11 @@ namespace KnowVault.Application
 		/// <summary>
 		/// 同一知识库内按原始文件名（忽略大小写）去重，命中时拒绝上传并给出已有文档信息
 		/// </summary>
-		/// <param name="knowledgeBaseId">目标知识库。</param>
-		/// <param name="fileName">本次上传的文件名（含扩展名）。</param>
-		/// <param name="cancellationToken">取消令牌。</param>
-		/// <returns>任务</returns>
-		/// <exception cref="UserFriendlyException">知识库内已存在同名文件。</exception>
+		/// <param name="knowledgeBaseId">目标知识库</param>
+		/// <param name="fileName">本次上传的文件名（含扩展名）</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns></returns>
+		/// <exception cref="UserFriendlyException">知识库内已存在同名文件</exception>
 		private async Task EnsureFileNameAvailableAsync(Guid knowledgeBaseId, string fileName, CancellationToken cancellationToken)
 		{
 			var normalizedFileName = fileName.ToLowerInvariant();
