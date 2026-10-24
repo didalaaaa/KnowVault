@@ -107,7 +107,9 @@ KnowVault.slnx
 | **P1 最小闭环** | 上传→解析→切片→向量化→Qdrant 写入；提问→检索→DeepSeek→引用溯源；文档解析 Worker 接 RabbitMQ | ✅ MVP 达成，可 demo |
 | **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
-| **P4 打磨讲故事** | README（架构图+选型理由）、demo 视频、面试话术 doc | 竞争加分 |
+| **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘 | 待实施：见 [`docs/plans/2026-10-24-knowvault-open-source-roadmap.md`](docs/plans/2026-10-24-knowvault-open-source-roadmap.md) |
+| **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | 待实施（同上路线图） |
+| **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | 待实施（同上路线图） |
 
 ---
 
