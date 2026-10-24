@@ -17,13 +17,18 @@
       @update:value="store.refresh()"
     />
 
-    <n-upload :custom-request="customRequest" :show-file-list="false" :disabled="store.uploading" class="upload-wrap">
-      <n-button class="upload-button" block :loading="store.uploading">
+    <n-upload
+      :custom-request="customRequest"
+      multiple
+      :disabled="store.uploadingCount > 0"
+      class="upload-wrap"
+    >
+      <n-button class="upload-button" block :loading="store.uploadingCount > 0">
         <template #icon><KvIcon name="upload" :size="17" /></template>
         上传文档
       </n-button>
     </n-upload>
-    <p class="upload-hint">支持 PDF、Word、Excel、Markdown、HTML</p>
+    <p class="upload-hint">支持 PDF、Word、Excel、Markdown、HTML；可一次选择多个文件，同名文件会被拒绝</p>
 
     <n-alert v-if="store.error" type="error" :show-icon="false" closable @close="store.error = ''">
       {{ store.error }}
@@ -106,15 +111,15 @@ function openDetail(doc) {
 }
 
 /**
- * n-upload 的自定义上传：交给 store 走我们自己的 axios 实例（带 Bearer）。
- * @param {{file: {file: File}, onFinish: Function, onError: Function}} options 上传回调参数
+ * n-upload 的自定义上传：逐个文件走 store，失败时把文件名与后端原因一并提示
+ * @param {{file: {file: File, name: string}, onFinish: Function, onError: Function}} options 上传回调参数
  */
 async function customRequest({ file, onFinish, onError }) {
-  const ok = await store.upload(file.file)
-  if (ok) {
-    message.success('已提交解析')
+  const result = await store.upload(file.file)
+  if (result.ok) {
     onFinish()
   } else {
+    message.error(`${file.name}：${result.message}`)
     onError()
   }
 }
@@ -229,6 +234,20 @@ function describeError(e) {
 .upload-wrap :deep(.n-upload-trigger) {
   display: block;
   width: 100%;
+}
+
+.upload-wrap :deep(.n-upload-file-list) {
+  max-height: 168px;
+  overflow-y: auto;
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.upload-wrap :deep(.n-upload-file) {
+  border-radius: 10px;
+  background: var(--kv-surface-soft);
 }
 
 .upload-button {

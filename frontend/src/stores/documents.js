@@ -5,6 +5,8 @@ import { knowledgeBaseApi } from '../api/knowledgeBases'
 
 // 轮询定时器不放进 state：只是副作用句柄，不需要响应式
 let pollTimer = null
+// 批量上传的刷新防抖句柄：多个文件几乎同时完成时只拉一次列表
+let refreshTimer = null
 
 // 文档与知识库状态。轮询只在存在未完成文档时进行，避免空转。
 export const useDocumentStore = defineStore('documents', {
@@ -12,7 +14,8 @@ export const useDocumentStore = defineStore('documents', {
     knowledgeBases: [],
     knowledgeBaseId: '',
     documents: [],
-    uploading: false,
+    // 进行中的上传数量；批量上传时逐条计数，归零才解除按钮 loading
+    uploadingCount: 0,
     polling: false,
     // 正在删除的文档 ID；非空时界面显示全局遮罩并禁止其它操作
     deletingId: '',
@@ -42,23 +45,30 @@ export const useDocumentStore = defineStore('documents', {
     },
 
     /**
-     * 上传文件并刷新列表。
+     * 上传单个文件；列表由防抖刷新统一拉取，失败时把后端文案交回调用方
      * @param {File} file 待上传文件
-     * @returns {Promise<boolean>} 是否上传成功
+     * @returns {Promise<{ok: boolean, message?: string}>} 上传结果与失败原因
      */
     async upload(file) {
-      this.uploading = true
-      this.error = ''
+      this.uploadingCount += 1
       try {
         await documentApi.upload({ knowledgeBaseId: this.knowledgeBaseId, file })
-        await this.refresh()
-        return true
+        this.scheduleRefresh()
+        return { ok: true }
       } catch (e) {
-        this.error = e?.response?.data?.error?.message || e?.message || '上传失败'
-        return false
+        return { ok: false, message: e?.response?.data?.error?.message || e?.message || '上传失败' }
       } finally {
-        this.uploading = false
+        this.uploadingCount -= 1
       }
+    },
+
+    /** 上传完成后的 300ms 防抖刷新：连续成功的文件合并成一次列表请求。 */
+    scheduleRefresh() {
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => {
+        refreshTimer = null
+        this.refresh()
+      }, 300)
     },
 
     /**

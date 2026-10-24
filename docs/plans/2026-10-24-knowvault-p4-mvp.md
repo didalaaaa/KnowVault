@@ -497,7 +497,7 @@ public class DocumentContentDto
 
 ### Steps
 
-1. `n-upload` 增加 `multiple`，`:max="10"`，保留 `show-file-list` 用于逐条状态
+1. `n-upload` 增加 `multiple`，保留 `show-file-list` 逐条状态；不设 `:max`——Naive UI 的 max 会把已完成条目累计进去，选够数量后会静默拒绝新选择
 2. `documents` store 的 `uploading: boolean` 改为 `uploadingCount: number`；每个文件独立计数
 3. 上传成功后不立即全量 refresh，改为 300ms 防抖刷新一次，避免 N 个文件触发 N 次列表请求
 4. 失败时把后端 `UserFriendlyException` 文案回传给 `onError`，`n-upload` 对应条目显示红色
