@@ -31,11 +31,17 @@
                 <span>{{ m.citations.length }}</span>
               </div>
               <div class="cite-list">
-                <span v-for="(c, j) in m.citations" :key="j" class="cite-chip">
+                <button
+                  v-for="(c, j) in m.citations"
+                  :key="j"
+                  type="button"
+                  class="cite-chip"
+                  @click="openCitation(c)"
+                >
                   <span class="cite-index">{{ j + 1 }}</span>
                   <span class="cite-name" :title="c.title">{{ c.title }}</span>
                   <span class="cite-meta">片段 {{ c.chunkIndex }} · {{ c.score.toFixed(3) }}</span>
-                </span>
+                </button>
               </div>
             </div>
           </div>
@@ -84,13 +90,18 @@
       </div>
       <div class="composer-hint">Enter 发送 · 回答仅基于你上传的资料</div>
     </div>
+
+    <CitationDrawer v-model:show="citationVisible" :citation="activeCitation" @open-document="openCitationDocument" />
+    <DocumentDetailDrawer v-model:show="detailVisible" :document="detailDoc" />
   </div>
 </template>
 
 <script setup>
 import { ref, nextTick, watch } from 'vue'
-import { NInput, NButton } from 'naive-ui'
+import { NInput, NButton, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
+import CitationDrawer from './CitationDrawer.vue'
+import DocumentDetailDrawer from './DocumentDetailDrawer.vue'
 import { useChatStore } from '../stores/chat'
 import { useConversationStore } from '../stores/conversations'
 import { useDocumentStore } from '../stores/documents'
@@ -98,8 +109,13 @@ import { useDocumentStore } from '../stores/documents'
 const chat = useChatStore()
 const conversations = useConversationStore()
 const documents = useDocumentStore()
+const message = useMessage()
 const question = ref('')
 const listRef = ref(null)
+const citationVisible = ref(false)
+const activeCitation = ref(null)
+const detailVisible = ref(false)
+const detailDoc = ref(null)
 
 /** 滚到底部，让最新内容始终可见。 */
 async function scrollToBottom() {
@@ -127,6 +143,34 @@ async function send() {
 // 停止生成：取消服务端流
 function stop() {
   chat.stop()
+}
+
+/**
+ * 打开引用详情抽屉
+ * @param {object} citation 引用
+ */
+function openCitation(citation) {
+  activeCitation.value = citation
+  citationVisible.value = true
+}
+
+/**
+ * 从引用跳到文档详情：先用当前文档列表，找不到时刷新一次再找
+ * @param {object} citation 引用
+ */
+async function openCitationDocument(citation) {
+  citationVisible.value = false
+  let doc = documents.documents.find((item) => item.id === citation.documentId)
+  if (!doc) {
+    await documents.refresh()
+    doc = documents.documents.find((item) => item.id === citation.documentId)
+  }
+  if (!doc) {
+    message.warning('文档可能已被删除')
+    return
+  }
+  detailDoc.value = doc
+  detailVisible.value = true
 }
 </script>
 
@@ -379,8 +423,22 @@ function stop() {
   border: 1px solid var(--kv-border);
   border-radius: 8px;
   background: #ffffff;
+  font-family: inherit;
   font-size: 12px;
+  text-align: left;
   color: var(--kv-text-2);
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.cite-chip:hover {
+  border-color: var(--kv-primary);
+  background: var(--kv-primary-soft);
+}
+
+.cite-chip:focus-visible {
+  outline: 2px solid var(--kv-primary);
+  outline-offset: 2px;
 }
 
 .cite-index {

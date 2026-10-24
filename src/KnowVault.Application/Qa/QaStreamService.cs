@@ -26,6 +26,7 @@ namespace KnowVault.Application
 	public class QaStreamService : KnowVaultAppService, IQaStreamService
 	{
 		private static readonly ActivitySource ActivitySource = new(KnowVaultTelemetry.ActivitySourceName);
+		private const int CitationSnippetLength = 300;
 
 		private readonly IRagService _ragService;
 		private readonly IRepository<Conversation, Guid> _conversationRepository;
@@ -103,7 +104,11 @@ namespace KnowVault.Application
 				DocumentId = chunk.DocumentId,
 				Title = chunk.DocumentTitle,
 				ChunkIndex = chunk.ChunkIndex,
-				Score = chunk.Score
+				Score = chunk.Score,
+				Snippet = chunk.Content.Length <= CitationSnippetLength
+					? chunk.Content
+					: chunk.Content[..CitationSnippetLength],
+				HeadingPath = string.IsNullOrWhiteSpace(chunk.HeadingPath) ? null : chunk.HeadingPath
 			}).ToList();
 
 			yield return new QaStreamEventDto
