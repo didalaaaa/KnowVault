@@ -2,6 +2,7 @@ using System.Diagnostics;
 using KnowVault.Domain;
 using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Guids;
@@ -17,43 +18,51 @@ namespace KnowVault.Ingest
 
 		private readonly IRepository<Document, Guid> _documentRepository;
 		private readonly IRepository<DocumentChunk, Guid> _chunkRepository;
+		private readonly IRepository<KnowledgeBase, Guid> _knowledgeBaseRepository;
 		private readonly IDocumentStorage _storage;
 		private readonly DocumentParserRegistry _parserRegistry;
 		private readonly IDocumentChunker _chunker;
 		private readonly IEmbeddingService _embeddingService;
 		private readonly IVectorStore _vectorStore;
 		private readonly IGuidGenerator _guidGenerator;
+		private readonly IOptions<IngestOptions> _ingestOptions;
 		private readonly ILogger<DocumentProcessor> _logger;
 
 		/// <summary>构造函数。</summary>
 		/// <param name="documentRepository">文档仓储。</param>
 		/// <param name="chunkRepository">切片仓储。</param>
+		/// <param name="knowledgeBaseRepository">知识库仓储（读取每库切片设置）</param>
 		/// <param name="storage">对象存储。</param>
 		/// <param name="parserRegistry">解析器注册表。</param>
 		/// <param name="chunker">切片器。</param>
 		/// <param name="embeddingService">向量化服务。</param>
 		/// <param name="vectorStore">向量库。</param>
 		/// <param name="guidGenerator">GUID 生成器（ABP 约定）。</param>
+		/// <param name="ingestOptions">全局摄入参数（知识库未设置时回落）</param>
 		/// <param name="logger">日志。</param>
 		public DocumentProcessor(
 			IRepository<Document, Guid> documentRepository,
 			IRepository<DocumentChunk, Guid> chunkRepository,
+			IRepository<KnowledgeBase, Guid> knowledgeBaseRepository,
 			IDocumentStorage storage,
 			DocumentParserRegistry parserRegistry,
 			IDocumentChunker chunker,
 			IEmbeddingService embeddingService,
 			IVectorStore vectorStore,
 			IGuidGenerator guidGenerator,
+			IOptions<IngestOptions> ingestOptions,
 			ILogger<DocumentProcessor> logger)
 		{
 			_documentRepository = documentRepository;
 			_chunkRepository = chunkRepository;
+			_knowledgeBaseRepository = knowledgeBaseRepository;
 			_storage = storage;
 			_parserRegistry = parserRegistry;
 			_chunker = chunker;
 			_embeddingService = embeddingService;
 			_vectorStore = vectorStore;
 			_guidGenerator = guidGenerator;
+			_ingestOptions = ingestOptions;
 			_logger = logger;
 		}
 
@@ -96,7 +105,7 @@ namespace KnowVault.Ingest
 				parsed = parser.Parse(stream, document.ObjectStorageKey!);
 			}
 
-			var chunks = _chunker.Chunk(parsed);
+			var chunks = _chunker.Chunk(parsed, await ResolveChunkOptionsAsync(document.KnowledgeBaseId, cancellationToken));
 			if (chunks.Count == 0)
 			{
 				throw new InvalidOperationException("未从文档中解析出任何文本内容。");
@@ -138,6 +147,24 @@ namespace KnowVault.Ingest
 			document.MarkReady();
 			await _documentRepository.UpdateAsync(document, autoSave: true, cancellationToken: cancellationToken);
 			_logger.LogInformation("文档 {DocumentId} 摄入完成：{Count} 个切片", document.Id, chunks.Count);
+		}
+
+		/// <summary>
+		/// 取本次切片参数：知识库设置了就用库设置，否则回落全局配置
+		/// </summary>
+		/// <param name="knowledgeBaseId">文档所属知识库</param>
+		/// <param name="cancellationToken">取消令牌。</param>
+		/// <returns>切片参数。</returns>
+		private async Task<ChunkOptions> ResolveChunkOptionsAsync(Guid knowledgeBaseId, CancellationToken cancellationToken)
+		{
+			var knowledgeBase = await _knowledgeBaseRepository.FindAsync(knowledgeBaseId, cancellationToken: cancellationToken);
+			var options = _ingestOptions.Value;
+
+			return new ChunkOptions
+			{
+				SizeChars = knowledgeBase?.ChunkSizeChars ?? options.ChunkSizeChars,
+				OverlapChars = knowledgeBase?.ChunkOverlapChars ?? options.ChunkOverlapChars
+			};
 		}
 	}
 }

@@ -22,6 +22,7 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 
 			builder.Property(x => x.Name).HasMaxLength(128).IsRequired();
 			builder.Property(x => x.Description).HasMaxLength(512);
+			builder.Property(x => x.SystemPrompt).HasMaxLength(4000);
 
 			// 按租户隔离查询，索引与过滤条件保持一致
 			builder.HasIndex(x => new { x.TenantId, x.Name });

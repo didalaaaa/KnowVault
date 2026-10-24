@@ -117,5 +117,27 @@ namespace KnowVault.Tests
 			Assert.Equal(MessageRoleEnum.User, messages[0].Role);
 			Assert.Contains("用户问题：继续", messages[0].Content);
 		}
+
+		/// <summary>
+		/// 知识库设置了系统提示词时整体替换内置模板
+		/// </summary>
+		[Fact]
+		public void Build_uses_knowledge_base_system_prompt_override()
+		{
+			var (system, _) = RagPromptBuilder.Build("问题", [], null, "只输出要点");
+
+			Assert.Equal("只输出要点", system);
+		}
+
+		/// <summary>
+		/// 空白的系统提示词视为未设置，回落内置模板
+		/// </summary>
+		[Fact]
+		public void Build_falls_back_to_default_prompt_when_override_blank()
+		{
+			var (system, _) = RagPromptBuilder.Build("问题", [], null, "   ");
+
+			Assert.Contains("只使用资料片段中的信息作答", system);
+		}
 	}
 }

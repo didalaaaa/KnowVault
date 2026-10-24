@@ -1,6 +1,6 @@
 import { http } from './http'
 
-// 知识库接口（P2：列表 + 默认库 + 增改删）
+// 知识库接口（列表 + 默认库 + 增改删 + 切片/检索设置）
 export const knowledgeBaseApi = {
   /**
    * 列出知识库。
@@ -28,6 +28,14 @@ export const knowledgeBaseApi = {
    * @returns {Promise<object>} 修改后的知识库
    */
   update: (payload) => http.put('/app/knowledge-base', payload),
+
+  /**
+   * 修改知识库的切片与检索设置。
+   * 注意：与 update 同理，ABP 把 UpdateSettingsAsync 映射成不带 {id} 的 PUT 路由，ID 走请求体。
+   * @param {{id: string, chunkSizeChars?: number|null, chunkOverlapChars?: number|null, topK?: number|null, systemPrompt?: string|null}} payload 知识库 ID 与四项设置
+   * @returns {Promise<object>} 修改后的知识库
+   */
+  updateSettings: (payload) => http.put('/app/knowledge-base/settings', payload),
 
   /**
    * 删除知识库（后端只允许空库、默认库不可删）。

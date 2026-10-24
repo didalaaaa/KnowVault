@@ -31,6 +31,7 @@ namespace KnowVault.Application
 		private readonly IRagService _ragService;
 		private readonly IRepository<Conversation, Guid> _conversationRepository;
 		private readonly IRepository<Message, Guid> _messageRepository;
+		private readonly IRepository<KnowledgeBase, Guid> _knowledgeBaseRepository;
 		private readonly IUnitOfWorkManager _unitOfWorkManager;
 		private readonly IOptions<AiOptions> _aiOptions;
 		private readonly KnowledgeBaseAccessChecker _accessChecker;
@@ -42,6 +43,7 @@ namespace KnowVault.Application
 		/// <param name="ragService">RAG 编排入口</param>
 		/// <param name="conversationRepository">会话仓储</param>
 		/// <param name="messageRepository">消息仓储</param>
+		/// <param name="knowledgeBaseRepository">知识库仓储（读取切片与检索设置）</param>
 		/// <param name="unitOfWorkManager">工作单元管理器</param>
 		/// <param name="aiOptions">AI 配置（历史轮数）</param>
 		/// <param name="accessChecker">知识库访问检查器</param>
@@ -50,6 +52,7 @@ namespace KnowVault.Application
 			IRagService ragService,
 			IRepository<Conversation, Guid> conversationRepository,
 			IRepository<Message, Guid> messageRepository,
+			IRepository<KnowledgeBase, Guid> knowledgeBaseRepository,
 			IUnitOfWorkManager unitOfWorkManager,
 			IOptions<AiOptions> aiOptions,
 			KnowledgeBaseAccessChecker accessChecker,
@@ -58,6 +61,7 @@ namespace KnowVault.Application
 			_ragService = ragService;
 			_conversationRepository = conversationRepository;
 			_messageRepository = messageRepository;
+			_knowledgeBaseRepository = knowledgeBaseRepository;
 			_unitOfWorkManager = unitOfWorkManager;
 			_aiOptions = aiOptions;
 			_accessChecker = accessChecker;
@@ -81,6 +85,7 @@ namespace KnowVault.Application
 
 			Conversation conversation;
 			IReadOnlyList<LlmChatMessage> history;
+			KnowledgeBase? knowledgeBase;
 			Guid? userMessageId = null;
 
 			// 第一段 UoW：解析会话、读历史、落用户消息，随即释放，不跨模型生成持有连接
@@ -88,6 +93,7 @@ namespace KnowVault.Application
 			{
 				conversation = await ResolveConversationAsync(input, cancellationToken);
 				history = await LoadHistoryAsync(conversation.Id, input.Regenerate, cancellationToken);
+				knowledgeBase = await _knowledgeBaseRepository.FindAsync(knowledgeBaseId, cancellationToken: cancellationToken);
 
 				// 重新生成不重复插入用户消息，只重新回答上一轮问题
 				if (!input.Regenerate)
@@ -109,7 +115,9 @@ namespace KnowVault.Application
 				TenantId = CurrentTenant.Id ?? Guid.Empty,
 				ConversationId = conversation.Id,
 				Question = input.Question,
-				TopK = input.TopK ?? 0,
+				// 请求参数优先，其次知识库设置，最后交给全局配置
+				TopK = input.TopK ?? knowledgeBase?.TopK ?? 0,
+				SystemPromptOverride = knowledgeBase?.SystemPrompt,
 				History = history
 			}, cancellationToken);
 

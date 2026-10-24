@@ -194,6 +194,12 @@ namespace KnowVault.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("ChunkOverlapChars")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ChunkSizeChars")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -223,9 +229,16 @@ namespace KnowVault.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("SystemPrompt")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("TenantId");
+
+                    b.Property<int?>("TopK")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

@@ -67,7 +67,7 @@
 | D5 | 批量上传只改前端：`n-upload multiple` + 逐文件 custom-request；后端保持单文件接口 | 避免新增 stream 集合契约，现有去重逻辑直接复用 |
 | D6 | 反馈表唯一约束 `(MessageId, UserId)`；`Rating` 传 null 表示取消；只允许反馈自己会话里的助手消息 | 支持点赞/点踩切换，防止越权 |
 | D7 | 重新生成：前端移除最后一条助手气泡，带 `Regenerate=true` 重发；后端不重复插入用户消息，历史排除最后一条用户消息 | 不新增 Hub 方法，复用同一编排 |
-| D8 | 知识库设置用独立接口 `PUT /api/app/knowledge-base/{id}/settings`；字段可空，null 回落全局配置；只影响新摄入与新问答 | 与名称/描述编辑分离，避免误清空 |
+| D8 | 知识库设置用独立接口 `PUT /api/app/knowledge-base/settings`（ID 走请求体）；字段可空，null 回落全局配置；只影响新摄入与新问答 | 与名称/描述编辑分离，避免误清空 |
 | D9 | 仪表盘只统计当前用户可见知识库与其本人会话；平均耗时取最近 7 天助手消息；趋势按服务器本地日期 | 与权限模型一致，作品规模下内存聚合即可 |
 | D10 | 前端引入 `markdown-it` 渲染助手回答，`html: false`；用户消息保持纯文本 | 演示效果必需，关闭 HTML 防 XSS |
 | D11 | 流式首帧返回 `UserMessageId`，完成帧返回 `AssistantMessageId`；消息历史接口返回消息 ID 与当前用户反馈 | 反馈、复制、重生成需要稳定消息标识 |
@@ -663,7 +663,7 @@ public class KnowledgeBaseSettingsInput : EntityDto<Guid>
 - `UpdateSettingsAsync(KnowledgeBaseSettingsInput input, CancellationToken)`：Owner 权限
 - 校验：`ChunkSizeChars` 200–4000；`ChunkOverlapChars` 0–min(500, size/2)；`TopK` 1–8
 - `KnowledgeBaseDto` 增加四个设置字段，列表接口回填
-- 动态路由：`PUT /api/app/knowledge-base/{id}/settings`
+- 动态路由：`PUT /api/app/knowledge-base/settings`（ABP 把 `UpdateSettingsAsync` 映射为不带 `{id}` 的 PUT，ID 走请求体，已用 Swagger 核实）
 
 ### 切片参数
 

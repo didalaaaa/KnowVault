@@ -78,7 +78,7 @@ namespace KnowVault.Ai
 		public async Task<RagStreamResult> AnswerStreamAsync(RagRequest request, CancellationToken cancellationToken = default)
 		{
 			var chunks = await RetrieveAsync(request, cancellationToken);
-			var (system, messages) = RagPromptBuilder.Build(request.Question, chunks, request.History);
+			var (system, messages) = RagPromptBuilder.Build(request.Question, chunks, request.History, request.SystemPromptOverride);
 
 			return new RagStreamResult
 			{

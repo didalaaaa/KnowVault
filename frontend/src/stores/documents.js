@@ -94,6 +94,17 @@ export const useDocumentStore = defineStore('documents', {
     },
 
     /**
+     * 修改知识库的切片与检索设置（错误向上抛，由界面弹提示）；只影响新上传文档与新提问
+     * @param {{id: string, chunkSizeChars?: number|null, chunkOverlapChars?: number|null, topK?: number|null, systemPrompt?: string|null}} payload 知识库 ID 与四项设置
+     * @returns {Promise<object>} 修改后的知识库
+     */
+    async updateKnowledgeBaseSettings(payload) {
+      const updated = await knowledgeBaseApi.updateSettings(payload)
+      await this.refresh()
+      return updated
+    },
+
+    /**
      * 删除知识库（仅空库；错误向上抛，由界面弹提示）。
      * @param {string} id 知识库 ID
      */

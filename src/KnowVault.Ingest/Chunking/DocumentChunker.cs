@@ -1,5 +1,4 @@
 using System.Text;
-using Microsoft.Extensions.Options;
 using Volo.Abp.DependencyInjection;
 
 namespace KnowVault.Ingest
@@ -12,21 +11,12 @@ namespace KnowVault.Ingest
 	{
 		private static readonly char[] SentenceEndings = ['。', '！', '？', '；', '!', '?', ';', '\n'];
 
-		private readonly IngestOptions _options;
-
-		/// <summary>构造函数。</summary>
-		/// <param name="options">摄入参数（切片长度与重叠）。</param>
-		public DocumentChunker(IOptions<IngestOptions> options)
-		{
-			_options = options.Value;
-		}
-
 		/// <inheritdoc />
-		public IReadOnlyList<TextChunk> Chunk(ParsedDocument document)
+		public IReadOnlyList<TextChunk> Chunk(ParsedDocument document, ChunkOptions options)
 		{
-			var size = Math.Max(100, _options.ChunkSizeChars);
+			var size = Math.Max(100, options.SizeChars);
 			// 重叠不超过容量的一半，否则切片会互相吞没
-			var overlap = Math.Clamp(_options.ChunkOverlapChars, 0, size / 2);
+			var overlap = Math.Clamp(options.OverlapChars, 0, size / 2);
 			var chunks = new List<TextChunk>();
 
 			foreach (var section in document.Sections)

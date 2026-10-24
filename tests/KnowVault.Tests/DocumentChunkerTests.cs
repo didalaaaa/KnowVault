@@ -1,5 +1,4 @@
 using KnowVault.Ingest;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace KnowVault.Tests
@@ -9,8 +8,8 @@ namespace KnowVault.Tests
 	/// </summary>
 	public class DocumentChunkerTests
 	{
-		private static DocumentChunker CreateChunker(int size = 100, int overlap = 20)
-			=> new(Options.Create(new IngestOptions { ChunkSizeChars = size, ChunkOverlapChars = overlap }));
+		private static ChunkOptions CreateOptions(int size = 100, int overlap = 20)
+			=> new() { SizeChars = size, OverlapChars = overlap };
 
 		private static ParsedDocument Document(params (string Heading, string Text)[] sections)
 		{
@@ -27,7 +26,7 @@ namespace KnowVault.Tests
 		[Fact]
 		public void Short_document_produces_single_chunk()
 		{
-			var chunks = CreateChunker().Chunk(Document(("", "很短的一段话。")));
+			var chunks = new DocumentChunker().Chunk(Document(("", "很短的一段话。")), CreateOptions());
 
 			Assert.Single(chunks);
 			Assert.Equal(0, chunks[0].Index);
@@ -39,7 +38,7 @@ namespace KnowVault.Tests
 		public void Small_blocks_are_merged()
 		{
 			var text = string.Join("\n\n", Enumerable.Repeat("十字符左右的一段。", 3));
-			var chunks = CreateChunker(size: 200).Chunk(Document(("", text)));
+			var chunks = new DocumentChunker().Chunk(Document(("", text)), CreateOptions(size: 200));
 
 			Assert.Single(chunks);
 		}
@@ -49,7 +48,7 @@ namespace KnowVault.Tests
 		public void Every_chunk_respects_size_limit()
 		{
 			var text = string.Join("\n\n", Enumerable.Repeat(new string('测', 80), 6));
-			var chunks = CreateChunker(size: 100, overlap: 20).Chunk(Document(("", text)));
+			var chunks = new DocumentChunker().Chunk(Document(("", text)), CreateOptions(size: 100, overlap: 20));
 
 			Assert.True(chunks.Count > 1);
 			Assert.All(chunks, c => Assert.True(c.Content.Length <= 100, $"切片长度 {c.Content.Length} 超过 100"));
@@ -62,7 +61,7 @@ namespace KnowVault.Tests
 			// 取 50 字符的段落：容量 100、重叠 20 时，「重叠段 + 本段」正好放得下，重叠才会真正生效
 			var first = new string('甲', 50);
 			var second = new string('乙', 50);
-			var chunks = CreateChunker(size: 100, overlap: 20).Chunk(Document(("", $"{first}\n\n{second}")));
+			var chunks = new DocumentChunker().Chunk(Document(("", $"{first}\n\n{second}")), CreateOptions(size: 100, overlap: 20));
 
 			Assert.Equal(2, chunks.Count);
 			Assert.Contains(new string('甲', 20), chunks[1].Content);
@@ -74,7 +73,7 @@ namespace KnowVault.Tests
 		{
 			var sentence = new string('字', 45) + "。";
 			var text = string.Concat(Enumerable.Repeat(sentence, 10));
-			var chunks = CreateChunker(size: 100, overlap: 20).Chunk(Document(("", text)));
+			var chunks = new DocumentChunker().Chunk(Document(("", text)), CreateOptions(size: 100, overlap: 20));
 
 			Assert.True(chunks.Count >= 5);
 			Assert.All(chunks, c => Assert.True(c.Content.Length <= 100));
@@ -84,8 +83,8 @@ namespace KnowVault.Tests
 		[Fact]
 		public void Chunks_inherit_heading_path()
 		{
-			var chunks = CreateChunker(size: 60)
-				.Chunk(Document(("第一章", new string('甲', 200)), ("第二章", new string('乙', 200))));
+			var chunks = new DocumentChunker()
+				.Chunk(Document(("第一章", new string('甲', 200)), ("第二章", new string('乙', 200))), CreateOptions(size: 60));
 
 			Assert.Contains(chunks, c => c.HeadingPath == "第一章");
 			Assert.Contains(chunks, c => c.HeadingPath == "第二章");
@@ -95,7 +94,7 @@ namespace KnowVault.Tests
 		[Fact]
 		public void Empty_document_produces_no_chunk()
 		{
-			Assert.Empty(CreateChunker().Chunk(Document(("", "   "), ("标题", ""))));
+			Assert.Empty(new DocumentChunker().Chunk(Document(("", "   "), ("标题", "")), CreateOptions()));
 		}
 	}
 }

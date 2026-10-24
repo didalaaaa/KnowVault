@@ -19,6 +19,11 @@ namespace KnowVault.Ai
 		public int TopK { get; set; }
 
 		/// <summary>
+		/// 知识库自定义系统提示词；为空时使用内置模板
+		/// </summary>
+		public string? SystemPromptOverride { get; set; }
+
+		/// <summary>
 		/// 历史轮次（时间升序，不含本轮提问）
 		/// </summary>
 		public IReadOnlyList<LlmChatMessage> History { get; set; } = [];

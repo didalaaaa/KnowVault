@@ -16,11 +16,13 @@ namespace KnowVault.Ai
 		/// <param name="question">本轮用户问题。</param>
 		/// <param name="chunks">本轮检索到的片段（已按相关性降序）。</param>
 		/// <param name="history">历史轮次（时间升序，可为空）。</param>
+		/// <param name="systemPromptOverride">知识库自定义系统提示词；为空时用内置模板</param>
 		/// <returns>system 提示词与完整消息列表。</returns>
 		public static (string System, IReadOnlyList<LlmChatMessage> Messages) Build(
 			string question,
 			IReadOnlyList<RagRetrievedChunk> chunks,
-			IReadOnlyList<LlmChatMessage>? history = null)
+			IReadOnlyList<LlmChatMessage>? history = null,
+			string? systemPromptOverride = null)
 		{
 			var messages = new List<LlmChatMessage>((history?.Count ?? 0) + 1);
 			if (history is not null)
@@ -35,7 +37,10 @@ namespace KnowVault.Ai
 			}
 
 			messages.Add(new LlmChatMessage { Role = MessageRoleEnum.User, Content = BuildUserPrompt(question, chunks) });
-			return (RagPromptTemplates.SystemPrompt, messages);
+
+			// 知识库自定义提示词整体替换内置模板；空白视为未设置
+			var system = string.IsNullOrWhiteSpace(systemPromptOverride) ? RagPromptTemplates.SystemPrompt : systemPromptOverride;
+			return (system, messages);
 		}
 
 		/// <summary>

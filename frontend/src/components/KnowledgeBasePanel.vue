@@ -36,6 +36,10 @@
             <template #icon><KvIcon name="users" :size="13" /></template>
             成员
           </n-button>
+          <n-button size="tiny" quaternary @click="openSettings(kb)">
+            <template #icon><KvIcon name="settings" :size="13" /></template>
+            设置
+          </n-button>
           <n-button size="tiny" quaternary @click="openEdit(kb)">
             <template #icon><KvIcon name="pencil" :size="13" /></template>
             编辑
@@ -84,6 +88,68 @@
     </n-modal>
 
     <n-modal
+      v-model:show="settingsVisible"
+      preset="card"
+      :title="'知识库设置 · ' + (settingsKb?.name || '')"
+      class="kv-modal"
+      style="width: min(480px, calc(100vw - 32px))"
+    >
+      <n-alert type="info" :bordered="false" class="settings-tip">
+        修改仅对新上传的文档与新提问生效，已入库文档不会被重新切片
+      </n-alert>
+      <n-form :model="settingsForm" label-placement="top">
+        <n-form-item label="切片长度（字符）" feedback="单片目标长度，数值越小引用片段越细">
+          <n-input-number
+            v-model:value="settingsForm.chunkSizeChars"
+            :min="200"
+            :max="4000"
+            :step="100"
+            placeholder="留空使用全局 1000"
+            style="width: 100%"
+            clearable
+          />
+        </n-form-item>
+        <n-form-item label="切片重叠（字符）" feedback="相邻切片保留的上下文，不能超过切片长度的一半">
+          <n-input-number
+            v-model:value="settingsForm.chunkOverlapChars"
+            :min="0"
+            :max="500"
+            :step="20"
+            placeholder="留空使用全局 120"
+            style="width: 100%"
+            clearable
+          />
+        </n-form-item>
+        <n-form-item label="检索条数（TopK）" feedback="每次提问最多带入的片段数，1–8">
+          <n-input-number
+            v-model:value="settingsForm.topK"
+            :min="1"
+            :max="8"
+            placeholder="留空使用全局 5"
+            style="width: 100%"
+            clearable
+          />
+        </n-form-item>
+        <n-form-item label="系统提示词" feedback="留空使用内置模板；填写后整体替换">
+          <n-input
+            v-model:value="settingsForm.systemPrompt"
+            type="textarea"
+            :rows="5"
+            maxlength="4000"
+            show-count
+            placeholder="例如：只依据资料回答，用要点形式输出，每点不超过两句"
+          />
+        </n-form-item>
+      </n-form>
+      <template #footer>
+        <div class="kb-form-footer">
+          <n-button @click="settingsVisible = false">取消</n-button>
+          <n-button type="primary" :loading="settingsSaving" @click="saveSettings">保存</n-button>
+        </div>
+      </template>
+    </n-modal>
+
+    <n-modal
       v-model:show="membersVisible"
       preset="card"
       :title="'成员管理 · ' + (activeKb?.name || '')"
@@ -127,8 +193,8 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import {
-  NButton, NTag, NModal, NForm, NFormItem, NInput, NPopconfirm,
-  NSelect, NDivider, useMessage,
+  NAlert, NButton, NTag, NModal, NForm, NFormItem, NInput, NInputNumber,
+  NPopconfirm, NSelect, NDivider, useMessage,
 } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import { useDocumentStore } from '../stores/documents'
@@ -144,6 +210,11 @@ const formVisible = ref(false)
 const saving = ref(false)
 const editingId = ref('')
 const form = reactive({ name: '', description: '' })
+
+const settingsVisible = ref(false)
+const settingsSaving = ref(false)
+const settingsKb = ref(null)
+const settingsForm = reactive({ chunkSizeChars: null, chunkOverlapChars: null, topK: null, systemPrompt: '' })
 
 const membersVisible = ref(false)
 const membersLoading = ref(false)
@@ -180,6 +251,40 @@ function openEdit(kb) {
   form.name = kb.name
   form.description = kb.description || ''
   formVisible.value = true
+}
+
+/**
+ * 打开「设置」弹窗，用知识库当前值预填。
+ * @param {object} kb 知识库
+ */
+function openSettings(kb) {
+  settingsKb.value = kb
+  settingsForm.chunkSizeChars = kb.chunkSizeChars ?? null
+  settingsForm.chunkOverlapChars = kb.chunkOverlapChars ?? null
+  settingsForm.topK = kb.topK ?? null
+  settingsForm.systemPrompt = kb.systemPrompt || ''
+  settingsVisible.value = true
+}
+
+/** 保存切片与检索设置；留空的字段传 null 由后端回落全局配置。 */
+async function saveSettings() {
+  if (!settingsKb.value) return
+  settingsSaving.value = true
+  try {
+    await documents.updateKnowledgeBaseSettings({
+      id: settingsKb.value.id,
+      chunkSizeChars: settingsForm.chunkSizeChars ?? null,
+      chunkOverlapChars: settingsForm.chunkOverlapChars ?? null,
+      topK: settingsForm.topK ?? null,
+      systemPrompt: settingsForm.systemPrompt.trim() || null,
+    })
+    settingsVisible.value = false
+    message.success('已保存，仅对新上传的文档与新提问生效')
+  } catch (e) {
+    message.error(describeError(e))
+  } finally {
+    settingsSaving.value = false
+  }
 }
 
 /** 保存（新建或编辑）；失败时弹后端的中文文案。 */
@@ -453,6 +558,10 @@ function describeError(e) {
 
 .kb-empty span {
   font-size: 11px;
+}
+
+.settings-tip {
+  margin-bottom: 14px;
 }
 
 .kb-form-footer {

@@ -27,6 +27,12 @@ namespace KnowVault.Application.Contracts
 		/// <returns>修改后的知识库。</returns>
 		Task<KnowledgeBaseDto> UpdateAsync(UpdateKnowledgeBaseInput input, CancellationToken cancellationToken);
 
+		/// <summary>修改知识库的切片与检索设置（仅 Owner）。</summary>
+		/// <param name="input">知识库 ID 与四项设置，空值表示回落全局配置。</param>
+		/// <param name="cancellationToken">取消令牌。</param>
+		/// <returns>修改后的知识库。</returns>
+		Task<KnowledgeBaseDto> UpdateSettingsAsync(KnowledgeBaseSettingsInput input, CancellationToken cancellationToken);
+
 		/// <summary>删除知识库；默认知识库与非空知识库不可删除。</summary>
 		/// <param name="id">知识库 ID。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
