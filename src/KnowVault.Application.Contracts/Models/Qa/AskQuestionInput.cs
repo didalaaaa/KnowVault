@@ -15,6 +15,9 @@ namespace KnowVault.Application.Contracts
 		/// <summary>可选：覆盖检索条数（top-k）；为空或 0 时用服务端配置（上限 8）。</summary>
 		public int? TopK { get; set; }
 
+		/// <summary>重新生成：不插入新的用户消息，历史中剔除上一轮问答；必须带会话 ID。</summary>
+		public bool Regenerate { get; set; }
+
 		[Required]
 		[StringLength(2000)]
 		public string Question { get; set; } = string.Empty;

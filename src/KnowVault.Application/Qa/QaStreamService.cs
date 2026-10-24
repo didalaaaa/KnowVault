@@ -70,19 +70,33 @@ namespace KnowVault.Application
 			var knowledgeBaseId = input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId;
 			await _accessChecker.EnsureAsync(knowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
 
+			// 重新生成要沿用当前会话与上一轮问题，没有会话 ID 就无从定位
+			if (input.Regenerate && !input.ConversationId.HasValue) throw new UserFriendlyException("重新生成需要指定会话");
+
+			var stopwatch = Stopwatch.StartNew();
 			using var activity = ActivitySource.StartActivity("qa.ask");
 			activity?.SetTag("qa.knowledge_base_id", input.KnowledgeBaseId);
 			activity?.SetTag("qa.question_length", input.Question.Length);
+			activity?.SetTag("qa.regenerate", input.Regenerate);
 
 			Conversation conversation;
 			IReadOnlyList<LlmChatMessage> history;
+			Guid? userMessageId = null;
 
 			// 第一段 UoW：解析会话、读历史、落用户消息，随即释放，不跨模型生成持有连接
 			using (var unitOfWork = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
 			{
 				conversation = await ResolveConversationAsync(input, cancellationToken);
-				history = await LoadHistoryAsync(conversation.Id, cancellationToken);
-				await _messageRepository.InsertAsync(new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question), autoSave: true, cancellationToken);
+				history = await LoadHistoryAsync(conversation.Id, input.Regenerate, cancellationToken);
+
+				// 重新生成不重复插入用户消息，只重新回答上一轮问题
+				if (!input.Regenerate)
+				{
+					var userMessage = new Message(GuidGenerator.Create(), conversation.Id, MessageRoleEnum.User, input.Question);
+					await _messageRepository.InsertAsync(userMessage, autoSave: true, cancellationToken);
+					userMessageId = userMessage.Id;
+				}
+
 				await unitOfWork.CompleteAsync(cancellationToken);
 			}
 
@@ -115,6 +129,7 @@ namespace KnowVault.Application
 			{
 				Kind = QaStreamEventKindEnum.Started,
 				ConversationId = conversation.Id,
+				UserMessageId = userMessageId,
 				Citations = citations
 			};
 
@@ -125,25 +140,34 @@ namespace KnowVault.Application
 				yield return new QaStreamEventDto { Kind = QaStreamEventKindEnum.Delta, Delta = delta };
 			}
 
+			stopwatch.Stop();
+			var latencyMs = (int)Math.Min(stopwatch.ElapsedMilliseconds, int.MaxValue);
+
 			// 第二段 UoW：助手消息落库并刷新会话活动时间；客户端中途断开时迭代器在这里之前就退出，半截回答不入库
 			using (var unitOfWork = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
 			{
-				await _messageRepository.InsertAsync(
-					new Message(
-						GuidGenerator.Create(),
-						conversation.Id,
-						MessageRoleEnum.Assistant,
-						answer.ToString(),
-						citationsJson: JsonSerializer.Serialize(citations)),
-					autoSave: true,
-					cancellationToken: cancellationToken);
+				var assistantMessage = new Message(
+					GuidGenerator.Create(),
+					conversation.Id,
+					MessageRoleEnum.Assistant,
+					answer.ToString(),
+					citationsJson: JsonSerializer.Serialize(citations));
+				assistantMessage.SetLatency(latencyMs);
+
+				await _messageRepository.InsertAsync(assistantMessage, autoSave: true, cancellationToken: cancellationToken);
 
 				conversation.Touch(_clock.Now);
 				await _conversationRepository.UpdateAsync(conversation, autoSave: true, cancellationToken: cancellationToken);
 				await unitOfWork.CompleteAsync(cancellationToken);
-			}
 
-			yield return new QaStreamEventDto { Kind = QaStreamEventKindEnum.Completed, ConversationId = conversation.Id };
+				yield return new QaStreamEventDto
+				{
+					Kind = QaStreamEventKindEnum.Completed,
+					ConversationId = conversation.Id,
+					AssistantMessageId = assistantMessage.Id,
+					LatencyMs = latencyMs
+				};
+			}
 		}
 
 		/// <summary>
@@ -175,9 +199,10 @@ namespace KnowVault.Application
 		/// 读取最近若干轮历史（时间升序）——必须在插入本轮用户消息之前调用
 		/// </summary>
 		/// <param name="conversationId">会话 ID</param>
+		/// <param name="excludeLastTurn">重新生成时剔除最后一轮用户提问及其后的助手回答</param>
 		/// <param name="cancellationToken">取消令牌</param>
 		/// <returns>历史消息（不含本轮提问）</returns>
-		private async Task<IReadOnlyList<LlmChatMessage>> LoadHistoryAsync(Guid conversationId, CancellationToken cancellationToken)
+		private async Task<IReadOnlyList<LlmChatMessage>> LoadHistoryAsync(Guid conversationId, bool excludeLastTurn, CancellationToken cancellationToken)
 		{
 			var maxMessages = Math.Max(_aiOptions.Value.HistoryMaxMessages, 0);
 			if (maxMessages == 0) return [];
@@ -187,10 +212,16 @@ namespace KnowVault.Application
 				message => message.ConversationId == conversationId,
 				cancellationToken: cancellationToken);
 
-			return [.. messages
-				.OrderByDescending(message => message.CreationTime)
-				.Take(maxMessages)
-				.OrderBy(message => message.CreationTime)
+			var ordered = messages.OrderBy(message => message.CreationTime).ToList();
+			if (excludeLastTurn)
+			{
+				// 旧回答也要一起剔除：只删提问会让模型把上一版回答当成已经给出的上下文
+				var lastUserIndex = ordered.FindLastIndex(message => message.Role == MessageRoleEnum.User);
+				if (lastUserIndex >= 0) ordered.RemoveRange(lastUserIndex, ordered.Count - lastUserIndex);
+			}
+
+			return [.. ordered
+				.TakeLast(maxMessages)
 				.Select(message => new LlmChatMessage { Role = message.Role, Content = message.Content })];
 		}
 	}

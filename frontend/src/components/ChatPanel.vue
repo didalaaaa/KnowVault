@@ -45,6 +45,49 @@
               </div>
             </div>
           </div>
+          <!-- 助手消息操作条：评价、复制、重新生成（仅最后一条） -->
+          <div v-if="m.role === 'assistant' && !m.streaming" class="msg-actions">
+            <template v-if="m.id">
+              <button
+                type="button"
+                class="msg-action"
+                :class="{ active: m.feedback === 0 }"
+                :aria-pressed="m.feedback === 0"
+                title="有帮助"
+                @click="rate(i, 0)"
+              >
+                <KvIcon name="thumb-up" :size="13" />
+                有帮助
+              </button>
+              <button
+                type="button"
+                class="msg-action"
+                :class="{ active: m.feedback === 1 }"
+                :aria-pressed="m.feedback === 1"
+                title="没帮助"
+                @click="rate(i, 1)"
+              >
+                <KvIcon name="thumb-down" :size="13" />
+                没帮助
+              </button>
+            </template>
+            <button type="button" class="msg-action" title="复制回答" @click="copyAnswer(i)">
+              <KvIcon name="copy" :size="13" />
+              复制
+            </button>
+            <button
+              v-if="i === chat.messages.length - 1"
+              type="button"
+              class="msg-action"
+              :disabled="chat.loading"
+              title="基于同样的提问重新回答"
+              @click="regenerate"
+            >
+              <KvIcon name="rotate" :size="13" />
+              重新生成
+            </button>
+            <span v-if="m.latencyMs" class="msg-latency">{{ formatLatency(m.latencyMs) }}</span>
+          </div>
         </div>
       </div>
 
@@ -143,6 +186,46 @@ async function send() {
 // 停止生成：取消服务端流
 function stop() {
   chat.stop()
+}
+
+/**
+ * 给助手回答打分：再次点击同一评分即取消
+ * @param {number} index 消息下标
+ * @param {number} rating 0=有帮助，1=没帮助
+ */
+async function rate(index, rating) {
+  try {
+    await chat.feedback(index, rating)
+  } catch (e) {
+    message.error('评价保存失败，请稍后重试')
+  }
+}
+
+/**
+ * 复制助手回答正文
+ * @param {number} index 消息下标
+ */
+async function copyAnswer(index) {
+  const copied = await chat.copy(index)
+  if (copied) message.success('已复制回答')
+  else message.error('复制失败，请手动选择文本')
+}
+
+// 重新生成：复用最后一条用户提问，回答原地替换
+async function regenerate() {
+  if (chat.loading) return
+  await chat.regenerate(documents.knowledgeBaseId)
+  if (chat.conversationId) conversations.refresh(documents.knowledgeBaseId)
+  await scrollToBottom()
+}
+
+/**
+ * 耗时格式化（毫秒 → 秒，保留一位小数）
+ * @param {number} ms 毫秒
+ * @returns {string} 例如 1.8s
+ */
+function formatLatency(ms) {
+  return `${(ms / 1000).toFixed(1)}s`
 }
 
 /**
@@ -465,6 +548,58 @@ async function openCitationDocument(citation) {
 
 .cite-meta {
   flex: none;
+  font-size: 11px;
+  color: var(--kv-text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.msg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.msg-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--kv-text-3);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.msg-action:hover:not(:disabled) {
+  background: var(--kv-surface-soft);
+  color: var(--kv-text-2);
+}
+
+.msg-action:focus-visible {
+  outline: 2px solid var(--kv-primary);
+  outline-offset: 2px;
+}
+
+.msg-action.active {
+  border-color: #d6e9e4;
+  background: var(--kv-primary-soft);
+  color: var(--kv-primary);
+  font-weight: 600;
+}
+
+.msg-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.msg-latency {
+  margin-left: 2px;
   font-size: 11px;
   color: var(--kv-text-3);
   font-variant-numeric: tabular-nums;

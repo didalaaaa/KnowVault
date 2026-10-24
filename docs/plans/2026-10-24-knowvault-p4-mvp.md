@@ -81,7 +81,7 @@
 | 引用片段长度 | 前 300 字符，超出加 `…` |
 | 切片参数范围 | 长度 200–4000，重叠 0–min(500, 长度/2)，TopK 1–8 |
 | 系统提示词 | 最长 4000 字符，空表示使用内置模板 |
-| 反馈备注 | 最长 500 字符，P4 前端暂不提供输入框（预留字段） |
+| 反馈备注 | 最长 1000 字符，P4 前端暂不提供输入框（预留字段） |
 | 消息历史 | 单会话 P4 一次全量返回（作品规模）；P5 再下推分页 |
 | 仪表盘趋势 | 最近 7 个自然日 |
 | 文档在线预览上限 | 沿用上传大小上限（`Documents:MaxFileSizeMb`） |
@@ -568,14 +568,14 @@ public class MessageFeedback : CreationAuditedAggregateRoot<Guid>, IMultiTenant
 
 - `Message` 增加 `public int? LatencyMs { get; private set; }` 与 `SetLatency(int ms)`
 - `AskQuestionInput` 增加 `public bool Regenerate { get; set; }`
-- `QaStreamEventDto` 增加 `Guid? UserMessageId`、`Guid? AssistantMessageId`
+- `QaStreamEventDto` 增加 `Guid? UserMessageId`、`Guid? AssistantMessageId`、`int? LatencyMs`
 - `SetFeedbackInput { Guid MessageId; FeedbackRatingEnum? Rating; string? Comment }`
 - `FeedbackAppService.SetAsync(SetFeedbackInput input, CancellationToken)`：
   - 校验消息存在、`Role == Assistant`
   - 校验消息所属会话 `CreatorId == CurrentUser.Id`
   - `Rating == null` 删除已有反馈；否则插入或更新
   - 返回 `FeedbackRatingEnum?`
-- 动态路由：`POST /api/app/feedback`
+- 动态路由：`POST /api/app/feedback/set`（ABP 把 `SetAsync` 映射到 `/set` 子路径）
 
 ### QaStreamService 变更
 
@@ -584,7 +584,7 @@ public class MessageFeedback : CreationAuditedAggregateRoot<Guid>, IMultiTenant
 3. 首帧 `Started` 携带 `UserMessageId`
 4. 完成时计算 `LatencyMs`，写入助手消息 `SetLatency`
 5. `Completed` 帧携带 `AssistantMessageId`
-6. 重生成时 `LoadHistoryAsync` 排除最后一条 `Role == User` 的消息；`input.ConversationId` 为空直接报错
+6. 重生成时 `LoadHistoryAsync` 排除最后一条 `Role == User` 的消息及其后的回答；`input.ConversationId` 为空直接报错
 7. 会话 `Touch`（T2 已加）
 
 ### 前端变更

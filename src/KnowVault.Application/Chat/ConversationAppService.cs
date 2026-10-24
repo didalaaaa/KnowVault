@@ -17,18 +17,22 @@ namespace KnowVault.Application
 	{
 		private readonly IRepository<Conversation, Guid> _conversationRepository;
 		private readonly IRepository<Message, Guid> _messageRepository;
+		private readonly IRepository<MessageFeedback, Guid> _feedbackRepository;
 
 		/// <summary>
 		/// 构造函数
 		/// </summary>
 		/// <param name="conversationRepository">会话仓储</param>
 		/// <param name="messageRepository">消息仓储</param>
+		/// <param name="feedbackRepository">消息反馈仓储</param>
 		public ConversationAppService(
 			IRepository<Conversation, Guid> conversationRepository,
-			IRepository<Message, Guid> messageRepository)
+			IRepository<Message, Guid> messageRepository,
+			IRepository<MessageFeedback, Guid> feedbackRepository)
 		{
 			_conversationRepository = conversationRepository;
 			_messageRepository = messageRepository;
+			_feedbackRepository = feedbackRepository;
 		}
 
 		/// <inheritdoc />
@@ -55,6 +59,16 @@ namespace KnowVault.Application
 				x => x.ConversationId == conversation.Id,
 				cancellationToken: cancellationToken);
 
+			// 只回填当前用户自己的反馈，别人的评价不暴露
+			var userId = CurrentUser.Id;
+			var messageIds = messages.Select(x => x.Id).ToList();
+			var feedbacks = userId == null || messageIds.Count == 0
+				? []
+				: await _feedbackRepository.GetListAsync(
+					x => x.UserId == userId.Value && messageIds.Contains(x.MessageId),
+					cancellationToken: cancellationToken);
+			var feedbackByMessage = feedbacks.ToDictionary(x => x.MessageId, x => x.Rating);
+
 			return [.. messages
 				.OrderBy(x => x.CreationTime)
 				.Select(x => new ChatMessageDto
@@ -63,7 +77,9 @@ namespace KnowVault.Application
 					Role = x.Role,
 					Content = x.Content,
 					Citations = ParseCitations(x.CitationsJson),
-					CreationTime = x.CreationTime
+					CreationTime = x.CreationTime,
+					Feedback = feedbackByMessage.GetValueOrDefault(x.Id),
+					LatencyMs = x.LatencyMs
 				})];
 		}
 
@@ -91,7 +107,16 @@ namespace KnowVault.Application
 				.Select(x => x.Id)
 				.ToList();
 
-			if (messageIds.Count > 0) await _messageRepository.DeleteManyAsync(messageIds, cancellationToken: cancellationToken);
+			if (messageIds.Count > 0)
+			{
+				// 会话删除要连带清掉这些消息上的反馈，避免留下孤儿行
+				var feedbackIds = (await _feedbackRepository.GetListAsync(
+					x => messageIds.Contains(x.MessageId),
+					cancellationToken: cancellationToken)).Select(x => x.Id).ToList();
+				if (feedbackIds.Count > 0) await _feedbackRepository.DeleteManyAsync(feedbackIds, cancellationToken: cancellationToken);
+				await _messageRepository.DeleteManyAsync(messageIds, cancellationToken: cancellationToken);
+			}
+
 			await _conversationRepository.DeleteAsync(conversation, cancellationToken: cancellationToken);
 		}
 

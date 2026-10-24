@@ -66,6 +66,7 @@ namespace KnowVault.EntityFrameworkCore
 		public DbSet<DocumentChunk> DocumentChunks { get; set; }
 		public DbSet<Conversation> Conversations { get; set; }
 		public DbSet<Message> Messages { get; set; }
+		public DbSet<MessageFeedback> MessageFeedbacks { get; set; }
 
 		#endregion KnowVault 业务实体
 

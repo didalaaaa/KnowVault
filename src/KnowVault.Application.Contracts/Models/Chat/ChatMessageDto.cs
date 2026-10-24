@@ -31,5 +31,15 @@ namespace KnowVault.Application.Contracts
 		/// 创建时间
 		/// </summary>
 		public DateTime CreationTime { get; set; }
+
+		/// <summary>
+		/// 当前用户对助手消息的反馈；未反馈或用户消息为空
+		/// </summary>
+		public FeedbackRatingEnum? Feedback { get; set; }
+
+		/// <summary>
+		/// 助手回答耗时（毫秒）；用户消息为空
+		/// </summary>
+		public int? LatencyMs { get; set; }
 	}
 }

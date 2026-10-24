@@ -19,11 +19,22 @@ namespace KnowVault.Domain
 		/// <summary>引用溯源（JSON 数组：documentId/title/chunkIndex/score），可空。</summary>
 		public string? CitationsJson { get; set; }
 
+		/// <summary>
+		/// 助手回答耗时（毫秒），仅助手消息有值
+		/// </summary>
+		public int? LatencyMs { get; private set; }
+
 		public Guid? TenantId { get; set; }
 
 		protected Message()
 		{
 		}
+
+		/// <summary>
+		/// 记录生成耗时
+		/// </summary>
+		/// <param name="milliseconds">耗时毫秒数</param>
+		public void SetLatency(int milliseconds) => LatencyMs = milliseconds;
 
 		public Message(
 			Guid id,
