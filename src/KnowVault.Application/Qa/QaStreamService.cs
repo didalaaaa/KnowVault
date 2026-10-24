@@ -8,7 +8,9 @@ using KnowVault.Domain;
 using KnowVault.Domain.Shared;
 using Microsoft.Extensions.Options;
 using Volo.Abp;
+using Volo.Abp.Authorization;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Timing;
 using Volo.Abp.Uow;
 
 namespace KnowVault.Application
@@ -31,6 +33,7 @@ namespace KnowVault.Application
 		private readonly IUnitOfWorkManager _unitOfWorkManager;
 		private readonly IOptions<AiOptions> _aiOptions;
 		private readonly KnowledgeBaseAccessChecker _accessChecker;
+		private readonly IClock _clock;
 
 		/// <summary>
 		/// 构造函数
@@ -41,13 +44,15 @@ namespace KnowVault.Application
 		/// <param name="unitOfWorkManager">工作单元管理器</param>
 		/// <param name="aiOptions">AI 配置（历史轮数）</param>
 		/// <param name="accessChecker">知识库访问检查器</param>
+		/// <param name="clock">时钟（记录会话活动时间）</param>
 		public QaStreamService(
 			IRagService ragService,
 			IRepository<Conversation, Guid> conversationRepository,
 			IRepository<Message, Guid> messageRepository,
 			IUnitOfWorkManager unitOfWorkManager,
 			IOptions<AiOptions> aiOptions,
-			KnowledgeBaseAccessChecker accessChecker)
+			KnowledgeBaseAccessChecker accessChecker,
+			IClock clock)
 		{
 			_ragService = ragService;
 			_conversationRepository = conversationRepository;
@@ -55,6 +60,7 @@ namespace KnowVault.Application
 			_unitOfWorkManager = unitOfWorkManager;
 			_aiOptions = aiOptions;
 			_accessChecker = accessChecker;
+			_clock = clock;
 		}
 
 		/// <inheritdoc />
@@ -114,7 +120,7 @@ namespace KnowVault.Application
 				yield return new QaStreamEventDto { Kind = QaStreamEventKindEnum.Delta, Delta = delta };
 			}
 
-			// 第二段 UoW：助手消息落库；客户端中途断开时迭代器在这里之前就退出，半截回答不入库
+			// 第二段 UoW：助手消息落库并刷新会话活动时间；客户端中途断开时迭代器在这里之前就退出，半截回答不入库
 			using (var unitOfWork = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
 			{
 				await _messageRepository.InsertAsync(
@@ -126,6 +132,9 @@ namespace KnowVault.Application
 						citationsJson: JsonSerializer.Serialize(citations)),
 					autoSave: true,
 					cancellationToken: cancellationToken);
+
+				conversation.Touch(_clock.Now);
+				await _conversationRepository.UpdateAsync(conversation, autoSave: true, cancellationToken: cancellationToken);
 				await unitOfWork.CompleteAsync(cancellationToken);
 			}
 
@@ -140,12 +149,19 @@ namespace KnowVault.Application
 		/// <returns>会话实体</returns>
 		private async Task<Conversation> ResolveConversationAsync(AskQuestionInput input, CancellationToken cancellationToken)
 		{
-			if (input.ConversationId.HasValue) return await _conversationRepository.GetAsync(input.ConversationId.Value, cancellationToken: cancellationToken);
+			if (input.ConversationId.HasValue)
+			{
+				var existing = await _conversationRepository.GetAsync(input.ConversationId.Value, cancellationToken: cancellationToken);
+				if (existing.CreatorId != CurrentUser.Id) throw new AbpAuthorizationException("无权访问该会话");
+
+				return existing;
+			}
 
 			return await _conversationRepository.InsertAsync(
 				new Conversation(
 					GuidGenerator.Create(),
-					input.Question.Length <= 128 ? input.Question : input.Question[..128]),
+					input.Question.Length <= 128 ? input.Question : input.Question[..128],
+					knowledgeBaseId: input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId),
 				autoSave: true,
 				cancellationToken: cancellationToken);
 		}

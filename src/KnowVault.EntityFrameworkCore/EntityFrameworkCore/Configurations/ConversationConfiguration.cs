@@ -23,6 +23,9 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 
 			// 会话列表按租户过滤
 			builder.HasIndex(x => x.TenantId);
+
+			// 个人会话列表按「用户 + 最近活动」查询
+			builder.HasIndex(x => new { x.CreatorId, x.LastMessageAt });
 		}
 	}
 }

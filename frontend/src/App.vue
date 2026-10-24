@@ -43,7 +43,16 @@
             <n-tabs v-model:value="activeTab" type="segment" size="medium" animated class="app-tabs">
               <n-tab-pane name="qa" tab="问答" display-directive="show:lazy" class="qa-pane">
                 <div class="qa-layout">
-                  <aside class="qa-side"><DocumentPanel /></aside>
+                  <aside class="qa-side">
+                    <n-tabs v-model:value="sideView" type="segment" size="small" animated class="side-tabs">
+                      <n-tab-pane name="docs" tab="资料" display-directive="show:lazy" class="side-pane">
+                        <DocumentPanel />
+                      </n-tab-pane>
+                      <n-tab-pane name="chats" tab="会话" display-directive="show:lazy" class="side-pane">
+                        <ConversationSidebar />
+                      </n-tab-pane>
+                    </n-tabs>
+                  </aside>
                   <section class="qa-main"><ChatPanel /></section>
                 </div>
               </n-tab-pane>
@@ -73,20 +82,25 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { NConfigProvider, NMessageProvider, NButton, NTabs, NTabPane, NSpin, zhCN, dateZhCN } from 'naive-ui'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginPanel from './components/LoginPanel.vue'
+import ConversationSidebar from './components/ConversationSidebar.vue'
 import DocumentPanel from './components/DocumentPanel.vue'
 import KnowledgeBasePanel from './components/KnowledgeBasePanel.vue'
 import ProfileModal from './components/ProfileModal.vue'
 import KvIcon from './components/KvIcon.vue'
 import { useChatStore } from './stores/chat'
+import { useConversationStore } from './stores/conversations'
 import { useAuthStore } from './stores/auth'
 import { useDocumentStore } from './stores/documents'
 
 const chat = useChatStore()
+const conversations = useConversationStore()
 const auth = useAuthStore()
 const documents = useDocumentStore()
 
 // 「问答」为默认视图；「新会话」按钮仍固定在 header，不随视图切换
 const activeTab = ref('qa')
+// 左侧栏视图：「资料」上传文档，「会话」回放历史问答
+const sideView = ref('docs')
 
 // 个人中心弹窗；资料由 auth store 缓存，header 直接展示显示名
 const profileVisible = ref(false)
@@ -173,6 +187,7 @@ const themeOverrides = {
 function logout() {
   profileVisible.value = false
   documents.stopPolling()
+  conversations.reset()
   auth.logout()
   chat.reset()
 }
@@ -189,6 +204,7 @@ function onProfileSaved(profile) {
 function onUnauthorized() {
   profileVisible.value = false
   documents.stopPolling()
+  conversations.reset()
   auth.logout()
 }
 
@@ -416,6 +432,47 @@ onUnmounted(() => {
 .qa-side,
 .qa-main {
   min-height: 0;
+}
+
+.qa-side {
+  display: flex;
+  flex-direction: column;
+}
+
+.side-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-tabs :deep(.n-tabs-nav) {
+  flex: none;
+  width: fit-content;
+  padding: 3px;
+  border-radius: 11px;
+  background: #e9ece6;
+}
+
+.side-tabs :deep(.n-tabs-nav--segment) {
+  margin-bottom: 10px;
+}
+
+.side-tabs :deep(.n-tabs-tab) {
+  height: 30px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.side-tabs :deep(.n-tabs-pane-wrapper) {
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--kv-radius-lg);
+}
+
+.side-tabs :deep(.n-tab-pane) {
+  height: 100%;
 }
 
 .kb-pane {

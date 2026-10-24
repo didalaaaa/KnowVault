@@ -49,6 +49,12 @@ namespace KnowVault.Migrations
                         .HasColumnType("text")
                         .HasColumnName("ExtraProperties");
 
+                    b.Property<Guid?>("KnowledgeBaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LastMessageAt")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("TenantId");
@@ -61,6 +67,8 @@ namespace KnowVault.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("CreatorId", "LastMessageAt");
 
                     b.ToTable("AppConversations", (string)null);
                 });

@@ -92,9 +92,11 @@ import { ref, nextTick, watch } from 'vue'
 import { NInput, NButton } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import { useChatStore } from '../stores/chat'
+import { useConversationStore } from '../stores/conversations'
 import { useDocumentStore } from '../stores/documents'
 
 const chat = useChatStore()
+const conversations = useConversationStore()
 const documents = useDocumentStore()
 const question = ref('')
 const listRef = ref(null)
@@ -117,6 +119,8 @@ async function send() {
   if (!q || chat.loading) return
   question.value = ''
   await chat.ask(q, documents.knowledgeBaseId)
+  // 新一轮问答会新建会话或刷新活动时间：同步侧栏列表的顺序与标题
+  if (chat.conversationId) conversations.refresh(documents.knowledgeBaseId)
   await scrollToBottom()
 }
 

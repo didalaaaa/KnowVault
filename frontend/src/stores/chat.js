@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { qaApi } from '../api/qa'
 import { askStream, startQaHub } from '../api/qaHub'
+import { conversationApi } from '../api/conversations'
 
 // 服务端流订阅句柄与收尾回调：放模块级而不是 state，避免把不可序列化的对象塞进 devtools 快照
 let subscription = null
@@ -118,6 +119,33 @@ export const useChatStore = defineStore('chat', {
         assistant.content = '请求失败：' + describeError(e)
       } finally {
         assistant.streaming = false
+        this.loading = false
+      }
+    },
+
+    /**
+     * 载入历史会话：停止当前流后整体替换消息与引用。
+     * @param {string} id 会话 ID
+     */
+    async loadConversation(id) {
+      this.stop()
+      this.loading = true
+      try {
+        const messages = await conversationApi.messages(id)
+        this.messages = messages.map((m) => ({
+          id: m.id,
+          // 与 MessageRoleEnum 一致：0 用户 / 1 助手
+          role: m.role === 0 ? 'user' : 'assistant',
+          content: m.content,
+          citations: m.citations || [],
+          streaming: false,
+        }))
+        this.conversationId = id
+      } catch (e) {
+        this.messages = []
+        this.conversationId = null
+        throw e
+      } finally {
         this.loading = false
       }
     },
