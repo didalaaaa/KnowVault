@@ -41,6 +41,9 @@
         <main class="app-main">
           <div class="workspace">
             <n-tabs v-model:value="activeTab" type="segment" size="medium" animated class="app-tabs">
+              <n-tab-pane name="overview" tab="概览" display-directive="show:lazy" class="overview-pane">
+                <DashboardPanel ref="dashboardRef" @open-qa="openQa" />
+              </n-tab-pane>
               <n-tab-pane name="qa" tab="问答" display-directive="show:lazy" class="qa-pane">
                 <div class="qa-layout">
                   <aside class="qa-side">
@@ -81,6 +84,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { NConfigProvider, NMessageProvider, NButton, NTabs, NTabPane, NSpin, zhCN, dateZhCN } from 'naive-ui'
 import ChatPanel from './components/ChatPanel.vue'
+import DashboardPanel from './components/DashboardPanel.vue'
 import LoginPanel from './components/LoginPanel.vue'
 import ConversationSidebar from './components/ConversationSidebar.vue'
 import DocumentPanel from './components/DocumentPanel.vue'
@@ -97,10 +101,12 @@ const conversations = useConversationStore()
 const auth = useAuthStore()
 const documents = useDocumentStore()
 
-// 「问答」为默认视图；「新会话」按钮仍固定在 header，不随视图切换
-const activeTab = ref('qa')
+// 「概览」为默认视图：打开即可看到产品运行状态；「新会话」按钮仍固定在 header
+const activeTab = ref('overview')
 // 左侧栏视图：「资料」上传文档，「会话」回放历史问答
 const sideView = ref('docs')
+// 概览面板句柄：每次切回概览时刷新数字
+const dashboardRef = ref(null)
 
 // 个人中心弹窗；资料由 auth store 缓存，header 直接展示显示名
 const profileVisible = ref(false)
@@ -184,6 +190,12 @@ const themeOverrides = {
   },
 }
 
+/** 概览页的失败提示跳转到问答页，并切到资料列表。 */
+function openQa() {
+  activeTab.value = 'qa'
+  sideView.value = 'docs'
+}
+
 function logout() {
   profileVisible.value = false
   documents.stopPolling()
@@ -207,6 +219,11 @@ function onUnauthorized() {
   conversations.reset()
   auth.logout()
 }
+
+// 切回概览时刷新：上传文档、提问之后数字不应停留在旧值
+watch(activeTab, (tab) => {
+  if (tab === 'overview') dashboardRef.value?.refresh()
+})
 
 onMounted(() => {
   window.addEventListener('knowvault:unauthorized', onUnauthorized)
@@ -475,7 +492,8 @@ onUnmounted(() => {
   height: 100%;
 }
 
-.kb-pane {
+.kb-pane,
+.overview-pane {
   overflow-y: auto;
   padding-bottom: 12px;
 }
