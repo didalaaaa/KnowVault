@@ -20,6 +20,16 @@
                 <template #icon><KvIcon name="refresh" :size="15" /></template>
                 新会话
               </n-button>
+              <n-button
+                size="small"
+                quaternary
+                class="header-btn"
+                aria-label="打开个人中心"
+                @click="profileVisible = true"
+              >
+                <template #icon><KvIcon name="user" :size="15" /></template>
+                <span class="profile-btn-name">{{ auth.displayName || '我的账号' }}</span>
+              </n-button>
               <n-button size="small" quaternary class="header-btn" @click="logout">
                 <template #icon><KvIcon name="logout" :size="15" /></template>
                 退出
@@ -52,6 +62,8 @@
           <span>正在删除文档，请稍候…</span>
         </div>
       </div>
+
+      <ProfileModal v-if="auth.isAuthenticated" v-model:show="profileVisible" @saved="onProfileSaved" />
     </n-message-provider>
   </n-config-provider>
 </template>
@@ -63,6 +75,7 @@ import ChatPanel from './components/ChatPanel.vue'
 import LoginPanel from './components/LoginPanel.vue'
 import DocumentPanel from './components/DocumentPanel.vue'
 import KnowledgeBasePanel from './components/KnowledgeBasePanel.vue'
+import ProfileModal from './components/ProfileModal.vue'
 import KvIcon from './components/KvIcon.vue'
 import { useChatStore } from './stores/chat'
 import { useAuthStore } from './stores/auth'
@@ -74,6 +87,9 @@ const documents = useDocumentStore()
 
 // 「问答」为默认视图；「新会话」按钮仍固定在 header，不随视图切换
 const activeTab = ref('qa')
+
+// 个人中心弹窗；资料由 auth store 缓存，header 直接展示显示名
+const profileVisible = ref(false)
 
 // 墨绿主色 + 暖灰中性色：与全局设计令牌保持一致
 const themeOverrides = {
@@ -155,12 +171,24 @@ const themeOverrides = {
 }
 
 function logout() {
+  profileVisible.value = false
+  documents.stopPolling()
   auth.logout()
   chat.reset()
 }
 
+/**
+ * 个人中心保存成功：同步 header 展示的显示名。
+ * @param {object} profile 最新资料
+ */
+function onProfileSaved(profile) {
+  auth.setProfile(profile)
+}
+
 // 全局 401 事件：令牌失效时退回登录页
 function onUnauthorized() {
+  profileVisible.value = false
+  documents.stopPolling()
   auth.logout()
 }
 
@@ -173,6 +201,7 @@ watch(
   () => auth.isAuthenticated,
   (isAuthenticated) => {
     if (isAuthenticated) {
+      auth.loadProfile()
       chat.checkConnection()
       documents.refresh()
     }
@@ -311,6 +340,13 @@ onUnmounted(() => {
   color: var(--kv-text-2);
 }
 
+.profile-btn-name {
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .app-main {
   flex: 1;
   min-height: 0;
@@ -435,7 +471,8 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .brand-sub,
-  .conn-status {
+  .conn-status,
+  .profile-btn-name {
     display: none;
   }
 

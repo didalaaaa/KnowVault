@@ -37,8 +37,11 @@ http.interceptors.request.use((config) => {
 http.interceptors.response.use(
   (res) => res.data,
   (err) => {
-    // 401：令牌缺失/过期 → 清掉本地令牌，让界面回到登录页
-    if (err?.response?.status === 401) {
+    // 401：令牌缺失/过期 → 清掉本地令牌，让界面回到登录页。
+    // 只处理"带着令牌却被拒绝"的请求：未登录时发出的旧请求（如退出后残留的轮询）
+    // 可能在新会话登录之后才返回 401，不能拿它把刚建立的会话踢下线
+    const sentAuth = Boolean(err?.config?.headers?.Authorization)
+    if (err?.response?.status === 401 && sentAuth) {
       localStorage.removeItem(TOKEN_KEY)
       window.dispatchEvent(new CustomEvent('knowvault:unauthorized'))
     }

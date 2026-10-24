@@ -93,3 +93,70 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* 认证页共用卡片（登录 / 注册）：与主界面卡片同一套边框、圆角与阴影 */
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 34px 32px 30px;
+  border: 1px solid var(--kv-border);
+  border-radius: 22px;
+  background: var(--kv-surface);
+  box-shadow: var(--kv-shadow-md);
+}
+
+.auth-head h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--kv-text);
+}
+
+.auth-head p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--kv-text-3);
+}
+
+.auth-alert {
+  margin-bottom: 12px;
+}
+
+.auth-submit {
+  height: 44px;
+  border-radius: 11px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.auth-note {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--kv-text-3);
+}
+
+.auth-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--kv-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 26px 22px 24px;
+    border-radius: 18px;
+  }
+}

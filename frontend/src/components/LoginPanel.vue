@@ -33,8 +33,9 @@
     </section>
 
     <section class="login-panel">
-      <div class="login-card">
-        <div class="login-head">
+      <RegisterPanel v-if="mode === 'register'" @back="switchTo('login')" @registered="onRegistered" />
+      <div v-else class="auth-card">
+        <div class="auth-head">
           <h2>欢迎回来</h2>
           <p>登录后继续你的知识工作</p>
         </div>
@@ -57,15 +58,18 @@
               @keydown.enter.prevent="submit"
             />
           </n-form-item>
-          <n-alert v-if="auth.error" type="error" :show-icon="false" class="login-alert">
+          <n-alert v-if="auth.error" type="error" :show-icon="false" class="auth-alert">
             {{ auth.error }}
           </n-alert>
-          <n-button type="primary" block class="login-submit" :loading="auth.loading" @click="submit">
+          <n-button type="primary" block class="auth-submit" :loading="auth.loading" @click="submit">
             登录
           </n-button>
         </n-form>
 
-        <p class="login-note">账号由管理员统一分配</p>
+        <p class="auth-note">
+          还没有账号？
+          <button type="button" class="auth-link" @click="switchTo('register')">立即注册</button>
+        </p>
       </div>
     </section>
   </div>
@@ -73,18 +77,42 @@
 
 <script setup>
 import { ref } from 'vue'
-import { NForm, NFormItem, NInput, NButton, NAlert } from 'naive-ui'
+import { NForm, NFormItem, NInput, NButton, NAlert, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
+import RegisterPanel from './RegisterPanel.vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const message = useMessage()
 const username = ref('')
 const password = ref('')
+// login / register 两种视图；注册成功后回到登录并预填用户名
+const mode = ref('login')
 
 // 提交登录：成功后 App.vue 会依据 isAuthenticated 切到主界面
 async function submit() {
   if (!username.value || !password.value) return
   await auth.login({ username: username.value, password: password.value })
+}
+
+/**
+ * 切换登录 / 注册视图，并清掉上一次的登录错误。
+ * @param {'login'|'register'} next 目标视图
+ */
+function switchTo(next) {
+  auth.error = ''
+  mode.value = next
+}
+
+/**
+ * 注册成功：回到登录视图并预填用户名。
+ * @param {string} userName 新账号用户名
+ */
+function onRegistered(userName) {
+  username.value = userName
+  password.value = ''
+  switchTo('login')
+  message.success('注册成功，请登录')
 }
 </script>
 
@@ -230,50 +258,6 @@ async function submit() {
   background: var(--kv-bg);
 }
 
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  padding: 34px 32px 30px;
-  border: 1px solid var(--kv-border);
-  border-radius: 22px;
-  background: var(--kv-surface);
-  box-shadow: var(--kv-shadow-md);
-}
-
-.login-head h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.login-head p {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: var(--kv-text-3);
-}
-
-.login-alert {
-  margin-bottom: 12px;
-}
-
-.login-submit {
-  height: 44px;
-  border-radius: 11px;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.login-note {
-  margin: 0;
-  text-align: center;
-  font-size: 11px;
-  color: var(--kv-text-3);
-}
-
 @media (max-width: 900px) {
   .login-wrap {
     grid-template-columns: 1fr;
@@ -291,11 +275,6 @@ async function submit() {
 @media (max-width: 480px) {
   .login-panel {
     padding: 20px 16px;
-  }
-
-  .login-card {
-    padding: 26px 22px 24px;
-    border-radius: 18px;
   }
 }
 </style>

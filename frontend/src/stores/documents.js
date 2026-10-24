@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
+import { getToken } from '../api/http'
 import { documentApi } from '../api/documents'
 import { knowledgeBaseApi } from '../api/knowledgeBases'
+
+// 轮询定时器不放进 state：只是副作用句柄，不需要响应式
+let pollTimer = null
 
 // 文档与知识库状态。轮询只在存在未完成文档时进行，避免空转。
 export const useDocumentStore = defineStore('documents', {
@@ -22,12 +26,15 @@ export const useDocumentStore = defineStore('documents', {
      * @param {string} [preferredId] 期望选中的知识库 ID；缺省保持当前选中项
      */
     async refresh(preferredId) {
+      // 退出登录后旧轮询可能还会走到这里：没有令牌就不发请求，避免把 401 写成界面错误
+      if (!getToken()) return
       try {
         this.knowledgeBases = await knowledgeBaseApi.list()
         const target = preferredId ?? this.knowledgeBaseId
         const exists = this.knowledgeBases.some((kb) => kb.id === target)
         this.knowledgeBaseId = exists ? target : this.knowledgeBases[0]?.id || ''
         this.documents = this.knowledgeBaseId ? await documentApi.list(this.knowledgeBaseId) : []
+        this.error = ''
         this.ensurePolling()
       } catch (e) {
         this.error = e?.response?.data?.error?.message || e?.message || '加载知识库失败'
@@ -115,14 +122,18 @@ export const useDocumentStore = defineStore('documents', {
       if (!unfinished || this.polling) return
 
       this.polling = true
-      const timer = setInterval(async () => {
+      pollTimer = setInterval(async () => {
         await this.refresh()
         const stillUnfinished = this.documents.some((d) => d.status === 0 || d.status === 1)
-        if (!stillUnfinished) {
-          clearInterval(timer)
-          this.polling = false
-        }
+        if (!stillUnfinished) this.stopPolling()
       }, 2000)
+    },
+
+    /** 停止轮询；退出登录时必须调用，否则定时器会带着旧会话的请求干扰下一次登录。 */
+    stopPolling() {
+      if (pollTimer) clearInterval(pollTimer)
+      pollTimer = null
+      this.polling = false
     },
   },
 })
