@@ -35,7 +35,7 @@
           <span class="file-badge">{{ sourceLabel(doc.sourceType) }}</span>
           <div class="doc-info">
             <div class="doc-line">
-              <span class="doc-title" :title="doc.title">{{ doc.title }}</span>
+              <button type="button" class="doc-title" :title="doc.title" @click="openDetail(doc)">{{ doc.title }}</button>
               <span class="status-pill" :class="'status-' + doc.status">
                 <span class="status-dot"></span>
                 {{ statusText(doc.status) }}
@@ -68,17 +68,23 @@
         <span>上传一份资料，构建你的第一个知识索引</span>
       </div>
     </div>
+
+    <DocumentDetailDrawer v-model:show="detailVisible" :document="detailDoc" />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { NSelect, NUpload, NButton, NAlert, NPopconfirm, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
+import DocumentDetailDrawer from './DocumentDetailDrawer.vue'
 import { useDocumentStore } from '../stores/documents'
 
 const store = useDocumentStore()
 const message = useMessage()
+
+const detailVisible = ref(false)
+const detailDoc = ref(null)
 
 const kbOptions = computed(() =>
   store.knowledgeBases.map((kb) => ({ label: kb.name, value: kb.id })),
@@ -89,6 +95,15 @@ const statusText = (status) => ['待处理', '解析中', '已就绪', '失败']
 
 // 来源枚举与后端 DocumentSourceTypeEnum 一致：0 Pdf / 1 Word / 2 Excel / 3 Markdown / 4 Html
 const sourceLabel = (sourceType) => ['PDF', 'DOCX', 'XLSX', 'MD', 'HTML'][sourceType] ?? 'FILE'
+
+/**
+ * 打开文档详情（切片与原件预览）
+ * @param {object} doc 文档
+ */
+function openDetail(doc) {
+  detailDoc.value = doc
+  detailVisible.value = true
+}
 
 /**
  * n-upload 的自定义上传：交给 store 走我们自己的 axios 实例（带 Bearer）。
@@ -301,12 +316,32 @@ function describeError(e) {
 }
 
 .doc-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
+  text-align: left;
   color: var(--kv-text);
+  cursor: pointer;
+}
+
+.doc-title:hover {
+  color: var(--kv-primary-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.doc-title:focus-visible {
+  outline: 2px solid var(--kv-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .status-pill {

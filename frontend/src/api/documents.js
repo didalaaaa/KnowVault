@@ -37,4 +37,23 @@ export const documentApi = {
    * @returns {Promise<void>}
    */
   reprocess: (id) => http.post('/app/document/' + id + '/reprocess'),
+
+  /**
+   * 取文档切片（按序号升序）。
+   * @param {string} id 文档 ID
+   * @returns {Promise<object[]>} 切片列表
+   */
+  getChunks: (id) => http.get('/app/document/' + id + '/chunks'),
+
+  /**
+   * 取文档原件；需带 Bearer，故以 blob 返回再由前端生成 ObjectURL。
+   * @param {string} id 文档 ID
+   * @param {boolean} download 是否按附件下载
+   * @returns {Promise<Blob>} 原件二进制
+   */
+  content: (id, download = false) =>
+    http.get('/app/document/' + id + '/content', {
+      responseType: 'blob',
+      params: download ? { download: true } : undefined,
+    }),
 }

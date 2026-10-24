@@ -470,7 +470,7 @@ public class DocumentContentDto
 4. 前端 `documentApi.getChunks(id)`、`documentApi.content(id, download)`（`responseType: 'blob'`）
 5. `DocumentDetailDrawer`：元数据卡片 + 状态/错误 + 切片列表（序号、标题路径、正文折叠）+ 预览按钮
 6. 预览：
-   - PDF / HTML：`URL.createObjectURL(blob)` 放入 iframe，`sandbox` 留空
+   - PDF / HTML：`URL.createObjectURL(blob)` 放入 iframe；HTML 加 `sandbox=""` 禁止脚本，PDF 不加（Chrome 内置阅读器在 sandbox 下白屏）
    - Markdown：读取文本放 `<pre>`，等宽字体
    - Word / Excel：直接触发下载
 7. 抽屉关闭时 `URL.revokeObjectURL`，避免内存泄漏

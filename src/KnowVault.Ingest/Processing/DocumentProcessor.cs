@@ -129,7 +129,7 @@ namespace KnowVault.Ingest
 						document.SourceType)
 				});
 
-				entities.Add(new DocumentChunk(chunkId, document.Id, chunk.Index, chunk.Content, document.TenantId));
+				entities.Add(new DocumentChunk(chunkId, document.Id, chunk.Index, chunk.Content, chunk.HeadingPath, document.TenantId));
 			}
 
 			await _vectorStore.UpsertAsync(points, cancellationToken);

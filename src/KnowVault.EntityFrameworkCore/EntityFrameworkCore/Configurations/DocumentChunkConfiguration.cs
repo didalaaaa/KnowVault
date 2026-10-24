@@ -20,6 +20,7 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 			builder.ConfigureByConvention();
 
 			builder.Property(x => x.Content).IsRequired();
+			builder.Property(x => x.HeadingPath).HasMaxLength(512);
 
 			// 按文档取切片并按序号排序，支撑引用溯源
 			builder.HasIndex(x => new { x.DocumentId, x.ChunkIndex });

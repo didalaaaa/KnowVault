@@ -40,5 +40,21 @@ namespace KnowVault.Application.Contracts
 		/// <param name="cancellationToken">取消令牌</param>
 		/// <returns>任务</returns>
 		Task ReprocessAsync(Guid id, CancellationToken cancellationToken);
+
+		/// <summary>
+		/// 取文档切片（引用溯源与详情页用）
+		/// </summary>
+		/// <param name="id">文档 ID</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>按切片序号升序排列的切片列表</returns>
+		Task<List<DocumentChunkDto>> GetChunksAsync(Guid id, CancellationToken cancellationToken);
+
+		/// <summary>
+		/// 取文档原件内容（不暴露为动态 API，改由 <c>DocumentContentController</c> 输出文件流）
+		/// </summary>
+		/// <param name="id">文档 ID</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>原件流、MIME 类型与下载文件名</returns>
+		Task<DocumentContentDto> GetContentAsync(Guid id, CancellationToken cancellationToken);
 	}
 }

@@ -209,6 +209,65 @@ namespace KnowVault.Application
 			_logger.LogInformation("文档 {DocumentId} 已重新排队处理", document.Id);
 		}
 
+		/// <inheritdoc />
+		public async Task<List<DocumentChunkDto>> GetChunksAsync(Guid id, CancellationToken cancellationToken)
+		{
+			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
+			await _accessChecker.EnsureAsync(document.KnowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
+
+			var chunks = await _chunkRepository.GetListAsync(x => x.DocumentId == id, cancellationToken: cancellationToken);
+			return chunks
+				.OrderBy(c => c.ChunkIndex)
+				.Select(c => new DocumentChunkDto
+				{
+					Id = c.Id,
+					ChunkIndex = c.ChunkIndex,
+					Content = c.Content,
+					HeadingPath = c.HeadingPath
+				})
+				.ToList();
+		}
+
+		/// <inheritdoc />
+		/// <remarks>
+		/// 返回 <see cref="Stream"/> 的 DTO 不适合由 ABP 动态 API 序列化，故移出动态 API，
+		/// 由 <c>KnowVault.HttpApi.DocumentContentController</c> 直接输出文件流
+		/// </remarks>
+		[RemoteService(IsEnabled = false)]
+		public async Task<DocumentContentDto> GetContentAsync(Guid id, CancellationToken cancellationToken)
+		{
+			var document = await _documentRepository.GetAsync(id, cancellationToken: cancellationToken);
+			await _accessChecker.EnsureAsync(document.KnowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
+
+			if (string.IsNullOrWhiteSpace(document.ObjectStorageKey)) throw new UserFriendlyException("该文档没有可预览的原件");
+
+			var fileName = string.IsNullOrWhiteSpace(document.SourceFileName)
+				? document.Title + Path.GetExtension(document.ObjectStorageKey)
+				: document.SourceFileName;
+
+			return new DocumentContentDto
+			{
+				Stream = await _documentStorage.GetAsync(document.ObjectStorageKey, cancellationToken),
+				ContentType = ResolveContentType(Path.GetExtension(fileName)),
+				FileName = fileName
+			};
+		}
+
+		/// <summary>
+		/// 按扩展名映射 MIME；未知类型统一走二进制流
+		/// </summary>
+		/// <param name="extension">文件扩展名（含点）</param>
+		/// <returns>Content-Type</returns>
+		private static string ResolveContentType(string extension) => extension.ToLowerInvariant() switch
+		{
+			".pdf" => "application/pdf",
+			".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			".md" => "text/markdown; charset=utf-8",
+			".html" => "text/html; charset=utf-8",
+			_ => "application/octet-stream"
+		};
+
 		/// <summary>
 		/// 同一知识库内按原始文件名（忽略大小写）去重，命中时拒绝上传并给出已有文档信息
 		/// </summary>
