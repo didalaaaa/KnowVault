@@ -43,14 +43,14 @@
 
       <n-alert v-if="data.failedDocumentCount > 0" type="warning" :show-icon="false" class="dash-alert">
         有 {{ data.failedDocumentCount }} 篇文档处理失败
-        <n-button text type="primary" size="tiny" @click="$emit('open-qa')">去资料库查看</n-button>
+        <n-button text type="primary" size="tiny" @click="$emit('open-knowledge')">去知识库查看</n-button>
       </n-alert>
 
       <section class="chart-card">
         <div class="chart-head">
           <div>
             <h3>最近 7 天提问</h3>
-            <p>每天基于资料库发起的提问数</p>
+            <p>每天基于知识库发起的提问数</p>
           </div>
           <span class="chart-total">7 天 {{ trendTotal }} 次</span>
         </div>
@@ -73,7 +73,7 @@ import { dashboardApi } from '../api/dashboard'
 
 echarts.use([LineChart, GridComponent, TooltipComponent, CanvasRenderer])
 
-defineEmits(['open-qa'])
+defineEmits(['open-knowledge'])
 
 const data = ref(null)
 const error = ref('')

@@ -1,15 +1,41 @@
 <template>
   <div class="chat-panel">
+    <header class="chat-head">
+      <div class="chat-head-main">
+        <span class="chat-eyebrow">Q&amp;A</span>
+        <div class="chat-head-title">
+          <h2>资料问答</h2>
+          <span class="chat-head-sub">回答只基于所选知识库</span>
+        </div>
+      </div>
+      <div class="chat-scope">
+        <span class="chat-scope-label">提问范围</span>
+        <n-select
+          v-model:value="documents.knowledgeBaseId"
+          :options="kbOptions"
+          size="small"
+          class="chat-scope-select"
+          :disabled="kbOptions.length === 0"
+          aria-label="选择提问的知识库"
+          @update:value="onScopeChange"
+        />
+      </div>
+    </header>
+
     <div class="messages" ref="listRef" aria-label="对话消息">
       <div v-if="chat.messages.length === 0" class="empty">
         <span class="empty-icon"><KvIcon name="sparkles" :size="26" :stroke-width="1.6" /></span>
         <h2>从你的资料里找答案</h2>
-        <p>左侧上传文档，等状态变为「已就绪」后提问：它会按你的资料作答并标注出处。</p>
+        <p>先在「知识库」上传文档，等状态变为「已就绪」后在这里提问：它会按你的资料作答并标注出处。</p>
         <div class="empty-hints">
           <span>语义检索</span>
           <span>引用溯源</span>
           <span>私有资料</span>
         </div>
+        <n-button text type="primary" size="small" class="empty-link" @click="$emit('open-knowledge')">
+          去知识库上传文档
+          <KvIcon name="arrow-right" :size="14" class="empty-link-icon" />
+        </n-button>
       </div>
 
       <div v-for="(m, i) in chat.messages" :key="i" class="msg" :class="'msg-' + m.role">
@@ -145,8 +171,8 @@
 </template>
 
 <script setup>
-import { ref, nextTick, watch } from 'vue'
-import { NInput, NButton, useMessage } from 'naive-ui'
+import { computed, ref, nextTick, watch } from 'vue'
+import { NInput, NButton, NSelect, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import CitationDrawer from './CitationDrawer.vue'
 import DocumentDetailDrawer from './DocumentDetailDrawer.vue'
@@ -154,6 +180,8 @@ import { useChatStore } from '../stores/chat'
 import { useConversationStore } from '../stores/conversations'
 import { useDocumentStore } from '../stores/documents'
 import { renderMarkdown } from '../utils/markdown'
+
+defineEmits(['open-knowledge'])
 
 const chat = useChatStore()
 const conversations = useConversationStore()
@@ -165,6 +193,17 @@ const citationVisible = ref(false)
 const activeCitation = ref(null)
 const detailVisible = ref(false)
 const detailDoc = ref(null)
+
+const kbOptions = computed(() =>
+  documents.knowledgeBases.map((kb) => ({ label: kb.name, value: kb.id })),
+)
+
+/**
+ * 切换提问范围：文档列表与会话侧栏都跟随当前知识库
+ */
+function onScopeChange() {
+  documents.refresh()
+}
 
 /** 滚到底部，让最新内容始终可见。 */
 async function scrollToBottom() {
@@ -275,6 +314,69 @@ async function openCitationDocument(citation) {
   box-shadow: var(--kv-shadow-md);
 }
 
+.chat-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 22px;
+  border-bottom: 1px solid var(--kv-border);
+  background: #fbfcf9;
+}
+
+.chat-head-main {
+  min-width: 0;
+}
+
+.chat-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--kv-primary);
+}
+
+.chat-head-title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.chat-head-title h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--kv-text);
+}
+
+.chat-head-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  color: var(--kv-text-3);
+}
+
+.chat-scope {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-scope-label {
+  font-size: 11.5px;
+  color: var(--kv-text-3);
+}
+
+.chat-scope-select {
+  width: 200px;
+}
+
 .messages {
   flex: 1;
   min-height: 0;
@@ -338,6 +440,14 @@ async function openCitationDocument(citation) {
   background: var(--kv-surface-soft);
   font-size: 12px;
   color: var(--kv-text-2);
+}
+
+.empty-link {
+  margin-top: 4px;
+}
+
+.empty-link-icon {
+  margin-left: 4px;
 }
 
 .msg {
@@ -737,6 +847,18 @@ async function openCitationDocument(citation) {
 }
 
 @media (max-width: 640px) {
+  .chat-head {
+    padding: 11px 16px;
+  }
+
+  .chat-head-sub {
+    display: none;
+  }
+
+  .chat-scope-select {
+    width: 148px;
+  }
+
   .messages {
     padding: 18px 16px 10px;
   }

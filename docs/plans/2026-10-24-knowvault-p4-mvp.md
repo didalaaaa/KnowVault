@@ -1,6 +1,6 @@
 # KnowVault P4「演示完整度」实施计划（2026-10-24）
 
-> 执行方式：按 T1 → T9 顺序推进；每个 Task 完成并自测通过后再进入下一个，独立提交，禁止跨任务混改
+> 执行方式：按 T1 → T9 顺序推进（T10 为验收期增项）；每个 Task 完成并自测通过后再进入下一个，独立提交，禁止跨任务混改
 > 铁律：不改 P1/P2/P3 已验收行为；所有新增异步方法带 `CancellationToken` 并逐层透传；新增 `.cs` 用块级 namespace、`Enum` 后缀、CRLF、UTF-8 无 BOM；新增注释按 `AGENTS.md` 的 XML 规范
 > 前置文档：`docs/plans/2026-10-24-knowvault-open-source-roadmap.md`（范围权威）、`TECH_STACK.md`（技术选型权威）
 > 分支建议：`feat/p4-product-polish`（自 `main` 切出）
@@ -28,11 +28,10 @@
 前端（Vue 3）
   App.vue ─┬─ OverviewTab（DashboardPanel）
            ├─ QaTab
-           │   ├─ qa-side：n-tabs「资料 / 会话」
-           │   │   ├─ DocumentPanel（多选上传 + 打开详情）
-           │   │   └─ ConversationSidebar（列表 / 重命名 / 删除）
-           │   └─ ChatPanel（Markdown 回答 / 引用点击 / 赞踩 / 重生成）
-           ├─ KnowledgeBasePanel（+ 设置弹窗）
+           │   ├─ ConversationSidebar（列表 / 重命名 / 删除）
+           │   └─ ChatPanel（Markdown 回答 / 引用点击 / 赞踩 / 重生成 / 提问范围）
+           ├─ KnowledgeWorkspace（左：库列表；右：文档区 + 设置 / 成员 / 编辑 / 删除）
+           │   └─ KnowledgeDocuments（多选上传 / 文档列表 / 详情）
            └─ ProfileModal / LoginPanel（注册切换）
 
 后端（ABP 分层）
@@ -72,6 +71,7 @@
 | D10 | 前端引入 `markdown-it` 渲染助手回答，`html: false`；用户消息保持纯文本 | 演示效果必需，关闭 HTML 防 XSS |
 | D11 | 流式首帧返回 `UserMessageId`，完成帧返回 `AssistantMessageId`；消息历史接口返回消息 ID 与当前用户反馈 | 反馈、复制、重生成需要稳定消息标识 |
 | D12 | 存量数据不回填：新增列一律可空，旧切片 `HeadingPath` 为空、旧消息无耗时 | 遵循仓库「历史文件不动」原则 |
+| D13 | 资料库并入知识库工作台：知识库页左侧库列表、右侧该库文档与上传；问答页只留会话侧栏，提问范围在聊天头部选择；两处共用 `documents.knowledgeBaseId` | 知识库是文档、切片与权限的容器，合并后上传/设置/成员处于同一上下文，避免两处各自选库 |
 
 ### 0.2 默认项
 
@@ -128,6 +128,7 @@
 | T5 | 批量上传（前端多选 / 并发 / 逐条状态） | — | 无 |
 | T6 | 问答闭环（消息 ID / 反馈 / 重生成 / 耗时） | T2 | `P4_MessageFeedback` |
 | T7 | 知识库设置（切片 / TopK / 系统提示词） | — | `P4_KnowledgeBaseSettings` |
+| T10 | 知识库工作台整合（资料库并入知识库，验收期增项） | T4、T5、T7 | 无 |
 | T8 | 轻量仪表盘 | T6 | 无 |
 | T9 | 端到端验收与文档回写 | 全部 | 无 |
 
@@ -820,6 +821,37 @@ public class DashboardTrendPointDto
 
 ---
 
+## Task 10：知识库工作台整合（验收期增项，2026-10-26）
+
+**目标**：把「资料」子页并入知识库，让上传、切片设置与成员权限围绕同一个知识库上下文。
+
+### Files
+
+- 新增：`frontend/src/components/KnowledgeWorkspace.vue`
+- 新增：`frontend/src/components/KnowledgeDocuments.vue`
+- 修改：`frontend/src/App.vue`
+- 修改：`frontend/src/components/ChatPanel.vue`
+- 修改：`frontend/src/components/DashboardPanel.vue`
+- 删除：`frontend/src/components/KnowledgeBasePanel.vue`
+- 删除：`frontend/src/components/DocumentPanel.vue`
+
+### 交互
+
+- 知识库页：左侧库列表（名称 / 默认标记 / 描述 / 已就绪数），右侧展示选中库的标题、统计、设置 / 成员 / 编辑 / 删除与文档区
+- 文档区：上传按当前选中库归位；列表、重处理、删除与详情抽屉保持原有行为
+- 问答页：移除「资料 / 会话」二级标签，侧栏固定为会话；聊天头部新增「提问范围」，选项与工作台共用 `documents.knowledgeBaseId`
+- 概览页失败徽标与问答空态统一跳转知识库页
+
+### 验收
+
+- 切换库后右侧文档、统计与会话侧栏同步
+- 新建库后自动选中并可上传；空库可删除，删除后回到默认库
+- 默认库不可删除、不可改成员；设置与成员弹窗可用
+- 上传后状态从解析中走到已就绪，库计数同步
+- 问答页选择器切换后，提问按新库检索
+
+---
+
 ## §2 端到端验收清单
 
 在开发机上启动 Aspire 与前端后逐项打勾，并截图：
@@ -875,4 +907,5 @@ public class DashboardTrendPointDto
 
 | 日期 | Task | 记录 | 证据 |
 |---|---|---|---|
-| — | — | （待执行） | — |
+| 2026-10-26 | T10 | 资料库并入知识库工作台：新增 `KnowledgeWorkspace` / `KnowledgeDocuments`，问答页只留会话侧栏并在聊天头部选「提问范围」；旧 `KnowledgeBasePanel` / `DocumentPanel` 删除。浏览器为后台标签（viewport 0×0），以 DOM / 网络 / 数据库验证交互，无法截图 | `npm run build` 通过；新建 / 切换 / 删除库、设置与成员弹窗、上传到已就绪、概览与问答跳转均实测；临时库与测试文档已清理 |
+| — | T9 | （待执行） | — |

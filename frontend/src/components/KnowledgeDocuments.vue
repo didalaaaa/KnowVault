@@ -1,34 +1,28 @@
 <template>
-  <div class="doc-panel">
-    <div class="panel-head">
-      <div>
-        <h2>资料库</h2>
-        <p>上传后自动解析、切片并建立索引</p>
+  <div class="docs-pane">
+    <div class="docs-toolbar">
+      <div class="docs-title">
+        <h3>资料文档</h3>
+        <p>支持 PDF、Word、Excel、Markdown、HTML；可一次多选，同名文件会被拒绝</p>
       </div>
-      <span class="doc-count">{{ store.documents.length }}</span>
+      <div class="docs-toolbar-actions">
+        <span v-if="store.uploadingCount > 0" class="uploading" role="status">
+          <n-spin :size="13" />
+          正在上传 {{ store.uploadingCount }} 个文件
+        </span>
+        <n-upload
+          :custom-request="customRequest"
+          multiple
+          :show-file-list="false"
+          :disabled="store.uploadingCount > 0"
+        >
+          <n-button type="primary" size="small" :loading="store.uploadingCount > 0">
+            <template #icon><KvIcon name="upload" :size="14" /></template>
+            上传文档
+          </n-button>
+        </n-upload>
+      </div>
     </div>
-
-    <n-select
-      v-model:value="store.knowledgeBaseId"
-      :options="kbOptions"
-      size="small"
-      class="kb-select"
-      aria-label="选择知识库"
-      @update:value="store.refresh()"
-    />
-
-    <n-upload
-      :custom-request="customRequest"
-      multiple
-      :disabled="store.uploadingCount > 0"
-      class="upload-wrap"
-    >
-      <n-button class="upload-button" block :loading="store.uploadingCount > 0">
-        <template #icon><KvIcon name="upload" :size="17" /></template>
-        上传文档
-      </n-button>
-    </n-upload>
-    <p class="upload-hint">支持 PDF、Word、Excel、Markdown、HTML；可一次选择多个文件，同名文件会被拒绝</p>
 
     <n-alert v-if="store.error" type="error" :show-icon="false" closable @close="store.error = ''">
       {{ store.error }}
@@ -70,7 +64,7 @@
       <div v-if="store.documents.length === 0" class="doc-empty">
         <KvIcon name="file-text" :size="22" :stroke-width="1.6" />
         <p>还没有文档</p>
-        <span>上传一份资料，构建你的第一个知识索引</span>
+        <span>上传第一份资料，系统会自动解析、切片并建立索引</span>
       </div>
     </div>
 
@@ -79,8 +73,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { NSelect, NUpload, NButton, NAlert, NPopconfirm, useMessage } from 'naive-ui'
+import { ref } from 'vue'
+import { NAlert, NButton, NPopconfirm, NSpin, NUpload, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import DocumentDetailDrawer from './DocumentDetailDrawer.vue'
 import { useDocumentStore } from '../stores/documents'
@@ -90,10 +84,6 @@ const message = useMessage()
 
 const detailVisible = ref(false)
 const detailDoc = ref(null)
-
-const kbOptions = computed(() =>
-  store.knowledgeBases.map((kb) => ({ label: kb.name, value: kb.id })),
-)
 
 // 状态枚举落库为 int：0 Pending / 1 Processing / 2 Ready / 3 Failed
 const statusText = (status) => ['待处理', '解析中', '已就绪', '失败'][status] ?? '未知'
@@ -125,7 +115,7 @@ async function customRequest({ file, onFinish, onError }) {
 }
 
 /**
- * 重新处理文档。
+ * 重新处理文档
  * @param {object} doc 文档
  */
 async function reprocess(doc) {
@@ -146,7 +136,7 @@ function confirmRemove(doc) {
 }
 
 /**
- * 删除文档。
+ * 删除文档
  * @param {object} doc 文档
  */
 async function remove(doc) {
@@ -160,7 +150,7 @@ async function remove(doc) {
 }
 
 /**
- * 把未知错误整理成一行可读文案。
+ * 把未知错误整理成一行可读文案
  * @param {any} e 错误对象
  * @returns {string} 错误文案
  */
@@ -170,106 +160,54 @@ function describeError(e) {
 </script>
 
 <style scoped>
-.doc-panel {
-  height: 100%;
+.docs-pane {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  overflow: hidden;
-  padding: 20px 18px;
-  border: 1px solid var(--kv-border);
-  border-radius: var(--kv-radius-lg);
-  background: var(--kv-surface);
-  box-shadow: var(--kv-shadow-md);
+  padding: 18px 24px 20px;
 }
 
-.panel-head {
+.docs-toolbar {
+  flex: none;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
-.panel-head h2 {
+.docs-title {
+  min-width: 0;
+}
+
+.docs-title h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 14.5px;
   font-weight: 650;
   letter-spacing: -0.01em;
+  color: var(--kv-text);
 }
 
-.panel-head p {
+.docs-title p {
   margin: 3px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.55;
   color: var(--kv-text-3);
 }
 
-.doc-count {
+.docs-toolbar-actions {
   flex: none;
-  min-width: 26px;
-  height: 24px;
-  padding: 0 8px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--kv-primary-soft);
-  color: var(--kv-primary);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.kb-select {
-  width: 100%;
-}
-
-.upload-wrap {
-  display: block;
-}
-
-.upload-wrap :deep(.n-upload) {
-  display: block;
-  width: 100%;
-}
-
-.upload-wrap :deep(.n-upload-trigger) {
-  display: block;
-  width: 100%;
-}
-
-.upload-wrap :deep(.n-upload-file-list) {
-  max-height: 168px;
-  overflow-y: auto;
-  margin-top: 8px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.uploading {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-}
-
-.upload-wrap :deep(.n-upload-file) {
-  border-radius: 10px;
-  background: var(--kv-surface-soft);
-}
-
-.upload-button {
-  height: 52px;
-  border: 1px dashed #b9cfc8;
-  border-radius: 12px;
-  background: var(--kv-primary-soft);
-  color: var(--kv-primary);
-  font-weight: 600;
-  box-shadow: none;
-}
-
-.upload-button:hover {
-  border-color: var(--kv-primary);
-  background: #eef8f5;
-  color: var(--kv-primary-strong);
-}
-
-.upload-hint {
-  margin: -5px 0 0;
-  font-size: 11px;
-  text-align: center;
+  font-size: 11.5px;
   color: var(--kv-text-3);
 }
 
@@ -431,7 +369,7 @@ function describeError(e) {
 
 .doc-empty {
   flex: 1;
-  min-height: 150px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -454,5 +392,32 @@ function describeError(e) {
 .doc-empty span {
   font-size: 11px;
   line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .docs-pane {
+    flex: none;
+    padding: 16px;
+  }
+
+  .doc-list {
+    overflow: visible;
+  }
+
+  .doc-empty {
+    flex: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .docs-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .docs-toolbar-actions {
+    justify-content: flex-end;
+  }
 }
 </style>

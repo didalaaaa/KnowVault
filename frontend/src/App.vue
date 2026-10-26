@@ -42,25 +42,16 @@
           <div class="workspace">
             <n-tabs v-model:value="activeTab" type="segment" size="medium" animated class="app-tabs">
               <n-tab-pane name="overview" tab="概览" display-directive="show:lazy" class="overview-pane">
-                <DashboardPanel ref="dashboardRef" @open-qa="openQa" />
+                <DashboardPanel ref="dashboardRef" @open-knowledge="openKnowledge" />
               </n-tab-pane>
               <n-tab-pane name="qa" tab="问答" display-directive="show:lazy" class="qa-pane">
                 <div class="qa-layout">
-                  <aside class="qa-side">
-                    <n-tabs v-model:value="sideView" type="segment" size="small" animated class="side-tabs">
-                      <n-tab-pane name="docs" tab="资料" display-directive="show:lazy" class="side-pane">
-                        <DocumentPanel />
-                      </n-tab-pane>
-                      <n-tab-pane name="chats" tab="会话" display-directive="show:lazy" class="side-pane">
-                        <ConversationSidebar />
-                      </n-tab-pane>
-                    </n-tabs>
-                  </aside>
-                  <section class="qa-main"><ChatPanel /></section>
+                  <aside class="qa-side"><ConversationSidebar /></aside>
+                  <section class="qa-main"><ChatPanel @open-knowledge="openKnowledge" /></section>
                 </div>
               </n-tab-pane>
               <n-tab-pane name="kb" tab="知识库" display-directive="show:lazy" class="kb-pane">
-                <KnowledgeBasePanel />
+                <KnowledgeWorkspace />
               </n-tab-pane>
             </n-tabs>
           </div>
@@ -87,8 +78,7 @@ import ChatPanel from './components/ChatPanel.vue'
 import DashboardPanel from './components/DashboardPanel.vue'
 import LoginPanel from './components/LoginPanel.vue'
 import ConversationSidebar from './components/ConversationSidebar.vue'
-import DocumentPanel from './components/DocumentPanel.vue'
-import KnowledgeBasePanel from './components/KnowledgeBasePanel.vue'
+import KnowledgeWorkspace from './components/KnowledgeWorkspace.vue'
 import ProfileModal from './components/ProfileModal.vue'
 import KvIcon from './components/KvIcon.vue'
 import { useChatStore } from './stores/chat'
@@ -103,8 +93,6 @@ const documents = useDocumentStore()
 
 // 「概览」为默认视图：打开即可看到产品运行状态；「新会话」按钮仍固定在 header
 const activeTab = ref('overview')
-// 左侧栏视图：「资料」上传文档，「会话」回放历史问答
-const sideView = ref('docs')
 // 概览面板句柄：每次切回概览时刷新数字
 const dashboardRef = ref(null)
 
@@ -190,10 +178,9 @@ const themeOverrides = {
   },
 }
 
-/** 概览页的失败提示跳转到问答页，并切到资料列表。 */
-function openQa() {
-  activeTab.value = 'qa'
-  sideView.value = 'docs'
+/** 跳到知识库工作台：概览页处理失败文档、问答页首次上传都从这里进入。 */
+function openKnowledge() {
+  activeTab.value = 'kb'
 }
 
 function logout() {
@@ -442,8 +429,8 @@ onUnmounted(() => {
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: 336px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 306px minmax(0, 1fr);
+  gap: 18px;
 }
 
 .qa-side,
@@ -451,48 +438,10 @@ onUnmounted(() => {
   min-height: 0;
 }
 
-.qa-side {
-  display: flex;
-  flex-direction: column;
+.kb-pane {
+  overflow: hidden;
 }
 
-.side-tabs {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.side-tabs :deep(.n-tabs-nav) {
-  flex: none;
-  width: fit-content;
-  padding: 3px;
-  border-radius: 11px;
-  background: #e9ece6;
-}
-
-.side-tabs :deep(.n-tabs-nav--segment) {
-  margin-bottom: 10px;
-}
-
-.side-tabs :deep(.n-tabs-tab) {
-  height: 30px;
-  padding: 0 18px;
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.side-tabs :deep(.n-tabs-pane-wrapper) {
-  flex: 1;
-  min-height: 0;
-  border-radius: var(--kv-radius-lg);
-}
-
-.side-tabs :deep(.n-tab-pane) {
-  height: 100%;
-}
-
-.kb-pane,
 .overview-pane {
   overflow-y: auto;
   padding-bottom: 12px;
@@ -500,7 +449,7 @@ onUnmounted(() => {
 
 @media (max-width: 1100px) {
   .qa-layout {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: 276px minmax(0, 1fr);
   }
 }
 
@@ -527,6 +476,10 @@ onUnmounted(() => {
 
   .app-tabs :deep(.n-tabs-pane-wrapper) {
     min-height: auto;
+  }
+
+  .kb-pane {
+    overflow: visible;
   }
 
   .qa-layout {
