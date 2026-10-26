@@ -67,7 +67,8 @@ namespace KnowVault.Application
 				: await _feedbackRepository.GetListAsync(
 					x => x.UserId == userId.Value && messageIds.Contains(x.MessageId),
 					cancellationToken: cancellationToken);
-			var feedbackByMessage = feedbacks.ToDictionary(x => x.MessageId, x => x.Rating);
+			// 值类型字典的默认值是 Like(0)，缺反馈时会误显示为已点赞，显式提升为可空
+			var feedbackByMessage = feedbacks.ToDictionary(x => x.MessageId, x => (FeedbackRatingEnum?)x.Rating);
 
 			return [.. messages
 				.OrderBy(x => x.CreationTime)
