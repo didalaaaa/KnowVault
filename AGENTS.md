@@ -240,3 +240,4 @@ dotnet test
 - **文档去重（2026-10-23）**：同一知识库内按原始文件名（忽略大小写）拒绝重复上传；`Document.SourceFileName` 可空、存量不回填，详见 `TECH_STACK.md` §9.4。
 - **Embedding / Rerank 切换 SiliconFlow（2026-10-23）**：向量化 `BAAI/bge-m3`（1024 维）+ 重排 `BAAI/bge-reranker-v2-m3`，共用 `Ai:SiliconFlowBaseUrl=https://api.siliconflow.cn/v1` 与 `Ai:SiliconFlowApiKey`；Qwen/DashScope 代码与配置已移除，历史数据已清空无需迁移。详见 `TECH_STACK.md` §9.5 与 `docs/plans/2026-10-23-siliconflow-model-switch.md`。
 - **开源作品路线图（2026-10-24）**：项目定位调整为**不部署上线、在 Gitee 开源作作品展示**；功能范围与阶段以 `docs/plans/2026-10-24-knowvault-open-source-roadmap.md` 为准（P4 演示完整度 → P5 检索含金量 → P6 开源交付）。多租户、开放 API/API Key、限流/审计/备份、外部数据源、OCR、移动端明确不做；每期开工前另写文件级实施计划。
+- **P4 已完成（2026-10-26）**：账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘与知识库工作台（T1–T10）。15 项端到端验收逐项实测，`dotnet build` 0 警告、单测 35/35、集成测试 3/3。**资料库已并入知识库页**（`KnowledgeWorkspace` + `KnowledgeDocuments`），问答页只保留会话侧栏 + 聊天头部「提问范围」；验收期修复了「未评价消息被误显示为已点赞」的可空映射问题。按主题阅读见 `docs/P4-代码导读.md`，规格见 `docs/plans/2026-10-24-knowvault-p4-mvp.md`。

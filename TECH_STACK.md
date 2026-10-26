@@ -107,7 +107,7 @@ KnowVault.slnx
 | **P1 最小闭环** | 上传→解析→切片→向量化→Qdrant 写入；提问→检索→DeepSeek→引用溯源；文档解析 Worker 接 RabbitMQ | ✅ MVP 达成，可 demo |
 | **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
-| **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘 | 待实施：见 [`docs/plans/2026-10-24-knowvault-open-source-roadmap.md`](docs/plans/2026-10-24-knowvault-open-source-roadmap.md) |
+| **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘、知识库工作台 | ✅ 已完成（2026-10-26）：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)；代码导读见 [`docs/P4-代码导读.md`](docs/P4-代码导读.md) |
 | **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | 待实施（同上路线图） |
 | **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | 待实施（同上路线图） |
 
@@ -203,6 +203,20 @@ KnowVault.slnx
 - **不需要数据迁移**：切换时历史文档已删除；今后如需更换 embedding 模型（维度或语义空间变化）必须重新向量化，只换 rerank 模型则不需要。
 - **执行计划**：见 [`docs/plans/2026-10-23-siliconflow-model-switch.md`](docs/plans/2026-10-23-siliconflow-model-switch.md)
 
+### 9.6 P4 实现细节定稿（2026-10-26）
+
+- **账户**：注册走自定义 `AccountAppService` + `IdentityUserManager`，新账号默认加入 `Member`；个人中心提供显示名/邮箱与改密，改密后当前令牌保持有效；显示名保存在 `IdentityUser.Name`，登录后同步到右上角。
+- **会话**：`Conversation` 增加 `KnowledgeBaseId` 与 `LastMessageAt`，按用户 + 知识库列出；所有读写统一走 `GetOwnedConversationAsync` 归属校验；首次提问自动用问题截断作标题，支持重命名/删除，刷新后从侧栏恢复并继续追问。
+- **引用溯源**：`RagCitationDto` 增加 `Snippet` 与 `HeadingPath`；`Message.CitationsJson` 由 `varchar(4000)` 改为 `text`（迁移 `P4_MessageCitationsText`），避免长引用截断；前端引用抽屉展示命中片段并可跳转文档详情。
+- **文档详情与预览**：新增切片列表与原件内容接口；PDF/HTML/Markdown 用 blob + object URL 在线预览，Word/Excel 仅下载；HTML 预览 iframe 的 `sandbox` 留空，禁止脚本执行；抽屉关闭立即 revoke Blob URL。
+- **批量上传**：仅前端改造，`n-upload multiple` + 逐文件 `customRequest`；上传中显示计数，列表刷新 300ms 防抖，单文件失败不阻塞其它文件。
+- **反馈 / 重生成 / 复制**：`MessageFeedback` 以 `(MessageId, UserId)` 唯一，同评分再次点击取消；重新生成删除最后一条助手消息并带 `Regenerate=true` 复用用户问题，后端不重复插入用户消息；回答记录 `LatencyMs`；复制走 Clipboard API，失败提示手动选择。**反馈映射用可空字典**：值类型字典的 `GetValueOrDefault` 会返回 `Like(0)`，未评价消息会误显示为已点赞（T9 实测修复）。
+- **知识库设置**：切片长度 200–4000、重叠 0–`min(500, 长度/2)`、TopK 1–8、系统提示词可覆盖；只影响新上传文档与新提问，设置弹窗明确提示。
+- **仪表盘**：按当前用户与其可访问知识库聚合；数字卡为文档/就绪/提问/平均耗时，趋势为最近 7 天**提问数**（不是助手回答数），无数据日期补 0 而不是报错。
+- **知识库工作台**：资料库并入知识库页，左侧库列表、右侧标题/统计/设置/成员/文档区（`KnowledgeWorkspace` + `KnowledgeDocuments`）；问答页移除二级标签，会话侧栏固定，聊天头部「提问范围」与工作台共用 `documents.knowledgeBaseId`。
+- **前端渲染**：助手回答用 `markdown-it`（`html:false`）渲染；用户消息保持纯文本；统一暖纸/墨绿视觉与可见焦点。
+- **执行计划**：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)
+
 ## 10. P1 执行计划
 
 - 详见 [`docs/plans/2026-10-05-knowvault-p1-mvp.md`](docs/plans/2026-10-05-knowvault-p1-mvp.md)：含冻结规格、14 个任务的文件级改动、完整代码与逐项验证命令、风险登记与完成定义。
@@ -216,3 +230,8 @@ KnowVault.slnx
 
 - 详见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)：含冻结规格（五项决策）、T0–T7 文件级改动、12 项端到端验收、风险登记与完成定义。
 - **状态：代码实现完成（2026-10-18）**：build 0 警告 0 错误、单测 33/33、集成测试 2/2、`npm run build` 通过；Seq trace / 权限 403 / 5 次重试进 error queue 需按该文件 §2 手工验收。
+
+## 13. P4 执行计划
+
+- 详见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)：含 D1–D13 决策、T1–T10 文件级改动、15 项端到端验收、风险登记与完成定义。
+- **状态：已完成（2026-10-26）**：`dotnet build KnowVault.slnx` 0 警告 0 错误、单测 35/35、集成测试 3/3、`npm run build` 通过；15 项验收逐项实测，Aspire 一键启动因本机 DCP 不稳定沿用等价手工容器路径（P1 已记录）。
