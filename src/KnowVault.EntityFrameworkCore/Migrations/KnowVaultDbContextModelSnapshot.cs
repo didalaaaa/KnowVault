@@ -301,8 +301,7 @@ namespace KnowVault.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("CitationsJson")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("text");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()

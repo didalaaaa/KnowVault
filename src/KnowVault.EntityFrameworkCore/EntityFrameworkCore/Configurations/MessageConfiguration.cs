@@ -20,7 +20,7 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 			builder.ConfigureByConvention();
 
 			builder.Property(x => x.Content).IsRequired();
-			builder.Property(x => x.CitationsJson).HasMaxLength(4000);
+			// 引用片段带原文后体积不可控（topK 条 × 切片长度），CitationsJson 不设上限，否则长回答落库失败
 
 			// 按会话按时间顺序回放消息
 			builder.HasIndex(x => new { x.ConversationId, x.CreationTime });
