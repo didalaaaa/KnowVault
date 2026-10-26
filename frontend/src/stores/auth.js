@@ -75,6 +75,8 @@ export const useAuthStore = defineStore('auth', {
       this.token = ''
       this.profile = null
       localStorage.removeItem(TOKEN_KEY)
+      // 防伪令牌绑定了当前用户声明，退出后不清掉会让匿名的注册请求被 400 拒绝
+      document.cookie = 'XSRF-TOKEN=; Max-Age=0; path=/'
     },
   },
 })
