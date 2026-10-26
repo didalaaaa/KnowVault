@@ -19,7 +19,12 @@
         <div class="msg-body">
           <div class="msg-meta">{{ m.role === 'assistant' ? 'KnowVault' : '你' }}</div>
           <div class="bubble">
-            <p v-if="m.content" class="msg-text">{{ m.content }}</p>
+            <div
+              v-if="m.content && m.role === 'assistant'"
+              class="msg-text markdown-body"
+              v-html="renderMarkdown(m.content)"
+            ></div>
+            <p v-else-if="m.content" class="msg-text">{{ m.content }}</p>
             <p v-else class="pending">
               <span class="typing"><i></i><i></i><i></i></span>
               正在生成…
@@ -148,6 +153,7 @@ import DocumentDetailDrawer from './DocumentDetailDrawer.vue'
 import { useChatStore } from '../stores/chat'
 import { useConversationStore } from '../stores/conversations'
 import { useDocumentStore } from '../stores/documents'
+import { renderMarkdown } from '../utils/markdown'
 
 const chat = useChatStore()
 const conversations = useConversationStore()
@@ -418,6 +424,76 @@ async function openCitationDocument(citation) {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 助手回答由 Markdown 渲染器控制空白，正文用块级排版 */
+.markdown-body {
+  white-space: normal;
+  line-height: 1.7;
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p {
+  margin: 0 0 8px;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+
+.markdown-body li {
+  margin: 2px 0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin: 12px 0 6px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.markdown-body code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(15, 118, 110, 0.08);
+  font-size: 12.5px;
+}
+
+.markdown-body pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  border-radius: 8px;
+  background: var(--kv-surface-soft);
+}
+
+.markdown-body pre code {
+  padding: 0;
+  background: none;
+}
+
+.markdown-body blockquote {
+  margin: 8px 0;
+  padding-left: 10px;
+  border-left: 2px solid var(--kv-border-strong);
+  color: var(--kv-text-3);
+}
+
+.markdown-body a {
+  color: var(--kv-primary);
 }
 
 .pending {
