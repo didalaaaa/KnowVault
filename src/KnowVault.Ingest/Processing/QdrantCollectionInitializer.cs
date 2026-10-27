@@ -29,6 +29,10 @@ namespace KnowVault.Ingest
 			{
 				await _vectorStore.EnsureCollectionAsync(cancellationToken);
 			}
+			catch (VectorSchemaMismatchException exception)
+			{
+				_logger.LogError(exception, "Qdrant schema 需要升级，应用继续启动；请调用维护接口重建后重新处理文档");
+			}
 			catch (Exception exception)
 			{
 				_logger.LogError(exception, "初始化 Qdrant collection 失败，应用继续启动");

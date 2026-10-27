@@ -34,7 +34,7 @@ namespace KnowVault.IntegrationTests
 			var chunkRepository = GetRequiredService<IRepository<DocumentChunk, Guid>>();
 			await vectorStore.EnsureCollectionAsync();
 
-			var content = "# 集成测试\n\nKnowVault 的 P3 集成测试会真实写入 PostgreSQL、MinIO 与 Qdrant。\n\n## 删除\n\n删除文档时必须同步清理切片与向量。";
+			var content = "# 集成测试\n\nKnowVault 的 P3 集成测试会真实写入 PostgreSQL、MinIO 与 Qdrant，关键词标记为 KV-2026。\n\n## 删除\n\n删除文档时必须同步清理切片与向量。";
 			var upload = new UploadDocumentInput
 			{
 				KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId,
@@ -65,6 +65,19 @@ namespace KnowVault.IntegrationTests
 				10);
 			hits.Should().Contain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
 
+			var sparseQuery = SparseVectorBuilder.BuildQuery("KV-2026");
+			sparseQuery.Should().NotBeNull();
+
+			var sparseHits = await vectorStore.SearchSparseAsync(
+				sparseQuery!,
+				new VectorFilter
+				{
+					TenantId = Guid.Empty,
+					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId
+				},
+				10);
+			sparseHits.Should().Contain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
+
 			await documentAppService.DeleteAsync(document.Id, default);
 
 			var afterDelete = async () => await documentAppService.GetAsync(document.Id, default);
@@ -82,6 +95,16 @@ namespace KnowVault.IntegrationTests
 				},
 				10);
 			remainingHits.Should().NotContain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
+
+			var remainingSparseHits = await vectorStore.SearchSparseAsync(
+				sparseQuery!,
+				new VectorFilter
+				{
+					TenantId = Guid.Empty,
+					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId
+				},
+				10);
+			remainingSparseHits.Should().NotContain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
 		}
 
 		/// <summary>

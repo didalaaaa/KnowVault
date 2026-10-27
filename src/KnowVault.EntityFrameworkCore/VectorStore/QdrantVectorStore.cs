@@ -42,20 +42,21 @@ namespace KnowVault.EntityFrameworkCore
 
 				if (!await _client.CollectionExistsAsync(_options.CollectionName, cancellationToken))
 				{
-					await _client.CreateCollectionAsync(_options.CollectionName, new VectorParams { Size = _options.VectorSize, Distance = Distance.Cosine }, cancellationToken: cancellationToken);
-					_logger.LogInformation("已创建 Qdrant collection {Collection}（维度 {Size}，Cosine）", _options.CollectionName, _options.VectorSize);
+					await CreateCollectionAsync(cancellationToken);
+					_logger.LogInformation("已创建 Qdrant collection {Collection}（维度 {Size}，Cosine + 稀疏 {Sparse}）", _options.CollectionName, _options.VectorSize, VectorSchema.SparseVectorName);
 				}
-
-				// 按 payload 过滤删除/检索必须建 keyword 索引，否则 Qdrant 会全量扫描甚至拒绝过滤
-				foreach (var field in new[] { ChunkPayload.TenantId, ChunkPayload.KnowledgeBaseId, ChunkPayload.DocumentId })
+				else
 				{
-					await _client.CreatePayloadIndexAsync(
-						_options.CollectionName,
-						field,
-						PayloadSchemaType.Keyword,
-						cancellationToken: cancellationToken);
+					var info = await _client.GetCollectionInfoAsync(_options.CollectionName, cancellationToken);
+					if (info.Config?.Params?.SparseVectorsConfig is not { } sparseVectors ||
+						!sparseVectors.Map.ContainsKey(VectorSchema.SparseVectorName))
+					{
+						throw new VectorSchemaMismatchException(
+							$"Qdrant collection {_options.CollectionName} 缺少稀疏向量 {VectorSchema.SparseVectorName}；请调用 POST /api/app/maintenance/rebuild-vector-index 重建索引并重新处理文档。");
+					}
 				}
 
+				await EnsurePayloadIndexesAsync(cancellationToken);
 				_collectionEnsured = true;
 			}
 			finally
@@ -74,7 +75,7 @@ namespace KnowVault.EntityFrameworkCore
 			var structs = points.Select(point => new PointStruct
 			{
 				Id = new PointId { Uuid = point.Id.ToString() },
-				Vectors = point.Vector,
+				Vectors = BuildVectors(point),
 				Payload = { point.Payload.ToDictionary(kv => kv.Key, kv => ToValue(kv.Value)) }
 			}).ToList();
 
@@ -91,32 +92,61 @@ namespace KnowVault.EntityFrameworkCore
 		{
 			await EnsureCollectionAsync(cancellationToken);
 
-			// 单租户运行时 filter.TenantId 为 Guid.Empty，与写入侧归一化保持一致
-			// 注意：GUID 以 keyword（字符串）落 payload，因此必须用 MatchKeyword 而不是数值型 Match
-			var qdrantFilter = new Filter
-			{
-				Must =
-				{
-					MatchKeyword(ChunkPayload.TenantId, filter.TenantId.ToString()),
-					MatchKeyword(ChunkPayload.KnowledgeBaseId, filter.KnowledgeBaseId.ToString())
-				}
-			};
-
 			// 用新版 Query API（1.19 起 SearchAsync 已标记过时）；显式开启 payload 回传
 			var points = await _client.QueryAsync(
 				_options.CollectionName,
 				query: queryVector,
-				filter: qdrantFilter,
+				filter: BuildFilter(filter),
 				limit: (ulong)topK,
 				payloadSelector: new WithPayloadSelector { Enable = true },
 				cancellationToken: cancellationToken);
 
-			return [.. points.Select(point => new VectorSearchHit
+			return [.. points.Select(ToHit)];
+		}
+
+		/// <inheritdoc />
+		public async Task<IReadOnlyList<VectorSearchHit>> SearchSparseAsync(
+			SparseVectorData sparseVector,
+			VectorFilter filter,
+			int topK,
+			CancellationToken cancellationToken = default)
+		{
+			if (sparseVector.IsEmpty || topK <= 0) return [];
+
+			await EnsureCollectionAsync(cancellationToken);
+
+			var points = await _client.QueryAsync(
+				_options.CollectionName,
+				query: new Query { Nearest = (sparseVector.Values, sparseVector.Indices) },
+				usingVector: VectorSchema.SparseVectorName,
+				filter: BuildFilter(filter),
+				limit: (ulong)topK,
+				payloadSelector: new WithPayloadSelector { Enable = true },
+				cancellationToken: cancellationToken);
+
+			return [.. points.Select(ToHit)];
+		}
+
+		/// <inheritdoc />
+		public async Task RecreateCollectionAsync(CancellationToken cancellationToken = default)
+		{
+			await _ensureLock.WaitAsync(cancellationToken);
+			try
 			{
-				Id = Guid.TryParse(point.Id.Uuid, out var id) ? id : Guid.Empty,
-				Score = point.Score,
-				Payload = point.Payload.ToDictionary(kv => kv.Key, kv => FromValue(kv.Value))
-			})];
+				if (await _client.CollectionExistsAsync(_options.CollectionName, cancellationToken))
+				{
+					await _client.DeleteCollectionAsync(_options.CollectionName, cancellationToken: cancellationToken);
+				}
+
+				await CreateCollectionAsync(cancellationToken);
+				await EnsurePayloadIndexesAsync(cancellationToken);
+				_collectionEnsured = true;
+				_logger.LogWarning("已重建 Qdrant collection {Collection}（dense + sparse {Sparse}）", _options.CollectionName, VectorSchema.SparseVectorName);
+			}
+			finally
+			{
+				_ensureLock.Release();
+			}
 		}
 
 		/// <inheritdoc />
@@ -141,6 +171,64 @@ namespace KnowVault.EntityFrameworkCore
 			await _client.DeleteAsync(_options.CollectionName, filter, wait: true, cancellationToken: cancellationToken);
 			_logger.LogInformation("已删除文档 {DocumentId} 的 Qdrant 向量点", documentId);
 		}
+
+		private async Task CreateCollectionAsync(CancellationToken cancellationToken)
+		{
+			await _client.CreateCollectionAsync(
+				_options.CollectionName,
+				new VectorParams { Size = _options.VectorSize, Distance = Distance.Cosine },
+				sparseVectorsConfig: new SparseVectorConfig
+				{
+					Map = { [VectorSchema.SparseVectorName] = new SparseVectorParams { Modifier = Modifier.Idf } }
+				},
+				cancellationToken: cancellationToken);
+		}
+
+		// 按 payload 过滤删除/检索必须建 keyword 索引，否则 Qdrant 会全量扫描甚至拒绝过滤
+		private async Task EnsurePayloadIndexesAsync(CancellationToken cancellationToken)
+		{
+			foreach (var field in new[] { ChunkPayload.TenantId, ChunkPayload.KnowledgeBaseId, ChunkPayload.DocumentId })
+			{
+				await _client.CreatePayloadIndexAsync(
+					_options.CollectionName,
+					field,
+					PayloadSchemaType.Keyword,
+					cancellationToken: cancellationToken);
+			}
+		}
+
+		// 单租户运行时 filter.TenantId 为 Guid.Empty，与写入侧归一化保持一致
+		// 注意：GUID 以 keyword（字符串）落 payload，因此必须用 MatchKeyword 而不是数值型 Match
+		private static Filter BuildFilter(VectorFilter filter) => new()
+		{
+			Must =
+			{
+				MatchKeyword(ChunkPayload.TenantId, filter.TenantId.ToString()),
+				MatchKeyword(ChunkPayload.KnowledgeBaseId, filter.KnowledgeBaseId.ToString())
+			}
+		};
+
+		private static Vectors BuildVectors(VectorPoint point)
+		{
+			var vectors = new Dictionary<string, Vector>
+			{
+				[string.Empty] = point.Vector
+			};
+
+			if (point.SparseVector is { IsEmpty: false } sparse)
+			{
+				vectors[VectorSchema.SparseVectorName] = (sparse.Values, sparse.Indices);
+			}
+
+			return vectors;
+		}
+
+		private static VectorSearchHit ToHit(ScoredPoint point) => new()
+		{
+			Id = Guid.TryParse(point.Id.Uuid, out var id) ? id : Guid.Empty,
+			Score = point.Score,
+			Payload = point.Payload.ToDictionary(kv => kv.Key, kv => FromValue(kv.Value))
+		};
 
 		private static Value ToValue(object value) => value switch
 		{

@@ -176,6 +176,12 @@ namespace KnowVault.Tests
 				return Task.FromResult<IReadOnlyList<VectorSearchHit>>(_hits.Take(topK).ToList());
 			}
 
+			public Task<IReadOnlyList<VectorSearchHit>> SearchSparseAsync(SparseVectorData sparseVector, VectorFilter filter, int topK, CancellationToken cancellationToken = default)
+				=> Task.FromResult<IReadOnlyList<VectorSearchHit>>([]);
+
+			public Task RecreateCollectionAsync(CancellationToken cancellationToken = default)
+				=> Task.CompletedTask;
+
 			public Task DeleteByDocumentAsync(Guid tenantId, Guid knowledgeBaseId, Guid documentId, CancellationToken cancellationToken = default)
 				=> Task.CompletedTask;
 		}

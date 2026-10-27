@@ -25,6 +25,27 @@ namespace KnowVault.Domain
 			CancellationToken cancellationToken = default);
 
 		/// <summary>
+		/// 按过滤条件做关键词稀疏检索
+		/// </summary>
+		/// <param name="sparseVector">查询稀疏向量</param>
+		/// <param name="filter">payload 过滤条件</param>
+		/// <param name="topK">返回条数</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>按关键词得分降序的命中列表</returns>
+		Task<IReadOnlyList<VectorSearchHit>> SearchSparseAsync(
+			SparseVectorData sparseVector,
+			VectorFilter filter,
+			int topK,
+			CancellationToken cancellationToken = default);
+
+		/// <summary>
+		/// 删除并按当前 schema 重建 collection（会清空全部向量）
+		/// </summary>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns></returns>
+		Task RecreateCollectionAsync(CancellationToken cancellationToken = default);
+
+		/// <summary>
 		/// 按文档删除向量点（payload 过滤 tenantId + knowledgeBaseId + documentId）
 		/// </summary>
 		/// <param name="tenantId">租户 ID（单租户为 <see cref="Guid.Empty"/></param>

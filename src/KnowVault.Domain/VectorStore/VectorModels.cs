@@ -9,6 +9,11 @@ namespace KnowVault.Domain
 		/// <summary>向量数据。</summary>
 		public float[] Vector { get; set; } = [];
 
+		/// <summary>
+		/// 关键词稀疏向量；为空表示该切片没有可索引词元
+		/// </summary>
+		public SparseVectorData? SparseVector { get; set; }
+
 		/// <summary>payload（字段名见 <see cref="ChunkPayload"/>）。</summary>
 		public Dictionary<string, object> Payload { get; set; } = [];
 	}

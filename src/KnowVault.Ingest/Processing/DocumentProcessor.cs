@@ -127,6 +127,10 @@ namespace KnowVault.Ingest
 				{
 					Id = chunkId,
 					Vector = vectors[index],
+					SparseVector = SparseVectorBuilder.BuildDocument(
+						string.IsNullOrWhiteSpace(chunk.HeadingPath)
+							? chunk.Content
+							: $"{chunk.HeadingPath}\n{chunk.Content}"),
 					Payload = ChunkPayload.Create(
 						tenantId,
 						document.KnowledgeBaseId,
