@@ -1,11 +1,25 @@
 <template>
   <div class="conv-panel">
     <div class="panel-head">
-      <div>
-        <h2>会话</h2>
-        <p>刷新页面后仍可继续上次的问答</p>
+      <div class="panel-head-text">
+        <h2>
+          会话
+          <span class="conv-count">{{ conversations.items.length }}</span>
+        </h2>
+        <p>刷新后仍可继续上次问答</p>
       </div>
-      <span class="conv-count">{{ conversations.items.length }}</span>
+      <n-button
+        size="small"
+        type="primary"
+        secondary
+        class="new-conv-btn"
+        :disabled="isNewChat"
+        :title="isNewChat ? '当前已是新会话' : '结束当前会话，开始新提问'"
+        @click="startNewChat"
+      >
+        <template #icon><KvIcon name="plus" :size="14" /></template>
+        新会话
+      </n-button>
     </div>
 
     <n-alert v-if="conversations.error" type="error" :show-icon="false" closable @close="conversations.error = ''">
@@ -72,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { NAlert, NButton, NInput, NModal, NPopconfirm, NSpin, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import { useChatStore } from '../stores/chat'
@@ -88,6 +102,16 @@ const renameVisible = ref(false)
 const renameTitle = ref('')
 const renaming = ref(false)
 let renameTarget = null
+
+// 聊天区已是空白新会话时置灰，避免重复点击
+const isNewChat = computed(() => !chat.conversationId && chat.messages.length === 0)
+
+/** 开启新会话：清空聊天区上下文；当前会话已落库，仍可从下方列表找回 */
+function startNewChat() {
+  if (isNewChat.value) return
+  chat.reset()
+  message.success('已开始新会话')
+}
 
 // 切换知识库或首次加载时刷新会话列表
 watch(
@@ -196,8 +220,15 @@ function describeError(e) {
   gap: 12px;
 }
 
+.panel-head-text {
+  min-width: 0;
+}
+
 .panel-head h2 {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.01em;
@@ -210,17 +241,23 @@ function describeError(e) {
   color: var(--kv-text-3);
 }
 
+.new-conv-btn {
+  flex: none;
+  /* 按钮比标题行高，顶对齐时视觉重心偏低，上移 2px 与「会话」二字居中 */
+  margin-top: -2px;
+}
+
 .conv-count {
   flex: none;
-  min-width: 26px;
-  height: 24px;
-  padding: 0 8px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
   background: var(--kv-primary-soft);
   color: var(--kv-primary);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
 }
 

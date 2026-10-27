@@ -16,10 +16,6 @@
                 <span class="conn-dot"></span>
                 {{ chat.connected ? '服务在线' : '服务离线' }}
               </span>
-              <n-button size="small" quaternary class="header-btn" @click="chat.reset()">
-                <template #icon><KvIcon name="refresh" :size="15" /></template>
-                新会话
-              </n-button>
               <n-button
                 size="small"
                 quaternary
@@ -91,7 +87,7 @@ const conversations = useConversationStore()
 const auth = useAuthStore()
 const documents = useDocumentStore()
 
-// 「概览」为默认视图：打开即可看到产品运行状态；「新会话」按钮仍固定在 header
+// 「概览」为默认视图：打开即可看到产品运行状态；「新会话」归到问答标签的会话侧栏
 const activeTab = ref('overview')
 // 概览面板句柄：每次切回概览时刷新数字
 const dashboardRef = ref(null)
