@@ -11,8 +11,13 @@ namespace KnowVault.Ai
 		public required IReadOnlyList<RagRetrievedChunk> Chunks { get; init; }
 
 		/// <summary>
-		/// 大模型生成的增量文本流
+		/// 实际参与召回的改写变体（不含原问题）
 		/// </summary>
-		public required IAsyncEnumerable<string> Deltas { get; init; }
+		public required IReadOnlyList<string> RewriteQueries { get; init; }
+
+		/// <summary>
+		/// 大模型生成的增量文本流；最后一帧可能只带 usage
+		/// </summary>
+		public required IAsyncEnumerable<LlmStreamChunk> Deltas { get; init; }
 	}
 }

@@ -53,6 +53,16 @@ namespace KnowVault.Ai
 		/// 混合检索参数
 		/// </summary>
 		public HybridOptions Hybrid { get; set; } = new();
+
+		/// <summary>
+		/// 是否启用查询改写；默认关闭
+		/// </summary>
+		public bool QueryRewriteEnabled { get; set; }
+
+		/// <summary>
+		/// 查询改写参数
+		/// </summary>
+		public QueryRewriteOptions QueryRewrite { get; set; } = new();
 	}
 
 }

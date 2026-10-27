@@ -136,7 +136,14 @@ namespace KnowVault.Tests
 				HybridEnabled = false
 			});
 
-			return new RagService(options, new FakeEmbeddingService(), store, new FakeChatService(), rerank, NullLogger<RagService>.Instance);
+			return new RagService(
+				options,
+				new FakeEmbeddingService(),
+				store,
+				new FakeChatService(),
+				rerank,
+				new FakeQueryRewriteService(),
+				NullLogger<RagService>.Instance);
 		}
 
 		/// <summary>
@@ -190,15 +197,32 @@ namespace KnowVault.Tests
 
 		private sealed class FakeChatService : ILlmChatService
 		{
-			public async IAsyncEnumerable<string> CompleteStreamAsync(
+			public async IAsyncEnumerable<LlmStreamChunk> CompleteStreamAsync(
 				string systemPrompt,
 				IReadOnlyList<LlmChatMessage> messages,
 				[EnumeratorCancellation] CancellationToken cancellationToken = default)
 			{
-				yield return "答";
+				yield return new LlmStreamChunk { Delta = "答" };
 				await Task.Yield();
-				yield return "案";
+				yield return new LlmStreamChunk { Delta = "案" };
 			}
+
+			public Task<LlmCompletionResult> CompleteAsync(
+				string systemPrompt,
+				IReadOnlyList<LlmChatMessage> messages,
+				int maxTokens,
+				double temperature,
+				CancellationToken cancellationToken = default)
+				=> Task.FromResult(new LlmCompletionResult { Content = "[]", Model = "fake" });
+		}
+
+		private sealed class FakeQueryRewriteService : IQueryRewriteService
+		{
+			public Task<QueryRewriteResult> RewriteAsync(
+				string question,
+				IReadOnlyList<LlmChatMessage> history,
+				CancellationToken cancellationToken = default)
+				=> Task.FromResult(new QueryRewriteResult { Queries = [], Model = "fake" });
 		}
 
 		private sealed class FakeRerankService : IRerankService

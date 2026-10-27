@@ -28,6 +28,7 @@ namespace KnowVault.Ai
 		private readonly IVectorStore _vectorStore;
 		private readonly ILlmChatService _chatService;
 		private readonly IRerankService _rerankService;
+		private readonly IQueryRewriteService _queryRewriteService;
 		private readonly ILogger<RagService> _logger;
 
 		/// <summary>
@@ -38,6 +39,7 @@ namespace KnowVault.Ai
 		/// <param name="vectorStore">向量库</param>
 		/// <param name="chatService">生成服务</param>
 		/// <param name="rerankService">重排服务</param>
+		/// <param name="queryRewriteService">查询改写服务</param>
 		/// <param name="logger">日志</param>
 		public RagService(
 			IOptions<AiOptions> options,
@@ -45,6 +47,7 @@ namespace KnowVault.Ai
 			IVectorStore vectorStore,
 			ILlmChatService chatService,
 			IRerankService rerankService,
+			IQueryRewriteService queryRewriteService,
 			ILogger<RagService> logger)
 		{
 			_options = options.Value;
@@ -52,6 +55,7 @@ namespace KnowVault.Ai
 			_vectorStore = vectorStore;
 			_chatService = chatService;
 			_rerankService = rerankService;
+			_queryRewriteService = queryRewriteService;
 			_logger = logger;
 		}
 
@@ -62,9 +66,9 @@ namespace KnowVault.Ai
 
 			// 一次性回答与流式回答共用同一条生成路径，避免两套实现行为漂移
 			var builder = new StringBuilder();
-			await foreach (var delta in streamResult.Deltas.WithCancellation(cancellationToken))
+			await foreach (var chunk in streamResult.Deltas.WithCancellation(cancellationToken))
 			{
-				builder.Append(delta);
+				if (!string.IsNullOrEmpty(chunk.Delta)) builder.Append(chunk.Delta);
 			}
 
 			return new RagAnswer
@@ -89,6 +93,7 @@ namespace KnowVault.Ai
 			return new RagStreamResult
 			{
 				Chunks = retrieval.Chunks,
+				RewriteQueries = [.. retrieval.RewriteQueries.Skip(1)],
 				Deltas = StreamWithEmptyCheckAsync(system, messages, cancellationToken)
 			};
 		}
@@ -105,12 +110,17 @@ namespace KnowVault.Ai
 			// 重排要「宽召回 + 精排」：召回数不小于最终 topK，否则重排没有可选空间
 			var candidateCount = _options.RerankEnabled ? Math.Clamp(_options.RerankCandidateCount, topK, MaxCandidateCount) : topK;
 			var hybridEnabled = request.HybridEnabled ?? _options.HybridEnabled;
-			IReadOnlyList<string> queries = [request.Question];
+			var rewriteEnabled = request.RewriteEnabled ?? _options.QueryRewriteEnabled;
+
+			var queries = new List<string> { request.Question };
+			if (rewriteEnabled) queries.AddRange(await TryRewriteAsync(request, cancellationToken));
 
 			activity?.SetTag("rag.top_k", topK);
 			activity?.SetTag("rag.candidate_count", candidateCount);
 			activity?.SetTag("rag.rerank", _options.RerankEnabled);
 			activity?.SetTag("rag.hybrid", hybridEnabled);
+			activity?.SetTag("rag.rewrite", rewriteEnabled);
+			activity?.SetTag("rag.rewrite_count", queries.Count - 1);
 
 			var filter = new VectorFilter
 			{
@@ -118,15 +128,15 @@ namespace KnowVault.Ai
 				KnowledgeBaseIds = [request.KnowledgeBaseId]
 			};
 
-			var chunks = hybridEnabled
-				? await RetrieveHybridAsync(queries, filter, candidateCount, cancellationToken)
+			var chunks = hybridEnabled || queries.Count > 1
+				? await RetrieveHybridAsync(queries, filter, candidateCount, hybridEnabled, cancellationToken)
 				: await RetrieveDenseAsync(request.Question, filter, candidateCount, cancellationToken);
 
 			activity?.SetTag("rag.hit_count", chunks.Count);
 
 			_logger.LogInformation(
-				"检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}，候选 {CandidateCount}，混合 {Hybrid}）",
-				request.KnowledgeBaseId, chunks.Count, topK, candidateCount, hybridEnabled);
+				"检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}，候选 {CandidateCount}，混合 {Hybrid}，改写 {RewriteCount}）",
+				request.KnowledgeBaseId, chunks.Count, topK, candidateCount, hybridEnabled, queries.Count - 1);
 
 			// 重排只打分（top_n 传全量），保留前 topK 条由本地负责
 			var reranked = await RerankAsync(request.Question, chunks, cancellationToken);
@@ -159,17 +169,19 @@ namespace KnowVault.Ai
 		/// <param name="queries">参与召回的查询（第一条为原问题）。</param>
 		/// <param name="filter">检索过滤条件。</param>
 		/// <param name="candidateCount">送重排的候选条数。</param>
+		/// <param name="keywordEnabled">是否启用关键词稀疏分支。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>按融合得分降序的候选切片。</returns>
 		private async Task<List<RagRetrievedChunk>> RetrieveHybridAsync(
 			IReadOnlyList<string> queries,
 			VectorFilter filter,
 			int candidateCount,
+			bool keywordEnabled,
 			CancellationToken cancellationToken)
 		{
 			var hybrid = _options.Hybrid;
 			var denseWeight = Math.Clamp(hybrid.DenseWeight, 0, MaxHybridWeight);
-			var keywordWeight = Math.Clamp(hybrid.KeywordWeight, 0, MaxHybridWeight);
+			var keywordWeight = keywordEnabled ? Math.Clamp(hybrid.KeywordWeight, 0, MaxHybridWeight) : 0;
 			var variantWeight = Math.Clamp(hybrid.VariantWeight, 0, MaxHybridWeight);
 			var rrfK = Math.Clamp(hybrid.RrfK, MinRrfK, MaxRrfK);
 			var perQueryLimit = Math.Clamp(hybrid.PerQueryCandidateCount, MinPerQueryCandidateCount, MaxPerQueryCandidateCount);
@@ -253,20 +265,50 @@ namespace KnowVault.Ai
 		};
 
 		/// <summary>
+		/// 尝试生成改写查询，任何失败都退化为只用原问题
+		/// </summary>
+		/// <param name="request">提问入参。</param>
+		/// <param name="cancellationToken">取消令牌。</param>
+		/// <returns>改写变体；未触发或失败时为空列表。</returns>
+		private async Task<IReadOnlyList<string>> TryRewriteAsync(RagRequest request, CancellationToken cancellationToken)
+		{
+			var options = _options.QueryRewrite;
+			var maxVariants = Math.Clamp(options.MaxVariants, 0, 2);
+
+			// 太短的问题（如“你好”）改写收益低，直接跳过模型调用
+			if (maxVariants == 0 || request.Question.Trim().Length < Math.Max(options.MinQuestionLength, 0)) return [];
+
+			try
+			{
+				var result = await _queryRewriteService.RewriteAsync(request.Question, request.History, cancellationToken);
+				return result.Queries.Count > maxVariants ? [.. result.Queries.Take(maxVariants)] : result.Queries;
+			}
+			catch (Exception ex) when (ex is not OperationCanceledException)
+			{
+				// 改写只是提升召回率，不能阻断问答
+				_logger.LogWarning(ex, "查询改写失败，仅使用原问题检索");
+				return [];
+			}
+		}
+
+		/// <summary>
 		/// 包一层空回答检查，让流式与非流式两条路径都得到同样的保护
 		/// </summary>
 		/// <param name="systemPrompt">系统提示词。</param>
 		/// <param name="messages">完整对话消息。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
-		/// <returns>增量文本流。</returns>
+		/// <returns>增量文本流；usage 帧原样透传。</returns>
 		/// <exception cref="AiCallException">模型没有产出任何文本。</exception>
-		private async IAsyncEnumerable<string> StreamWithEmptyCheckAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, [EnumeratorCancellation] CancellationToken cancellationToken)
+		private async IAsyncEnumerable<LlmStreamChunk> StreamWithEmptyCheckAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, [EnumeratorCancellation] CancellationToken cancellationToken)
 		{
 			var totalLength = 0;
-			await foreach (var delta in _chatService.CompleteStreamAsync(systemPrompt, messages, cancellationToken).WithCancellation(cancellationToken))
+			await foreach (var chunk in _chatService.CompleteStreamAsync(systemPrompt, messages, cancellationToken).WithCancellation(cancellationToken))
 			{
-				totalLength += delta.Length;
-				yield return delta;
+				if (!string.IsNullOrEmpty(chunk.Delta)) totalLength += chunk.Delta.Length;
+
+				// 只带 usage 的尾帧要保留给上层记录用量，完全空的帧直接丢弃
+				if (string.IsNullOrEmpty(chunk.Delta) && chunk.Usage is null) continue;
+				yield return chunk;
 			}
 
 			if (totalLength == 0) throw new AiCallException("DeepSeek 返回了空回答。");

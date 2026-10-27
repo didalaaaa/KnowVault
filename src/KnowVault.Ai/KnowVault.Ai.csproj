@@ -16,6 +16,8 @@
     <!-- Semantic Kernel（SiliconFlow 做 embedding/rerank，DeepSeek 做生成） -->
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.80.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.80.0" />
+    <!-- 直接引用以读取 ChatTokenUsage；版本与 SK 连接器依赖保持一致 -->
+    <PackageReference Include="OpenAI" Version="2.10.0" />
     <!-- IHttpClientFactory：SiliconFlow Embedding/Rerank 走 HttpClient 直调 HTTP 端点 -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
   </ItemGroup>

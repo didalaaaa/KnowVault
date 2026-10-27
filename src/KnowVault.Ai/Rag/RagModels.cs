@@ -32,6 +32,11 @@ namespace KnowVault.Ai
 		/// 请求级混合检索开关；为空时使用 <see cref="AiOptions.HybridEnabled"/>
 		/// </summary>
 		public bool? HybridEnabled { get; set; }
+
+		/// <summary>
+		/// 请求级查询改写开关；为空时使用 <see cref="AiOptions.QueryRewriteEnabled"/>
+		/// </summary>
+		public bool? RewriteEnabled { get; set; }
 	}
 
 	/// <summary>

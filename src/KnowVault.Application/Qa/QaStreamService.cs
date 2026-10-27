@@ -119,7 +119,8 @@ namespace KnowVault.Application
 				TopK = input.TopK ?? knowledgeBase?.TopK ?? 0,
 				SystemPromptOverride = knowledgeBase?.SystemPrompt,
 				History = history,
-				HybridEnabled = input.HybridEnabled
+				HybridEnabled = input.HybridEnabled,
+				RewriteEnabled = input.RewriteEnabled
 			}, cancellationToken);
 
 			var citations = streamResult.Chunks.Select(chunk => new RagCitationDto
@@ -137,14 +138,18 @@ namespace KnowVault.Application
 				Kind = QaStreamEventKindEnum.Started,
 				ConversationId = conversation.Id,
 				UserMessageId = userMessageId,
-				Citations = citations
+				Citations = citations,
+				HybridEnabled = input.HybridEnabled ?? _aiOptions.Value.HybridEnabled,
+				RewriteQueries = streamResult.RewriteQueries
 			};
 
 			var answer = new StringBuilder();
-			await foreach (var delta in streamResult.Deltas.WithCancellation(cancellationToken))
+			await foreach (var chunk in streamResult.Deltas.WithCancellation(cancellationToken))
 			{
-				answer.Append(delta);
-				yield return new QaStreamEventDto { Kind = QaStreamEventKindEnum.Delta, Delta = delta };
+				if (string.IsNullOrEmpty(chunk.Delta)) continue;
+
+				answer.Append(chunk.Delta);
+				yield return new QaStreamEventDto { Kind = QaStreamEventKindEnum.Delta, Delta = chunk.Delta };
 			}
 
 			stopwatch.Stop();

@@ -23,6 +23,11 @@ namespace KnowVault.Application.Contracts
 		/// </summary>
 		public bool? HybridEnabled { get; set; }
 
+		/// <summary>
+		/// 可选：本次提问是否启用查询改写；为空时使用服务端配置
+		/// </summary>
+		public bool? RewriteEnabled { get; set; }
+
 		[Required]
 		[StringLength(2000)]
 		public string Question { get; set; } = string.Empty;

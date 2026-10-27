@@ -39,5 +39,15 @@ namespace KnowVault.Application.Contracts
 		/// 生成耗时（毫秒），仅完成帧携带
 		/// </summary>
 		public int? LatencyMs { get; set; }
+
+		/// <summary>
+		/// 本次提问实际使用的混合检索开关，仅首帧携带
+		/// </summary>
+		public bool HybridEnabled { get; set; }
+
+		/// <summary>
+		/// 实际参与召回的改写变体（不含原问题），仅首帧携带
+		/// </summary>
+		public IReadOnlyList<string> RewriteQueries { get; set; } = [];
 	}
 }

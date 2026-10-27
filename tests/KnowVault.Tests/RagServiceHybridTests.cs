@@ -163,6 +163,89 @@ namespace KnowVault.Tests
 		}
 
 		/// <summary>
+		/// 改写变体与原问题一起批量 embedding，原问题始终排第一
+		/// </summary>
+		[Fact]
+		public async Task Rewrite_variants_are_embedded_with_original_first()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var embedding = new FakeEmbeddingService();
+			var rewrite = new FakeQueryRewriteService(["替代问题", "英文 variant"]);
+			var service = CreateService(store, embedding: embedding, rewrite: rewrite, rewriteEnabled: true, hybridEnabled: false);
+
+			var result = await service.RetrieveAsync(new RagRequest { Question = "这是一个足够长的问题", TopK = 1 });
+
+			Assert.Equal(new[] { "这是一个足够长的问题", "替代问题", "英文 variant" }, result.RewriteQueries);
+			Assert.Equal(new[] { "这是一个足够长的问题", "替代问题", "英文 variant" }, embedding.LastTexts);
+			Assert.Equal(1, rewrite.CallCount);
+		}
+
+		/// <summary>
+		/// 改写失败时问答继续，只 embedding 原问题
+		/// </summary>
+		[Fact]
+		public async Task Rewrite_failure_falls_back_to_original()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var embedding = new FakeEmbeddingService();
+			var rewrite = new FakeQueryRewriteService(exception: new AiCallException("改写炸了"));
+			var service = CreateService(store, embedding: embedding, rewrite: rewrite, rewriteEnabled: true);
+
+			var answer = await service.AnswerAsync(new RagRequest { Question = "这是一个足够长的问题", TopK = 1 });
+
+			Assert.Equal("答案", answer.Answer);
+			Assert.Equal(new[] { "这是一个足够长的问题" }, embedding.LastTexts);
+			Assert.Equal(1, rewrite.CallCount);
+		}
+
+		/// <summary>
+		/// 问题太短时跳过改写，不调用改写服务
+		/// </summary>
+		[Fact]
+		public async Task Rewrite_skipped_when_question_is_short()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var rewrite = new FakeQueryRewriteService(["变体问题"]);
+			var service = CreateService(store, rewrite: rewrite, rewriteEnabled: true);
+
+			var result = await service.RetrieveAsync(new RagRequest { Question = "短", TopK = 1 });
+
+			Assert.Equal(0, rewrite.CallCount);
+			Assert.Equal(new[] { "短" }, result.RewriteQueries);
+		}
+
+		/// <summary>
+		/// 改写关闭时不调用改写服务，检索只用原问题
+		/// </summary>
+		[Fact]
+		public async Task Rewrite_disabled_does_not_call_service()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var rewrite = new FakeQueryRewriteService(["替代问题"]);
+			var service = CreateService(store, rewrite: rewrite);
+
+			var result = await service.RetrieveAsync(new RagRequest { Question = "这是一个足够长的问题", TopK = 1 });
+
+			Assert.Equal(0, rewrite.CallCount);
+			Assert.Equal(new[] { "这是一个足够长的问题" }, result.RewriteQueries);
+		}
+
+		/// <summary>
+		/// 流式结果只暴露变体，原问题由调用方自己持有
+		/// </summary>
+		[Fact]
+		public async Task Stream_result_exposes_variants_without_original()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var rewrite = new FakeQueryRewriteService(["替代问题"]);
+			var service = CreateService(store, rewrite: rewrite, rewriteEnabled: true, hybridEnabled: false);
+
+			var stream = await service.AnswerStreamAsync(new RagRequest { Question = "这是一个足够长的问题", TopK = 1 });
+
+			Assert.Equal(new[] { "替代问题" }, stream.RewriteQueries);
+		}
+
+		/// <summary>
 		/// 构造被测服务（配置与日志用最简实现）
 		/// </summary>
 		/// <param name="store">假向量库</param>
@@ -176,7 +259,10 @@ namespace KnowVault.Tests
 			HybridOptions? hybrid = null,
 			bool hybridEnabled = true,
 			bool rerankEnabled = false,
-			FakeRerankService? rerank = null)
+			FakeRerankService? rerank = null,
+			FakeEmbeddingService? embedding = null,
+			FakeQueryRewriteService? rewrite = null,
+			bool rewriteEnabled = false)
 		{
 			var options = Options.Create(new AiOptions
 			{
@@ -184,15 +270,17 @@ namespace KnowVault.Tests
 				RerankEnabled = rerankEnabled,
 				RerankCandidateCount = 20,
 				HybridEnabled = hybridEnabled,
-				Hybrid = hybrid ?? new HybridOptions()
+				Hybrid = hybrid ?? new HybridOptions(),
+				QueryRewriteEnabled = rewriteEnabled
 			});
 
 			return new RagService(
 				options,
-				new FakeEmbeddingService(),
+				embedding ?? new FakeEmbeddingService(),
 				store,
 				new FakeChatService(),
 				rerank ?? new FakeRerankService([]),
+				rewrite ?? new FakeQueryRewriteService(),
 				NullLogger<RagService>.Instance);
 		}
 
@@ -214,8 +302,13 @@ namespace KnowVault.Tests
 
 		private sealed class FakeEmbeddingService : IEmbeddingService
 		{
+			public IReadOnlyList<string> LastTexts { get; private set; } = [];
+
 			public Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
-				=> Task.FromResult<IReadOnlyList<float[]>>([.. texts.Select(_ => new float[8])]);
+			{
+				LastTexts = texts;
+				return Task.FromResult<IReadOnlyList<float[]>>([.. texts.Select(_ => new float[8])]);
+			}
 		}
 
 		private sealed class FakeVectorStore : IVectorStore
@@ -274,14 +367,47 @@ namespace KnowVault.Tests
 
 		private sealed class FakeChatService : ILlmChatService
 		{
-			public async IAsyncEnumerable<string> CompleteStreamAsync(
+			public async IAsyncEnumerable<LlmStreamChunk> CompleteStreamAsync(
 				string systemPrompt,
 				IReadOnlyList<LlmChatMessage> messages,
 				[EnumeratorCancellation] CancellationToken cancellationToken = default)
 			{
-				yield return "答";
+				yield return new LlmStreamChunk { Delta = "答" };
 				await Task.Yield();
-				yield return "案";
+				yield return new LlmStreamChunk { Delta = "案" };
+			}
+
+			public Task<LlmCompletionResult> CompleteAsync(
+				string systemPrompt,
+				IReadOnlyList<LlmChatMessage> messages,
+				int maxTokens,
+				double temperature,
+				CancellationToken cancellationToken = default)
+				=> Task.FromResult(new LlmCompletionResult { Content = "[]", Model = "fake" });
+		}
+
+		private sealed class FakeQueryRewriteService : IQueryRewriteService
+		{
+			private readonly IReadOnlyList<string> _queries;
+			private readonly Exception? _exception;
+
+			public FakeQueryRewriteService(IReadOnlyList<string>? queries = null, Exception? exception = null)
+			{
+				_queries = queries ?? [];
+				_exception = exception;
+			}
+
+			public int CallCount { get; private set; }
+
+			public Task<QueryRewriteResult> RewriteAsync(
+				string question,
+				IReadOnlyList<LlmChatMessage> history,
+				CancellationToken cancellationToken = default)
+			{
+				CallCount++;
+				if (_exception is not null) throw _exception;
+
+				return Task.FromResult(new QueryRewriteResult { Queries = _queries, Model = "fake" });
 			}
 		}
 
