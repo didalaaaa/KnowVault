@@ -108,7 +108,7 @@ KnowVault.slnx
 | **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
 | **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘、知识库工作台 | ✅ 已完成（2026-10-26）：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)；代码导读见 [`docs/P4-代码导读.md`](docs/P4-代码导读.md) |
-| **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | 待实施（同上路线图） |
+| **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | 进行中（2026-10-27）：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md) 与 [`docs/driver/需求/需求分析-1027-P5.md`](docs/driver/需求/需求分析-1027-P5.md) |
 | **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | 待实施（同上路线图） |
 
 ---
@@ -216,6 +216,74 @@ KnowVault.slnx
 - **知识库工作台**：资料库并入知识库页，左侧库列表、右侧标题/统计/设置/成员/文档区（`KnowledgeWorkspace` + `KnowledgeDocuments`）；问答页移除二级标签，会话侧栏固定，聊天头部「提问范围」与工作台共用 `documents.knowledgeBaseId`。
 - **前端渲染**：助手回答用 `markdown-it`（`html:false`）渲染；用户消息保持纯文本；统一暖纸/墨绿视觉与可见焦点。
 - **执行计划**：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)
+
+### 9.7 P5 混合检索与用量（2026-10-27）
+
+- **执行计划**：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)；需求细化见 [`docs/driver/需求/需求分析-1027-P5.md`](docs/driver/需求/需求分析-1027-P5.md)
+- **默认开关**：混合检索默认开，查询改写默认关；均支持请求级覆盖（`HybridEnabled` / `RewriteEnabled`）
+- **默认配置**：
+
+| 配置键 | 默认值 |
+|---|---|
+| `Ai:HybridEnabled` | `true` |
+| `Ai:Hybrid:DenseWeight` / `KeywordWeight` / `VariantWeight` | `1.0` / `1.0` / `0.8` |
+| `Ai:Hybrid:RrfK` / `PerQueryCandidateCount` | `60` / `10` |
+| `Ai:RerankEnabled` / `RerankCandidateCount` | `true` / `20`（沿用） |
+| `Ai:TopK` / `HistoryMaxMessages` | `5` / `6`（沿用） |
+| `Ai:QueryRewriteEnabled` | `false` |
+| `Ai:QueryRewrite:MaxVariants` / `MinQuestionLength` / `MaxTokens` | `2` / `6` / `200` |
+| `Ai:Pricing:DeepSeekInputPerMillion` / `DeepSeekOutputPerMillion` | `2` / `8` |
+| `Ai:Pricing:EmbeddingPerMillion` / `RerankPerMillion` | `0.5` / `0.5` |
+
+价格单位为 CNY / 百万 token，T5 开工当日按官网核对后写入配置
+
+#### 9.7.1 检索流程
+
+`提问 → 范围解析 →（可选）查询改写 → 批量 embedding → dense + sparse 双路召回 → 应用层加权 RRF → 重排（用原问题）→ TopK → 引用 → DeepSeek 流式生成`
+
+- 单次问答只有一轮改写、一次批量 embedding、一次重排；多个查询共享同一候选池
+- 融合：`Σ_query Σ_branch（权重 × 1/(RrfK + rank)）`，默认 `RrfK=60`、dense/keyword 各 `1.0`、改写变体 `0.8`、每查询每分支候选 10、融合后重排候选 20、TopK 5（上限 8）
+- 改写：多查询变体（非 HyDE），一次非流式调用，原问题始终保留、最多 2 条变体；`temperature=0`、`max_tokens=200`；只带原问题与最近 2 条历史（去掉 `[n]` 引用标记）；短于 6 字不改写
+- 纯向量快速路径：混合与改写都关闭时跳过 sparse 与 RRF，行为与 P4 一致
+- 降级：sparse 查询失败按纯 dense 继续，改写失败按原问题继续；旁路失败不中断主流程
+- 引用分：重排开启时为重排分，关闭时为 RRF 分；不跨问题比较
+
+#### 9.7.2 中文切词与稀疏向量
+
+- 切词：NFKC + 小写；CJK 连续片段取**重叠二元组**（单字保留）；拉丁/数字连续片段长度 ≥ 2；内置最小停用词
+- 哈希：FNV-1a 32 位，映射到 `1..uint.MaxValue-1`，**禁止 `string.GetHashCode()`**（跨进程不稳定）
+- 权重：文档侧 `1 + ln(tf)`，查询侧每个唯一词元 `1.0`
+- 索引文本 = `HeadingPath + "\n" + Content`；payload 的 `content` 不变
+- 代码：`src/KnowVault.Domain/Search/`（`KeywordTokenizer` / `KeywordStopWords` / `SparseVectorBuilder` / `SparseVectorData`）
+
+#### 9.7.3 Qdrant schema 与重建方式
+
+- 单 collection `knowvault_chunks`：**unnamed dense**（1024 维 Cosine，不变）+ **named sparse `text`**（`Modifier.Idf`）
+- 稀疏向量不能通过 PATCH 追加到既有 collection，P4 → P5 必须重建，步骤：Admin 调用 `POST /api/app/maintenance/rebuild-vector-index` → 删除旧 collection 并按新 schema 重建 → 枚举全部文档走一次重新处理 → 返回提交数量，前端/接口按文档状态轮询；不自动迁移
+- `EnsureCollectionAsync` 检测到缺少 `text` 时抛 `VectorSchemaMismatchException`，提示执行重建，不静默降级
+- 服务端 weighted RRF 不可用（本机 Qdrant v1.15 实测 400），融合在应用层完成
+
+#### 9.7.4 多库过滤与会话 scope
+
+- 多库：`VectorFilter.KnowledgeBaseIds` 走 Qdrant `MatchAny`；`AllKnowledgeBases` 由服务端解析为当前用户可访问库集合
+- 权限：逐库校验 Viewer，任一库越权即整体拒绝
+- 用量归属：多库/全局提问的 `AppAiUsageRecords.KnowledgeBaseId` 为 null，仪表盘单列
+- 会话：`Conversation.KnowledgeBaseScopeJson` + `ScopeAll` 保存提问范围，按主库归组；多库提问不使用单库自定义系统提示词
+- 多库共用同一候选池、一次重排，不按库配额
+
+#### 9.7.5 用量与成本口径
+
+- `AppAiUsageRecords` 记录 Chat / Embedding / Rerank / QueryRewrite 的模型、输入/输出 token、耗时、估算费用；`AskId` 关联同一次问答，摄取 embedding 带 `DocumentId` 且 `AskId` 为 null
+- 价格配置化（`Ai:Pricing:*`，CNY/百万 token），写入时固化 `EstimatedCostCny`；usage 缺失时按字符数估算并置 `IsEstimated=true`
+- 记录走独立小 UoW，写失败只 warning，不阻断问答/摄取主流程
+- 仪表盘新增用量区：今日/近 7 天 token 与费用、按操作类型、按知识库（多库/全局单列）
+
+#### 9.7.6 评估方法与三组模式
+
+- 语料：项目自写 6 篇 RAG 主题 Markdown；金标 30 题（10 关键词 / 10 语义 / 5 跨文档 / 5 无答案）
+- 三组模式：A 纯向量、B 混合、C 混合 + 改写；同一金标集、同一 TopK 与重排配置
+- 指标：Recall@5、MRR@10、nDCG@5、CitationHitRate、CitationPrecision、NoAnswerRate、平均耗时、token、费用
+- 工具：`tools/KnowVault.Eval` 控制台直连 `RagService` / `QdrantVectorStore`，报告写 `docs/eval/reports/*.md` + `*.json`
 
 ## 10. P1 执行计划
 
