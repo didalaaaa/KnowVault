@@ -1,0 +1,3282 @@
+{
+  "Metadata": {
+    "RunAt": "2026-10-27 15:03:26",
+    "Commit": "1c8a5fe",
+    "KnowledgeBaseId": "3a248e57-a7b9-b0f4-d7a5-1bfa57bcad99",
+    "TenantId": "00000000-0000-0000-0000-000000000000",
+    "TopK": 5,
+    "RerankEnabled": true,
+    "RerankCandidateCount": 20,
+    "DenseWeight": 1,
+    "KeywordWeight": 1,
+    "VariantWeight": 0.8,
+    "RrfK": 60,
+    "PerQueryCandidateCount": 10,
+    "QueryRewriteMaxVariants": 2,
+    "QueryRewriteMaxTokens": 200,
+    "DeepSeekModel": "deepseek-chat",
+    "EmbeddingModel": "BAAI/bge-m3",
+    "RerankModel": "BAAI/bge-reranker-v2-m3",
+    "QdrantCollection": "knowvault_chunks",
+    "QdrantEndpoint": "http://127.0.0.1:57251",
+    "ChunkSizeChars": 1000,
+    "ChunkOverlapChars": 120,
+    "DeepSeekInputPerMillion": 2,
+    "DeepSeekOutputPerMillion": 8,
+    "EmbeddingPerMillion": 0.07,
+    "RerankPerMillion": 0.07,
+    "DelayMs": 500,
+    "RetrievalOnly": false,
+    "QuestionLimit": null,
+    "GoldenSetPath": "docs\\eval\\golden-set.json",
+    "CorpusDirectory": "docs\\eval\\corpus"
+  },
+  "Corpus": [
+    {
+      "File": "chunking.md",
+      "Title": "chunking",
+      "Characters": 846,
+      "Sha256": "c3a49fa5c059cdb8cbd1b3c67cd57ed52e4c00c75c25fd10caa2a0398e898769"
+    },
+    {
+      "File": "hybrid-retrieval.md",
+      "Title": "hybrid-retrieval",
+      "Characters": 853,
+      "Sha256": "a51bdd653461953eaafc5f1a53f6dd9298a89d5330e794cf0fb2e30d8c155973"
+    },
+    {
+      "File": "rag-basics.md",
+      "Title": "rag-basics",
+      "Characters": 895,
+      "Sha256": "ad0df121c565b8e1449cd94e07a7d3a9b9d1847f934f64f1824405c522848939"
+    },
+    {
+      "File": "rerank.md",
+      "Title": "rerank",
+      "Characters": 810,
+      "Sha256": "6700eb310dddafd066ad25bb761ad06922975cf94884b4273d51994f31151937"
+    },
+    {
+      "File": "retrieval-metrics.md",
+      "Title": "retrieval-metrics",
+      "Characters": 885,
+      "Sha256": "f5dfe57f8a6a6b4131bbfc57a4e9c792c27728af6821fbd949271a8a6e92b2b0"
+    },
+    {
+      "File": "vector-search.md",
+      "Title": "vector-search",
+      "Characters": 949,
+      "Sha256": "f7ef2a8e0ae2e30bd0fe2fe60f6e4a38d54eb8935b173ff9c52dee352ca6a201"
+    }
+  ],
+  "Modes": [
+    {
+      "Mode": "vector",
+      "HybridEnabled": false,
+      "RewriteEnabled": false,
+      "GenerationEnabled": true,
+      "Summary": {
+        "AnswerableCount": 25,
+        "UnanswerableCount": 5,
+        "FailedCount": 0,
+        "AverageRecallAt5": 0.9,
+        "AverageMrrAt10": 0.8466666666666667,
+        "AverageNdcgAt5": 0.8575001339981675,
+        "CitationEvaluatedCount": 25,
+        "CitationHitRate": 0.92,
+        "CitationPrecision": 0.716,
+        "NoAnswerRate": 1,
+        "AverageLatencyMs": 1800.3,
+        "TotalTokens": 79955,
+        "TotalEstimatedCostCny": 0.067962
+      },
+      "Questions": [
+        {
+          "QuestionId": "K01",
+          "Category": "keyword",
+          "Question": "KV-RRF-60 代表什么检索参数？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-RRF-60 是混合检索中**加权 RRF 的平滑常数配置编号**，对应平滑常数为 60 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1503,
+          "LatencyMs": 2972,
+          "TotalTokens": 2575,
+          "EstimatedCostCny": 0.001721,
+          "Error": null
+        },
+        {
+          "QuestionId": "K02",
+          "Category": "keyword",
+          "Question": "KV-CHUNK-1000 规定的默认切片容量是多少字符？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，KV-CHUNK-1000 对应的默认切片容量是 1000 个字符 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 421,
+          "LatencyMs": 1167,
+          "TotalTokens": 2719,
+          "EstimatedCostCny": 0.001695,
+          "Error": null
+        },
+        {
+          "QuestionId": "K03",
+          "Category": "keyword",
+          "Question": "KV-OVERLAP-120 的重叠长度是多少？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-OVERLAP-120 对应的重叠长度是 120 个字符 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 423,
+          "LatencyMs": 1295,
+          "TotalTokens": 2688,
+          "EstimatedCostCny": 0.001642,
+          "Error": null
+        },
+        {
+          "QuestionId": "K04",
+          "Category": "keyword",
+          "Question": "KV-VEC-1024 中的 1024 指什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-VEC-1024 中的 1024 指向量维度：KnowVault 使用的 BAAI/bge-m3 向量模型固定输出 1024 维，该编号即对应这一配置 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 410,
+          "LatencyMs": 1383,
+          "TotalTokens": 2645,
+          "EstimatedCostCny": 0.001876,
+          "Error": null
+        },
+        {
+          "QuestionId": "K05",
+          "Category": "keyword",
+          "Question": "KV-RERANK-20 默认最多把多少条候选送进重排？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，KV-RERANK-20 默认最多把 **20 条**候选送进重排 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 448,
+          "LatencyMs": 1553,
+          "TotalTokens": 2687,
+          "EstimatedCostCny": 0.001646,
+          "Error": null
+        },
+        {
+          "QuestionId": "K06",
+          "Category": "keyword",
+          "Question": "KV-METRIC-5 对应哪个指标的前 5 条统计？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b926-f84d-f3ee-f0c9bf6dd5b2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-METRIC-5 对应 **Recall@5**，即统计前 5 条里命中的金标切片占全部金标切片的比例 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 404,
+          "LatencyMs": 1237,
+          "TotalTokens": 2648,
+          "EstimatedCostCny": 0.001781,
+          "Error": null
+        },
+        {
+          "QuestionId": "K07",
+          "Category": "keyword",
+          "Question": "BAAI/bge-m3 的向量维度是多少？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 0.5,
+          "NdcgAt5": 0.6309297535714575,
+          "RewriteQueries": [],
+          "Answer": "BAAI/bge-m3 固定输出 **1024 维** [1][2]，对应编号 KV-VEC-1024 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 423,
+          "LatencyMs": 1556,
+          "TotalTokens": 2703,
+          "EstimatedCostCny": 0.001736,
+          "Error": null
+        },
+        {
+          "QuestionId": "K08",
+          "Category": "keyword",
+          "Question": "FNV-1A-32 哈希会被映射到什么范围？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-b40d-5f44-0a588be72057",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，FNV-1A-32 词元哈希映射到 **1 到 uint 最大值减一** 的范围 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 445,
+          "LatencyMs": 1408,
+          "TotalTokens": 2644,
+          "EstimatedCostCny": 0.001711,
+          "Error": null
+        },
+        {
+          "QuestionId": "K09",
+          "Category": "keyword",
+          "Question": "KV-BIGRAM-2 描述了哪种中文切词方式？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-BIGRAM-2 描述的中文切词方式如下 [1]：\n\n- **连续 CJK 片段**：生成重叠二元组，单字保留 [1]。\n- **拉丁字母和数字**：连续片段长度至少为 2 [1]。\n- **示例**：「混合检索」会生成「混合」「合检」「检索」三个词元 [1]。\n- **目的**：既能覆盖多数中文词组，又不需要引入外部词典 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 424,
+          "LatencyMs": 1783,
+          "TotalTokens": 2743,
+          "EstimatedCostCny": 0.002290,
+          "Error": null
+        },
+        {
+          "QuestionId": "K10",
+          "Category": "keyword",
+          "Question": "KV-RAG-2026 在文档中代表什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，KV-RAG-2026 是 KnowVault 为「检索增强生成（RAG）」这条流程所编的编号，作为后续检索与评估工作的统一参照 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 436,
+          "LatencyMs": 1858,
+          "TotalTokens": 2682,
+          "EstimatedCostCny": 0.001812,
+          "Error": null
+        },
+        {
+          "QuestionId": "S01",
+          "Category": "semantic",
+          "Question": "为什么文档需要先切成切片再向量化？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-28e1-2c59-7f64298545b6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 0.3333333333333333,
+          "NdcgAt5": 0.5,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，文档需要先切成切片再向量化，原因如下：\n\n1. **长文档无法直接作为检索单元**：切片是把长文档拆成可独立检索的文本单元，向量化则是把切片映射成稠密向量，检索时按问题找出最相关的若干切片 [3][5]。也就是说，向量化的对象本身就是切片，而不是整篇文档。\n\n2. **切片长度直接影响向量质量**：切片太短会丢失上下文，模型拿到零散句子难以判断含义；切片太长会稀释向量，一条切片里混入多个主题，检索得分不再聚焦 [3]。因此需要先切到合适粒度再向量化，才能保证检索聚焦。\n\n3. **切片粒度还影响成本与精度**：切片越细，候选越多，重排要打分的文本越多；切片越粗，单条切片越长，向量化与存储开销越高，选择容量时要在召回精度与成本之间取平衡 [2]。\n\n4. **切片策略尽量保持语义完整**：切片器优先按段落组织内容，只有单个段落超过容量时才继续切分，因此大多数切片仍保持语义完整 [1]，这有利于后续向量化与检索。\n\n补充：相邻切片之间可设置重叠，降低答案落在切点附近时因边界切断而漏召回的概率，但重叠过大会放大存储与向量化成本 [4]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b744-cd83-c111-bbe5c1190072",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-28e1-2c59-7f64298545b6",
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "CitationCount": 5,
+          "CitationHit": true,
+          "CitationPrecision": 0.2,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 398,
+          "LatencyMs": 2786,
+          "TotalTokens": 2859,
+          "EstimatedCostCny": 0.003664,
+          "Error": null
+        },
+        {
+          "QuestionId": "S02",
+          "Category": "semantic",
+          "Question": "余弦相似度比较的是向量大小还是方向？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "余弦相似度只比较两个向量的**方向**，不关心向量长度 [1]。它的取值范围是负一到一，越接近一表示方向越一致 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 431,
+          "LatencyMs": 1132,
+          "TotalTokens": 2530,
+          "EstimatedCostCny": 0.001634,
+          "Error": null
+        },
+        {
+          "QuestionId": "S03",
+          "Category": "semantic",
+          "Question": "关键词检索和向量检索各自擅长什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b9df-d570-26f1-a8c203995a18",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，两者的擅长点如下：\n\n- **关键词分支**：擅长精确术语和编号 [1]。\n- **向量分支**：擅长语义相近但用词不同的表达 [1]。\n\n补充说明：纯向量检索对精确编号、专有名词和罕见缩写不敏感 [2]，这也从反面说明精确术语、编号类匹配更适合交给关键词分支。",
+          "CitedChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b9df-d570-26f1-a8c203995a18"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 460,
+          "LatencyMs": 1724,
+          "TotalTokens": 2548,
+          "EstimatedCostCny": 0.001976,
+          "Error": null
+        },
+        {
+          "QuestionId": "S04",
+          "Category": "semantic",
+          "Question": "RRF 融合为什么只使用排名而不使用原始分数？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80e-b19a-6e55-b0a5f7da06fd",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "RRF 融合只使用排名、不使用原始分数，原因如下：\n\n- **不同检索分支的原始分数不可直接比较**：向量余弦值可能集中在 0.7 到 0.9，而关键词得分没有固定上界 [1]。\n- **直接相加分数会让某一路主导结果**：把不同分支的分数直接相加，会使某一检索分支主导最终结果 [1]。\n- **只使用排名可以把两路拉到同一尺度**：RRF 只看排名、不看原始分数，从而统一不同分支的尺度 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 399,
+          "LatencyMs": 1853,
+          "TotalTokens": 2545,
+          "EstimatedCostCny": 0.002337,
+          "Error": null
+        },
+        {
+          "QuestionId": "S05",
+          "Category": "semantic",
+          "Question": "重排模型与向量检索在打分方式上有什么不同？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "重排模型与向量检索在打分方式上的不同：\n\n- **向量检索**：把问题和切片分别编码，再比较向量相似度，速度快但精度有限 [1]。\n- **重排模型**：把问题和候选切片放在一起编码（cross-encoder），能捕捉两者之间的细粒度匹配关系，因此通常更准，也更慢 [1]。\n\n补充：重排服务返回每条候选的索引与分数，KnowVault 在本地按分数重排并截取 topK [5]。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 401,
+          "LatencyMs": 1543,
+          "TotalTokens": 2585,
+          "EstimatedCostCny": 0.002216,
+          "Error": null
+        },
+        {
+          "QuestionId": "S06",
+          "Category": "semantic",
+          "Question": "中文关键词为什么要切成二元组？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，中文关键词切成二元组的原因如下：\n\n- 中文没有天然的空格分隔，无法像拉丁文字那样直接按空格切词，因此采用连续 CJK 片段生成重叠二元组的方式来切词 [1]。\n- 这种切法既能覆盖多数中文词组，又不需要引入外部词典 [1]。\n- 具体规则是：连续 CJK 片段生成重叠二元组、单字保留，拉丁字母和数字连续片段长度至少为 2（编号 KV-BIGRAM-2）；例如「混合检索」会生成「混合」「合检」「检索」三个词元 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 413,
+          "LatencyMs": 1742,
+          "TotalTokens": 2567,
+          "EstimatedCostCny": 0.002450,
+          "Error": null
+        },
+        {
+          "QuestionId": "S07",
+          "Category": "semantic",
+          "Question": "Recall 和 nDCG 衡量检索效果时有什么区别？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b745-fd84-7ffb-83af9448528c",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，Recall 和 nDCG 的区别如下：\n\n1. **衡量维度不同**：nDCG 同时反映召回数量和排序质量，而 Recall 侧重相关切片是否被召回 [1][3]。nDCG@5 会对命中位置做对数折损，排得越靠前贡献越大，再除以理想排序的增益做归一化 [1]。\n\n2. **适用场景不同**：nDCG 适合比较两套排序策略 [1]；检索评估本身要回答两个问题——相关切片有没有被召回，以及它们排得够不够靠前 [3]。\n\n3. **可比性前提**：语料固定、切片参数固定时，Recall 和 nDCG 的变化才能归因到检索策略本身；若调整切片容量或重叠，旧向量必须重新生成，否则新旧切片混在同一集合里，指标不再可比 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b51c-637d-e910-97d511963499"
+          ],
+          "CitationCount": 3,
+          "CitationHit": true,
+          "CitationPrecision": 0.3333333333333333,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 408,
+          "LatencyMs": 1835,
+          "TotalTokens": 2697,
+          "EstimatedCostCny": 0.002874,
+          "Error": null
+        },
+        {
+          "QuestionId": "S08",
+          "Category": "semantic",
+          "Question": "切片重叠能解决什么问题？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "切片重叠主要解决**答案刚好落在切点附近时因边界切断而漏召回**的问题：相邻切片共享一段上下文，前一条切片尾部与后一条切片开头都能提供线索，从而降低漏召回概率 [1]。\n\n同时需要注意，重叠并非越大越好：它会放大存储与向量化成本，并使相邻切片内容高度相似、挤占检索结果名额 [1]。相关配置上，默认重叠为 120 个字符（KV-OVERLAP-120），且重叠不会超过容量的一半，以防止相邻切片互相吞没 [3]。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 433,
+          "LatencyMs": 1782,
+          "TotalTokens": 2521,
+          "EstimatedCostCny": 0.002314,
+          "Error": null
+        },
+        {
+          "QuestionId": "S09",
+          "Category": "semantic",
+          "Question": "回答里的方括号编号有什么作用？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b926-e19f-7aa1-ea7406d1c583"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "回答里的方括号编号用于**引用溯源**，是 RAG 区别于普通聊天的重要能力 [1]。\n\n具体作用：\n- 编号对应检索到的切片，例如 [1] 表示第一条资料片段 [1]。\n- 前端根据编号展示原文、文档标题和标题层级，用户可以逐条核对答案是否有据可查 [1]。\n- 没有引用支撑的断言应被视为可疑内容 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 419,
+          "LatencyMs": 1616,
+          "TotalTokens": 2618,
+          "EstimatedCostCny": 0.002167,
+          "Error": null
+        },
+        {
+          "QuestionId": "S10",
+          "Category": "semantic",
+          "Question": "把关键词权重设为 0 后混合检索会怎样？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b63c-013d-b480-336573f88ab0"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "把关键词权重设为 0 时，融合结果与纯向量检索一致 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 505,
+          "LatencyMs": 1331,
+          "TotalTokens": 2541,
+          "EstimatedCostCny": 0.001560,
+          "Error": null
+        },
+        {
+          "QuestionId": "X01",
+          "Category": "cross-document",
+          "Question": "切片容量与向量维度分别如何影响检索成本？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料，只能回答「切片容量」对检索成本的影响；资料中没有关于「向量维度」如何影响检索成本的信息。\n\n**切片容量对检索成本的影响：**\n\n- 切片越细（容量越小），候选切片越多，重排需要打分的文本越多，检索延迟与重排成本上升 [1]。\n- 切片越粗（容量越大），单条切片越长，向量化与存储开销越高 [1]。\n- 因此选择容量时需要在召回精度与成本之间取平衡 [1]。\n- 切片太长还会稀释向量，一条切片混入多个主题，导致检索得分不再聚焦 [3]；切片太短则会丢失上下文 [3]。\n- 此外，重叠过大会放大存储与向量化成本，并使相邻切片高度相似、挤占检索结果名额 [5]。\n\n**关于向量维度：** 资料片段未提及向量维度与检索成本的关系，根据现有资料无法回答该部分。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "CitationCount": 3,
+          "CitationHit": false,
+          "CitationPrecision": 0,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 442,
+          "LatencyMs": 2219,
+          "TotalTokens": 2738,
+          "EstimatedCostCny": 0.002949,
+          "Error": null
+        },
+        {
+          "QuestionId": "X02",
+          "Category": "cross-document",
+          "Question": "混合检索已经做了融合，为什么还需要重排？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-013d-b480-336573f88ab0",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，混合检索和重排解决的是不同层面的问题：\n\n1. **混合检索解决的是召回覆盖问题，最终排序仍交给重排模型**：资料明确指出「混合检索解决的是召回覆盖问题，最终排序仍然交给重排模型」[2]。也就是说，融合只是把多路召回的结果合并起来，并不负责最终的精排。\n\n2. **融合结果的排序规则较简单**：融合结果按总分降序排列，同分时先比最佳排名，再按切片 ID 升序兜底，目的是保证每次运行顺序稳定 [5]。这是一种确定性的稳定排序，而非模型级的相关性精排。\n\n3. **重排有独立的候选裁剪机制**：默认最多把 20 条候选送进重排（配置编号 KV-RERANK-20），候选来自混合检索的融合结果；候选太少会让重排没有发挥空间，候选太多会线性增加延迟和 token 成本，且候选数至少要等于最终 topK [1]。这说明重排是在融合结果之上再做一层筛选与精排。\n\n4. **重排可能降级，但降级只影响排序质量**：重排失败时系统退回融合顺序并记录警告，不阻断问答，只是排序质量下降 [4]——这也从侧面说明融合顺序与重排结果是两个不同层次的排序。\n\n综上，混合检索负责「召回覆盖 + 稳定融合」，重排负责在融合候选之上做最终的相关性排序与候选裁剪 [1][2][5]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-013d-b480-336573f88ab0",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8"
+          ],
+          "CitationCount": 4,
+          "CitationHit": false,
+          "CitationPrecision": 0,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 408,
+          "LatencyMs": 3262,
+          "TotalTokens": 2718,
+          "EstimatedCostCny": 0.003861,
+          "Error": null
+        },
+        {
+          "QuestionId": "X03",
+          "Category": "cross-document",
+          "Question": "固定切片参数为什么对检索评估很重要？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "固定切片参数对检索评估很重要，原因如下：\n\n1. **保证指标变化可归因**：只有语料固定、切片参数固定，Recall 和 nDCG 的变化才能归因到检索策略本身 [1]。\n\n2. **保证新旧向量可比**：若调整切片容量或重叠，旧向量必须重新生成，否则新旧切片会混在同一个集合里，指标不再可比 [1]。\n\n3. **配合固定语料与金标集形成统一标尺**：没有固定语料和金标集，指标只能凭感觉；有了固定语料和金标集，每次调整检索策略都可以用同一把尺子比较 [2]。\n\n补充一点相关背景：切片参数本身会影响检索效果与成本——切片太短会丢失上下文，太长会稀释向量、使检索得分不聚焦 [4]；切片越细候选越多、重排成本越高，越粗则向量化与存储开销越高 [5]。因此固定切片参数也是让评估在稳定条件下进行的前提。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 401,
+          "LatencyMs": 2205,
+          "TotalTokens": 2611,
+          "EstimatedCostCny": 0.002954,
+          "Error": null
+        },
+        {
+          "QuestionId": "X04",
+          "Category": "cross-document",
+          "Question": "查询改写与 RRF 权重如何配合提升召回？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料，只能回答其中一部分，且资料并未直接说明两者「如何配合提升召回」。\n\n**查询改写方面：**\n- 查询改写是检索前的可选步骤，会把一个自然语言问题扩展成最多两条替代表述，再与原问题一起参与召回 [2]。\n- 它适合口语化、缩写较多或术语不统一的问题，但每次改写都会增加一次模型调用，因此 KnowVault 默认关闭，只在需要时按请求开启 [2]。\n\n**RRF 权重方面：**\n- 融合使用应用层加权 RRF，平滑常数为 60（配置编号 KV-RRF-60）；每条查询的每个分支按排名贡献分数，公式为权重乘以 1/(60+排名)，同一文档在多路命中时累加 [1]。\n- 原问题权重固定为 1，改写查询权重默认为 0.8 [1]。\n- RRF 只看排名、不看原始分数，因为不同分支的原始分数不可直接比较，直接相加会让某一路主导结果 [5]。\n\n**关于「配合提升召回」：**\n资料中没有说明查询改写与 RRF 权重两者协同对召回效果的具体影响，也没有给出相关实验结论。根据现有资料无法回答该问题。",
+          "CitedChunkIds": [
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "CitationCount": 3,
+          "CitationHit": true,
+          "CitationPrecision": 0.6666666666666666,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 464,
+          "LatencyMs": 2653,
+          "TotalTokens": 2862,
+          "EstimatedCostCny": 0.003573,
+          "Error": null
+        },
+        {
+          "QuestionId": "X05",
+          "Category": "cross-document",
+          "Question": "重排候选数、topK 与 Recall@5 之间是什么关系？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "RecallAt5": 0.5,
+          "MrrAt10": 0.3333333333333333,
+          "NdcgAt5": 0.3065735963827292,
+          "RewriteQueries": [],
+          "Answer": "**结论：三者需要放在一起看，候选数足够大但重排质量差时，Recall@5 仍不会提升。**\n\n- **topK 默认值**：最终 topK 默认是 5 条 [1]。\n- **Recall@5 的定义**：统计前 5 条里命中的金标切片占全部金标切片的比例（编号 KV-METRIC-5），只关心有没有命中，不关心命中排第几；例如一道题有两个金标切片、前 5 条只命中一个，Recall@5 就是 0.5 [3]。\n- **重排的作用**：重排负责把真正相关的切片推进前 5 条 [1]。\n- **候选数与 Recall@5 的关系**：候选数足够大但重排质量差，Recall@5 仍然不会提升 [1]。\n- **候选规模的实际配置**：KnowVault 默认先宽召回约 20 条候选，再由重排模型精排，最终只保留 5 条作为引用 [4]；top-k 太小会漏掉相关切片，太大则把噪声送进重排并增加成本 [4]。\n- **topK 的可调性**：重排服务返回每条候选的索引与分数，KnowVault 在本地按分数重排并截取 topK；服务端 top_n 参数传全量候选，最终保留几条由应用层决定，因此 topK 可随请求调整而不必重新调用模型 [2]。\n- **评估中的设置**：评估时重排三组都开启，topK 固定为 5 [5]。",
+          "CitedChunkIds": [
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "CitationCount": 5,
+          "CitationHit": true,
+          "CitationPrecision": 0.2,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 451,
+          "LatencyMs": 2635,
+          "TotalTokens": 2975,
+          "EstimatedCostCny": 0.004291,
+          "Error": null
+        },
+        {
+          "QuestionId": "U01",
+          "Category": "unanswerable",
+          "Question": "KnowVault 计划采用哪种开源许可证发布？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b745-357f-051d-e1493fcc8b2b",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。",
+          "CitedChunkIds": [],
+          "CitationCount": 0,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 435,
+          "LatencyMs": 1373,
+          "TotalTokens": 2611,
+          "EstimatedCostCny": 0.001514,
+          "Error": null
+        },
+        {
+          "QuestionId": "U02",
+          "Category": "unanswerable",
+          "Question": "Qdrant 默认每个 collection 分成多少个分片？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b9df-eda1-940c-0f46cf195085",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只提到 Qdrant 使用 HNSW 图索引、所有知识库共用一个 collection 并通过 payload 过滤隔离 [2][3]，以及向量维度需与 collection 配置一致（bge-m3 为 1024 维）[5]，但没有任何关于 collection 分片数量的信息。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b9df-eda1-940c-0f46cf195085",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "CitationCount": 3,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 414,
+          "LatencyMs": 1555,
+          "TotalTokens": 2729,
+          "EstimatedCostCny": 0.002066,
+          "Error": null
+        },
+        {
+          "QuestionId": "U03",
+          "Category": "unanswerable",
+          "Question": "DeepSeek 模型的上下文窗口是多少 token？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段仅涉及重排成本、向量检索 top-k、文档切片策略和检索评估指标等内容 [1][2][3][4][5]，未提及 DeepSeek 模型的上下文窗口大小。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17"
+          ],
+          "CitationCount": 5,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 398,
+          "LatencyMs": 1518,
+          "TotalTokens": 2642,
+          "EstimatedCostCny": 0.001844,
+          "Error": null
+        },
+        {
+          "QuestionId": "U04",
+          "Category": "unanswerable",
+          "Question": "项目支持哪些格式的 OCR 图片识别？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只提到解析环节负责从 PDF、Word、Markdown 等格式中抽取纯文本 [1]，并未涉及 OCR 或图片识别支持哪些格式。",
+          "CitedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "CitationCount": 1,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 459,
+          "LatencyMs": 1436,
+          "TotalTokens": 2662,
+          "EstimatedCostCny": 0.001884,
+          "Error": null
+        },
+        {
+          "QuestionId": "U05",
+          "Category": "unanswerable",
+          "Question": "如何在 Gitee Go 上配置 CI 流水线？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段仅涉及混合检索与加权 RRF、重排候选裁剪、检索评估指标、向量检索维度等内容 [1][2][3][4][5]，均未提及 Gitee Go 或 CI 流水线配置。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "CitationCount": 5,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 400,
+          "LatencyMs": 1597,
+          "TotalTokens": 2662,
+          "EstimatedCostCny": 0.001924,
+          "Error": null
+        }
+      ]
+    },
+    {
+      "Mode": "hybrid",
+      "HybridEnabled": true,
+      "RewriteEnabled": false,
+      "GenerationEnabled": true,
+      "Summary": {
+        "AnswerableCount": 25,
+        "UnanswerableCount": 5,
+        "FailedCount": 0,
+        "AverageRecallAt5": 0.9,
+        "AverageMrrAt10": 0.8466666666666667,
+        "AverageNdcgAt5": 0.8575001339981675,
+        "CitationEvaluatedCount": 25,
+        "CitationHitRate": 0.92,
+        "CitationPrecision": 0.7146666666666667,
+        "NoAnswerRate": 1,
+        "AverageLatencyMs": 1752.2,
+        "TotalTokens": 63295,
+        "TotalEstimatedCostCny": 0.065150
+      },
+      "Questions": [
+        {
+          "QuestionId": "K01",
+          "Category": "keyword",
+          "Question": "KV-RRF-60 代表什么检索参数？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-RRF-60 是混合检索中**加权 RRF 的平滑常数配置编号**，对应平滑常数为 60 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 423,
+          "LatencyMs": 1388,
+          "TotalTokens": 2207,
+          "EstimatedCostCny": 0.001695,
+          "Error": null
+        },
+        {
+          "QuestionId": "K02",
+          "Category": "keyword",
+          "Question": "KV-CHUNK-1000 规定的默认切片容量是多少字符？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-CHUNK-1000 规定的默认切片容量是 1000 个字符 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 361,
+          "LatencyMs": 1418,
+          "TotalTokens": 2094,
+          "EstimatedCostCny": 0.001610,
+          "Error": null
+        },
+        {
+          "QuestionId": "K03",
+          "Category": "keyword",
+          "Question": "KV-OVERLAP-120 的重叠长度是多少？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，KV-OVERLAP-120 对应的重叠长度是 **120 个字符** [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 364,
+          "LatencyMs": 1302,
+          "TotalTokens": 2306,
+          "EstimatedCostCny": 0.001655,
+          "Error": null
+        },
+        {
+          "QuestionId": "K04",
+          "Category": "keyword",
+          "Question": "KV-VEC-1024 中的 1024 指什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-VEC-1024 中的 1024 指向量维度：KnowVault 使用的 BAAI/bge-m3 向量模型固定输出 1024 维，该编号对应这一配置 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 385,
+          "LatencyMs": 1391,
+          "TotalTokens": 2184,
+          "EstimatedCostCny": 0.001842,
+          "Error": null
+        },
+        {
+          "QuestionId": "K05",
+          "Category": "keyword",
+          "Question": "KV-RERANK-20 默认最多把多少条候选送进重排？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，KV-RERANK-20 默认最多把 **20 条**候选送进重排 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 345,
+          "LatencyMs": 1652,
+          "TotalTokens": 1856,
+          "EstimatedCostCny": 0.001587,
+          "Error": null
+        },
+        {
+          "QuestionId": "K06",
+          "Category": "keyword",
+          "Question": "KV-METRIC-5 对应哪个指标的前 5 条统计？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b926-f84d-f3ee-f0c9bf6dd5b2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-METRIC-5 对应 **Recall@5** 的前 5 条统计 [1]。它统计前 5 条里命中的金标切片占全部金标切片的比例，只关心是否命中，不关心命中排第几 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 378,
+          "LatencyMs": 1832,
+          "TotalTokens": 2023,
+          "EstimatedCostCny": 0.001904,
+          "Error": null
+        },
+        {
+          "QuestionId": "K07",
+          "Category": "keyword",
+          "Question": "BAAI/bge-m3 的向量维度是多少？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 0.5,
+          "NdcgAt5": 0.6309297535714575,
+          "RewriteQueries": [],
+          "Answer": "BAAI/bge-m3 固定输出 **1024 维** [1][2]，对应编号 KV-VEC-1024 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 337,
+          "LatencyMs": 1122,
+          "TotalTokens": 1987,
+          "EstimatedCostCny": 0.001626,
+          "Error": null
+        },
+        {
+          "QuestionId": "K08",
+          "Category": "keyword",
+          "Question": "FNV-1A-32 哈希会被映射到什么范围？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-b40d-5f44-0a588be72057",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，FNV-1A-32 词元哈希会映射到 **1 到 uint 最大值减一** 的范围 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 365,
+          "LatencyMs": 1280,
+          "TotalTokens": 2050,
+          "EstimatedCostCny": 0.001679,
+          "Error": null
+        },
+        {
+          "QuestionId": "K09",
+          "Category": "keyword",
+          "Question": "KV-BIGRAM-2 描述了哪种中文切词方式？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-BIGRAM-2 描述的是：针对中文没有天然空格分隔的特点，切词时采用**连续 CJK 片段生成重叠二元组**的方式，单字保留，拉丁字母和数字连续片段长度至少为 2。例如「混合检索」会生成「混合」「合检」「检索」三个词元，这样既能覆盖多数中文词组，又不需要引入外部词典 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 335,
+          "LatencyMs": 2738,
+          "TotalTokens": 2109,
+          "EstimatedCostCny": 0.002118,
+          "Error": null
+        },
+        {
+          "QuestionId": "K10",
+          "Category": "keyword",
+          "Question": "KV-RAG-2026 在文档中代表什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "KV-RAG-2026 是 KnowVault 为「检索增强生成（RAG）」这条流程所编的编号，作为后续检索与评估工作的统一参照 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 361,
+          "LatencyMs": 1371,
+          "TotalTokens": 2221,
+          "EstimatedCostCny": 0.001820,
+          "Error": null
+        },
+        {
+          "QuestionId": "S01",
+          "Category": "semantic",
+          "Question": "为什么文档需要先切成切片再向量化？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-28e1-2c59-7f64298545b6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 0.3333333333333333,
+          "NdcgAt5": 0.5,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，文档需要先切成切片再向量化，原因如下：\n\n1. **切片是向量化的前提单元**：RAG 链路中，切片把长文档拆成适合检索的短文本，向量化再把切片映射成稠密向量 [5]。也就是说，向量化的对象是切片，而非整篇长文档。\n\n2. **切片长度直接影响向量质量**：切片太长会稀释向量，一条切片里混入多个主题，检索得分不再聚焦；切片太短则会丢失上下文，模型拿到零散句子难以判断含义 [3]。\n\n3. **切片粒度还影响成本与精度**：切片越细，候选越多，重排要打分的文本越多；切片越粗，单条切片越长，向量化与存储开销越高，因此需要在召回精度与成本之间取平衡 [2]。\n\n简言之，先切片是为了得到语义相对完整、长度适中的文本单元，使向量化后的检索更聚焦、更可控 [3][2][5]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "CitationCount": 3,
+          "CitationHit": true,
+          "CitationPrecision": 0.3333333333333333,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 364,
+          "LatencyMs": 2430,
+          "TotalTokens": 2164,
+          "EstimatedCostCny": 0.003013,
+          "Error": null
+        },
+        {
+          "QuestionId": "S02",
+          "Category": "semantic",
+          "Question": "余弦相似度比较的是向量大小还是方向？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "余弦相似度只比较两个向量的**方向**，不关心向量长度（大小）[1]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 341,
+          "LatencyMs": 856,
+          "TotalTokens": 1902,
+          "EstimatedCostCny": 0.001456,
+          "Error": null
+        },
+        {
+          "QuestionId": "S03",
+          "Category": "semantic",
+          "Question": "关键词检索和向量检索各自擅长什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b9df-d570-26f1-a8c203995a18",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，两者的擅长点如下：\n\n- **关键词分支**：擅长精确术语和编号 [1]。\n- **向量分支**：擅长语义相近但用词不同的表达 [1]。\n\n补充说明：纯向量检索对精确编号、专有名词和罕见缩写不敏感 [2]，这也从反面印证了关键词分支在精确匹配上的优势。",
+          "CitedChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b9df-d570-26f1-a8c203995a18"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 475,
+          "LatencyMs": 1687,
+          "TotalTokens": 1778,
+          "EstimatedCostCny": 0.001906,
+          "Error": null
+        },
+        {
+          "QuestionId": "S04",
+          "Category": "semantic",
+          "Question": "RRF 融合为什么只使用排名而不使用原始分数？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80e-b19a-6e55-b0a5f7da06fd",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "RRF 融合只使用排名而不使用原始分数，原因如下：\n\n- **不同检索分支的原始分数不可直接比较**：向量余弦值可能集中在 0.7 到 0.9，而关键词得分没有固定上界 [1]。\n- **直接相加会让某一路主导结果**：如果把分数直接相加，某一检索分支会主导最终结果 [1]。\n- **只使用排名可以把两路拉到同一尺度**：RRF 只看排名、不看原始分数，从而让不同分支处于同一尺度 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 343,
+          "LatencyMs": 2196,
+          "TotalTokens": 2120,
+          "EstimatedCostCny": 0.002284,
+          "Error": null
+        },
+        {
+          "QuestionId": "S05",
+          "Category": "semantic",
+          "Question": "重排模型与向量检索在打分方式上有什么不同？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "重排模型与向量检索在打分方式上的不同：\n\n- **向量检索**：把问题和切片**分别编码**成向量，再在向量空间中寻找与问题最接近的切片，速度快但精度有限 [1][5]。\n- **重排模型**：把问题和候选切片**放在一起编码**，属于 cross-encoder，能捕捉两者之间的细粒度匹配关系，因此通常更准，也更慢 [1]。\n\n简言之，向量检索是“分别编码后比较向量距离”，重排是“问题与候选联合编码后打分” [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 323,
+          "LatencyMs": 1692,
+          "TotalTokens": 1890,
+          "EstimatedCostCny": 0.002305,
+          "Error": null
+        },
+        {
+          "QuestionId": "S06",
+          "Category": "semantic",
+          "Question": "中文关键词为什么要切成二元组？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，中文关键词切成二元组的原因如下：\n\n1. **中文没有天然空格分隔**，因此切词采用连续 CJK 片段生成重叠二元组，单字保留 [1]。\n2. 以「混合检索」为例，会生成「混合」「合检」「检索」三个词元 [1]。\n3. 这样做的效果是：**既能覆盖多数中文词组，又不需要引入外部词典** [1]。\n\n补充：拉丁字母和数字的连续片段长度至少为 2，编号为 KV-BIGRAM-2 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 374,
+          "LatencyMs": 1729,
+          "TotalTokens": 2023,
+          "EstimatedCostCny": 0.002325,
+          "Error": null
+        },
+        {
+          "QuestionId": "S07",
+          "Category": "semantic",
+          "Question": "Recall 和 nDCG 衡量检索效果时有什么区别？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b745-fd84-7ffb-83af9448528c",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，Recall 和 nDCG 在衡量检索效果时的区别如下：\n\n1. **衡量维度不同**：nDCG 同时反映召回数量和排序质量，而 Recall 侧重相关切片是否被召回 [1][3]。检索评估要回答两个问题——相关切片有没有被召回，以及它们排得够不够靠前 [3]。\n\n2. **nDCG 的排序机制**：nDCG@5 对命中位置做对数折损，排得越靠前贡献越大，再除以理想排序的增益做归一化 [1]。因此它适合比较两套排序策略 [1]。\n\n3. **使用前提**：两者都需要固定语料和金标集，才能用同一把尺子比较不同检索策略 [3]；切片参数也需固定，否则指标不再可比 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b51c-637d-e910-97d511963499"
+          ],
+          "CitationCount": 3,
+          "CitationHit": true,
+          "CitationPrecision": 0.3333333333333333,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 351,
+          "LatencyMs": 1865,
+          "TotalTokens": 2110,
+          "EstimatedCostCny": 0.002738,
+          "Error": null
+        },
+        {
+          "QuestionId": "S08",
+          "Category": "semantic",
+          "Question": "切片重叠能解决什么问题？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "切片重叠主要解决**切点附近答案被边界切断而漏召回**的问题：相邻切片共享一段上下文，当答案刚好落在切点附近时，前一条切片尾部与后一条切片开头都能提供线索，从而降低因边界切断导致漏召回的概率 [1]。\n\n同时资料也指出重叠不宜过大：会放大存储与向量化成本，并使相邻切片内容高度相似、挤占检索结果名额 [1]。相关默认参数为容量 1000 字符、重叠 120 字符，且重叠不超过容量的一半 [3]。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 375,
+          "LatencyMs": 1814,
+          "TotalTokens": 1966,
+          "EstimatedCostCny": 0.002260,
+          "Error": null
+        },
+        {
+          "QuestionId": "S09",
+          "Category": "semantic",
+          "Question": "回答里的方括号编号有什么作用？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b926-e19f-7aa1-ea7406d1c583"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "回答里的方括号编号用于**引用溯源**，是 RAG 区别于普通聊天的重要能力 [1]。\n\n具体作用：\n- 编号对应检索到的切片，例如 [1] 表示第一条资料片段 [1]。\n- 前端根据编号展示原文、文档标题和标题层级，用户可以逐条核对答案是否有据可查 [1]。\n- 没有引用支撑的断言应被视为可疑内容 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 385,
+          "LatencyMs": 1737,
+          "TotalTokens": 2506,
+          "EstimatedCostCny": 0.002159,
+          "Error": null
+        },
+        {
+          "QuestionId": "S10",
+          "Category": "semantic",
+          "Question": "把关键词权重设为 0 后混合检索会怎样？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b63c-013d-b480-336573f88ab0"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "把关键词权重设为 0 时，融合结果与纯向量检索一致 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 537,
+          "LatencyMs": 1142,
+          "TotalTokens": 1903,
+          "EstimatedCostCny": 0.001515,
+          "Error": null
+        },
+        {
+          "QuestionId": "X01",
+          "Category": "cross-document",
+          "Question": "切片容量与向量维度分别如何影响检索成本？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料，只能回答「切片容量」对检索成本的影响；资料中没有关于「向量维度」如何影响检索成本的信息。\n\n**切片容量对检索成本的影响：**\n\n- 切片越细，候选越多，重排需要打分的文本越多，检索延迟与重排成本上升 [1]。\n- 切片越粗，单条切片越长，向量化与存储开销越高 [1]。\n- 因此选择容量时需要在召回精度与成本之间取平衡 [1]。\n\n**关于向量维度：** 资料片段中未提及向量维度与检索成本的关系，根据现有资料无法回答该部分。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "CitationCount": 1,
+          "CitationHit": false,
+          "CitationPrecision": 0,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 376,
+          "LatencyMs": 1809,
+          "TotalTokens": 2229,
+          "EstimatedCostCny": 0.002366,
+          "Error": null
+        },
+        {
+          "QuestionId": "X02",
+          "Category": "cross-document",
+          "Question": "混合检索已经做了融合，为什么还需要重排？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-013d-b480-336573f88ab0",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，混合检索和重排解决的是不同层面的问题：\n\n1. **混合检索解决的是召回覆盖问题，最终排序仍交给重排模型** [2]。也就是说，融合只是把候选召回来，并不负责最终排序。\n\n2. **候选来自混合检索的融合结果，默认最多把 20 条候选送进重排** [1]。重排的作用是在这批候选上进一步排序；候选太少会让重排没有发挥空间 [1]。\n\n3. 融合结果本身是按总分降序排列的，同分时先比最佳排名，再按切片 ID 升序兜底 [5]——这是融合阶段的排序规则，与重排模型承担的最终排序是两回事 [2]。\n\n补充一点：重排失败时系统会退回融合顺序并记录警告，不阻断问答，只是排序质量下降 [4]，这也说明融合顺序是重排的兜底，而非替代。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-013d-b480-336573f88ab0",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8"
+          ],
+          "CitationCount": 4,
+          "CitationHit": false,
+          "CitationPrecision": 0,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 350,
+          "LatencyMs": 1958,
+          "TotalTokens": 1982,
+          "EstimatedCostCny": 0.002850,
+          "Error": null
+        },
+        {
+          "QuestionId": "X03",
+          "Category": "cross-document",
+          "Question": "固定切片参数为什么对检索评估很重要？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "固定切片参数对检索评估很重要，原因如下：\n\n1. **保证指标变化可归因**：只有语料固定、切片参数固定，Recall 和 nDCG 的变化才能归因到检索策略本身 [1]。\n\n2. **保证新旧向量可比**：若调整切片容量或重叠，旧向量必须重新生成，否则新旧切片会混在同一个集合里，指标不再可比 [1]。\n\n3. **提供统一的比较基准**：有了固定语料和金标集，每次调整检索策略都可以用同一把尺子比较；没有固定语料和金标集，指标只能凭感觉 [2]。\n\n补充一点相关背景：切片参数本身会影响检索效果与成本——切片太短会丢失上下文，太长会稀释向量、使检索得分不聚焦 [4]；切片越细候选越多、重排成本越高，越粗则向量化与存储开销越高 [5]。因此固定切片参数也是让评估在稳定条件下进行的前提。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 377,
+          "LatencyMs": 2386,
+          "TotalTokens": 2227,
+          "EstimatedCostCny": 0.002864,
+          "Error": null
+        },
+        {
+          "QuestionId": "X04",
+          "Category": "cross-document",
+          "Question": "查询改写与 RRF 权重如何配合提升召回？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，可以分两部分说明：\n\n**查询改写的作用与限制**\n- 查询改写是检索前的可选步骤，会把一个自然语言问题扩展成最多两条替代表述，再与原问题一起参与召回 [2]。\n- 它适合口语化、缩写较多或术语不统一的问题，但每次改写都会增加一次模型调用，因此 KnowVault 默认关闭，只在需要时按请求开启 [2]。\n\n**RRF 权重如何配合**\n- 融合使用应用层加权 RRF，平滑常数为 60（配置编号 KV-RRF-60）；每条查询的每个分支按排名贡献分数，公式为「权重 × 1/(60 + 排名)」，同一文档在多路命中时累加 [1]。\n- 原问题权重固定为 1，改写查询权重默认为 0.8 [1]。也就是说，改写产生的替代表述以较低权重参与排名融合，原问题仍占主导。\n- RRF 只看排名、不看原始分数，因为不同分支的原始分数不可直接比较（向量余弦值可能集中在 0.7 到 0.9，关键词得分没有固定上界），直接相加会让某一路主导结果 [5]。\n\n**关于「提升召回」**\n资料片段只说明了上述机制（改写扩展表述、加权 RRF 按排名融合、改写权重 0.8），并未给出查询改写与 RRF 权重配合对召回效果的具体量化结论。评估设计中有「混合检索」与「混合检索加查询改写」两组对比、topK 固定为 5 [4]，但片段未提供对比结果。因此，二者配合能否以及在多大程度上提升召回，根据现有资料无法回答。",
+          "CitedChunkIds": [
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 351,
+          "LatencyMs": 3209,
+          "TotalTokens": 2478,
+          "EstimatedCostCny": 0.004299,
+          "Error": null
+        },
+        {
+          "QuestionId": "X05",
+          "Category": "cross-document",
+          "Question": "重排候选数、topK 与 Recall@5 之间是什么关系？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "RecallAt5": 0.5,
+          "MrrAt10": 0.3333333333333333,
+          "NdcgAt5": 0.3065735963827292,
+          "RewriteQueries": [],
+          "Answer": "根据资料片段，三者的关系如下：\n\n1. **topK 默认值**：最终 topK 默认是 5 条 [1]。KnowVault 默认先宽召回约 20 条候选，再由重排模型精排，最终只保留 5 条作为引用 [4]。\n\n2. **候选数与重排质量共同决定 Recall@5**：重排候选数、topK 和评估指标需要一起看；Recall@5 衡量前 5 条是否覆盖金标，重排负责把真正相关的切片推进前 5 条。候选数足够大但重排质量差，Recall@5 仍然不会提升 [1]。\n\n3. **Recall@5 的定义**：Recall@5 统计前 5 条里命中的金标切片占全部金标切片的比例（编号 KV-METRIC-5），只关心有没有命中，不关心命中排第几；例如一道题有两个金标切片、前 5 条只命中一个，Recall@5 就是 0.5 [3]。\n\n4. **topK 可在应用层调整**：重排服务返回每条候选的索引与分数，KnowVault 在本地按分数重排并截取 topK；服务端 top_n 参数传全量候选，最终保留几条由应用层决定，因此 topK 可随请求调整而不必重新调用模型 [2]。\n\n5. **评估设置**：评估中重排三组都开启，topK 固定为 5 [5]。",
+          "CitedChunkIds": [
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "CitationCount": 5,
+          "CitationHit": true,
+          "CitationPrecision": 0.2,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 913,
+          "LatencyMs": 3194,
+          "TotalTokens": 2173,
+          "EstimatedCostCny": 0.004037,
+          "Error": null
+        },
+        {
+          "QuestionId": "U01",
+          "Category": "unanswerable",
+          "Question": "KnowVault 计划采用哪种开源许可证发布？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b745-357f-051d-e1493fcc8b2b",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只涉及 KnowVault 的问答链路、重排模型、检索评估指标和切片策略等内容 [1][2][3][4][5]，没有任何关于开源许可证的信息。",
+          "CitedChunkIds": [
+            "3a248e57-b745-357f-051d-e1493fcc8b2b",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "CitationCount": 5,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 411,
+          "LatencyMs": 1740,
+          "TotalTokens": 2402,
+          "EstimatedCostCny": 0.001825,
+          "Error": null
+        },
+        {
+          "QuestionId": "U02",
+          "Category": "unanswerable",
+          "Question": "Qdrant 默认每个 collection 分成多少个分片？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b9df-eda1-940c-0f46cf195085",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只提到 Qdrant 使用 HNSW 图索引、默认索引参数、共用 collection 及 payload 过滤隔离、稀疏向量 IDF modifier、向量维度 1024 等内容 [2][3][4][5]，但没有关于 collection 分片数量的任何信息。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b9df-eda1-940c-0f46cf195085",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "CitationCount": 4,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 360,
+          "LatencyMs": 1628,
+          "TotalTokens": 2228,
+          "EstimatedCostCny": 0.001967,
+          "Error": null
+        },
+        {
+          "QuestionId": "U03",
+          "Category": "unanswerable",
+          "Question": "DeepSeek 模型的上下文窗口是多少 token？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段仅涉及向量检索、文档切片、重排与检索评估指标等内容，未提及 DeepSeek 模型的上下文窗口大小。",
+          "CitedChunkIds": [],
+          "CitationCount": 0,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 371,
+          "LatencyMs": 1376,
+          "TotalTokens": 2214,
+          "EstimatedCostCny": 0.001703,
+          "Error": null
+        },
+        {
+          "QuestionId": "U04",
+          "Category": "unanswerable",
+          "Question": "项目支持哪些格式的 OCR 图片识别？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只提到解析环节可从 PDF、Word、Markdown 等格式中抽取纯文本 [1]，未涉及 OCR 或图片识别支持哪些格式。",
+          "CitedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "CitationCount": 1,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 323,
+          "LatencyMs": 1138,
+          "TotalTokens": 1831,
+          "EstimatedCostCny": 0.001789,
+          "Error": null
+        },
+        {
+          "QuestionId": "U05",
+          "Category": "unanswerable",
+          "Question": "如何在 Gitee Go 上配置 CI 流水线？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段仅涉及混合检索与加权 RRF [1][3]、重排候选裁剪 [2]、向量检索维度 [4] 以及 RAG 问答链路 [5]，均未提及 Gitee Go 或 CI 流水线配置相关内容。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "CitationCount": 5,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 419,
+          "LatencyMs": 1486,
+          "TotalTokens": 2132,
+          "EstimatedCostCny": 0.001953,
+          "Error": null
+        }
+      ]
+    },
+    {
+      "Mode": "hybrid-rewrite",
+      "HybridEnabled": true,
+      "RewriteEnabled": true,
+      "GenerationEnabled": true,
+      "Summary": {
+        "AnswerableCount": 25,
+        "UnanswerableCount": 5,
+        "FailedCount": 0,
+        "AverageRecallAt5": 0.9,
+        "AverageMrrAt10": 0.8466666666666667,
+        "AverageNdcgAt5": 0.8575001339981675,
+        "CitationEvaluatedCount": 25,
+        "CitationHitRate": 0.92,
+        "CitationPrecision": 0.7133333333333334,
+        "NoAnswerRate": 1,
+        "AverageLatencyMs": 2653.9666666666667,
+        "TotalTokens": 83247,
+        "TotalEstimatedCostCny": 0.080513
+      },
+      "Questions": [
+        {
+          "QuestionId": "K01",
+          "Category": "keyword",
+          "Question": "KV-RRF-60 代表什么检索参数？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-RRF-60 检索参数含义",
+            "RRF k=60 参数在向量检索中的作用"
+          ],
+          "Answer": "KV-RRF-60 是**加权 RRF 的平滑常数配置编号**，对应平滑常数为 60 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1347,
+          "LatencyMs": 2224,
+          "TotalTokens": 2702,
+          "EstimatedCostCny": 0.002099,
+          "Error": null
+        },
+        {
+          "QuestionId": "K02",
+          "Category": "keyword",
+          "Question": "KV-CHUNK-1000 规定的默认切片容量是多少字符？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-CHUNK-1000 默认切片容量 字符数 规定",
+            "KV-CHUNK-1000 default chunk size characters specification"
+          ],
+          "Answer": "根据资料片段，KV-CHUNK-1000 对应的默认切片容量是 **1000 个字符** [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1200,
+          "LatencyMs": 2159,
+          "TotalTokens": 2924,
+          "EstimatedCostCny": 0.002182,
+          "Error": null
+        },
+        {
+          "QuestionId": "K03",
+          "Category": "keyword",
+          "Question": "KV-OVERLAP-120 的重叠长度是多少？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-OVERLAP-120 重叠长度参数",
+            "KV-OVERLAP-120 overlap length specification"
+          ],
+          "Answer": "根据资料片段，KV-OVERLAP-120 对应的重叠长度是 **120 个字符** [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1291,
+          "LatencyMs": 2234,
+          "TotalTokens": 2875,
+          "EstimatedCostCny": 0.002099,
+          "Error": null
+        },
+        {
+          "QuestionId": "K04",
+          "Category": "keyword",
+          "Question": "KV-VEC-1024 中的 1024 指什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-VEC-1024 型号中 1024 的含义",
+            "KV-VEC-1024 的 1024 代表什么参数"
+          ],
+          "Answer": "KV-VEC-1024 中的 1024 指向量维度：KnowVault 使用的 BAAI/bge-m3 向量模型固定输出 1024 维，该编号对应这一配置 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1303,
+          "LatencyMs": 2173,
+          "TotalTokens": 2846,
+          "EstimatedCostCny": 0.002360,
+          "Error": null
+        },
+        {
+          "QuestionId": "K05",
+          "Category": "keyword",
+          "Question": "KV-RERANK-20 默认最多把多少条候选送进重排？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-RERANK-20 默认送入重排的候选数量上限是多少",
+            "KV-RERANK-20 rerank default maximum number of candidates"
+          ],
+          "Answer": "根据资料片段，KV-RERANK-20 默认最多把 **20 条**候选送进重排 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1417,
+          "LatencyMs": 2202,
+          "TotalTokens": 2923,
+          "EstimatedCostCny": 0.002139,
+          "Error": null
+        },
+        {
+          "QuestionId": "K06",
+          "Category": "keyword",
+          "Question": "KV-METRIC-5 对应哪个指标的前 5 条统计？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b926-f84d-f3ee-f0c9bf6dd5b2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-METRIC-5 指标前5条统计数据对应哪个指标",
+            "KV-METRIC-5 top 5 statistics for which metric"
+          ],
+          "Answer": "KV-METRIC-5 对应 **Recall@5** 的前 5 条统计 [1]。它统计前 5 条里命中的金标切片占全部金标切片的比例，只关心是否命中，不关心命中排第几 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1333,
+          "LatencyMs": 2083,
+          "TotalTokens": 2808,
+          "EstimatedCostCny": 0.002427,
+          "Error": null
+        },
+        {
+          "QuestionId": "K07",
+          "Category": "keyword",
+          "Question": "BAAI/bge-m3 的向量维度是多少？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 0.5,
+          "NdcgAt5": 0.6309297535714575,
+          "RewriteQueries": [
+            "BAAI/bge-m3 embedding dimension size",
+            "bge-m3 模型向量维度是多少"
+          ],
+          "Answer": "BAAI/bge-m3 固定输出 **1024 维** [1][2]，对应编号 KV-VEC-1024 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1180,
+          "LatencyMs": 2225,
+          "TotalTokens": 2738,
+          "EstimatedCostCny": 0.002068,
+          "Error": null
+        },
+        {
+          "QuestionId": "K08",
+          "Category": "keyword",
+          "Question": "FNV-1A-32 哈希会被映射到什么范围？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-b40d-5f44-0a588be72057",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "FNV-1a 32位哈希值取值范围",
+            "FNV-1A-32 hash output range"
+          ],
+          "Answer": "根据资料片段，FNV-1A-32 词元哈希映射到 **1 到 uint 最大值减一** 的范围 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4953-69f1-513a1a3563ea"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1269,
+          "LatencyMs": 2269,
+          "TotalTokens": 2614,
+          "EstimatedCostCny": 0.002117,
+          "Error": null
+        },
+        {
+          "QuestionId": "K09",
+          "Category": "keyword",
+          "Question": "KV-BIGRAM-2 描述了哪种中文切词方式？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-BIGRAM-2 中文分词方法",
+            "KV-BIGRAM-2 对应的中文切词算法"
+          ],
+          "Answer": "KV-BIGRAM-2 描述的中文切词方式为：针对中文没有天然空格分隔的特点，采用连续 CJK 片段生成重叠二元组，单字保留，拉丁字母和数字连续片段长度至少为 2；例如「混合检索」会生成「混合」「合检」「检索」三个词元。这样既能覆盖多数中文词组，又不需要引入外部词典。[1]",
+          "CitedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1408,
+          "LatencyMs": 2868,
+          "TotalTokens": 2916,
+          "EstimatedCostCny": 0.002574,
+          "Error": null
+        },
+        {
+          "QuestionId": "K10",
+          "Category": "keyword",
+          "Question": "KV-RAG-2026 在文档中代表什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b80d-6951-736f-2c198b45ac10"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "KV-RAG-2026 的定义是什么",
+            "KV-RAG-2026 在文档中的含义和指代"
+          ],
+          "Answer": "KV-RAG-2026 是 KnowVault 为「检索增强生成（RAG）」这条流程所编的编号，作为后续检索与评估工作的统一参照 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-159f-814e-858bf57ca09f"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1388,
+          "LatencyMs": 2307,
+          "TotalTokens": 2831,
+          "EstimatedCostCny": 0.002223,
+          "Error": null
+        },
+        {
+          "QuestionId": "S01",
+          "Category": "semantic",
+          "Question": "为什么文档需要先切成切片再向量化？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-28e1-2c59-7f64298545b6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 0.3333333333333333,
+          "NdcgAt5": 0.5,
+          "RewriteQueries": [
+            "文档分块 chunking 后再进行 embedding 向量化的原因",
+            "为什么文本切分成片段再做向量表示而不是整篇文档直接嵌入"
+          ],
+          "Answer": "根据资料片段，文档需要先切成切片再向量化，原因如下：\n\n1. **切片是检索的基本单元**：切片是把长文档拆成可独立检索的文本单元，向量化则是把切片映射成稠密向量，检索时按问题找出最相关的若干切片 [3][5]。也就是说，向量化的对象本身就是切片，而不是整篇长文档。\n\n2. **切片长度直接影响向量质量**：切片太短会丢失上下文，模型拿到零散句子难以判断含义；切片太长会稀释向量，一条切片里混入多个主题，检索得分不再聚焦 [3]。因此需要先切成合适长度的切片，才能得到聚焦、有效的向量。\n\n3. **切片粒度还影响成本与精度**：切片越细，候选越多，重排要打分的文本越多；切片越粗，单条切片越长，向量化与存储开销越高，选择容量时要在召回精度与成本之间取平衡 [2]。\n\n4. **切片策略尽量保持语义完整**：切片器优先按段落组织内容，只有单个段落超过容量时才继续切分，因此大多数切片仍然保持语义完整 [1]，这有利于后续向量化与检索。\n\n简言之，先切片是为了把长文档变成长度合适、语义相对完整、可独立检索的单元，再对这些单元做向量化，从而兼顾检索精度与成本 [1][2][3][5]。",
+          "CitedChunkIds": [
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b744-cd83-c111-bbe5c1190072",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-28e1-2c59-7f64298545b6"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.25,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1704,
+          "LatencyMs": 4131,
+          "TotalTokens": 3077,
+          "EstimatedCostCny": 0.004181,
+          "Error": null
+        },
+        {
+          "QuestionId": "S02",
+          "Category": "semantic",
+          "Question": "余弦相似度比较的是向量大小还是方向？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "余弦相似度衡量的是向量方向差异还是向量长度差异",
+            "cosine similarity 比较向量夹角还是模长"
+          ],
+          "Answer": "余弦相似度只比较两个向量的**方向**，不关心向量长度 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-b40d-5f44-0a588be72057"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1466,
+          "LatencyMs": 2812,
+          "TotalTokens": 2609,
+          "EstimatedCostCny": 0.001911,
+          "Error": null
+        },
+        {
+          "QuestionId": "S03",
+          "Category": "semantic",
+          "Question": "关键词检索和向量检索各自擅长什么？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b9df-d570-26f1-a8c203995a18",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "keyword search 与 vector search 的适用场景和优势对比",
+            "稀疏检索和稠密检索分别适合处理什么类型的查询"
+          ],
+          "Answer": "根据资料片段，两者的擅长点如下：\n\n- **关键词分支**：擅长精确术语和编号 [1]。\n- **向量分支**：擅长语义相近但用词不同的表达 [1]。\n\n补充说明：纯向量检索对精确编号、专有名词和罕见缩写不敏感 [2]，这也从反面印证了关键词分支在精确匹配上的优势。",
+          "CitedChunkIds": [
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b9df-d570-26f1-a8c203995a18"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1540,
+          "LatencyMs": 2618,
+          "TotalTokens": 2758,
+          "EstimatedCostCny": 0.002404,
+          "Error": null
+        },
+        {
+          "QuestionId": "S04",
+          "Category": "semantic",
+          "Question": "RRF 融合为什么只使用排名而不使用原始分数？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80e-b19a-6e55-b0a5f7da06fd",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "RRF 融合为何仅依赖排名信息而不采用原始分数",
+            "Reciprocal Rank Fusion 只使用 rank 不使用原始 score 的原因"
+          ],
+          "Answer": "RRF 融合只使用排名、不使用原始分数，原因如下：\n\n- **不同检索分支的原始分数不可直接比较**：向量余弦值可能集中在 0.7 到 0.9，而关键词得分没有固定上界 [1]。\n- **直接相加会让某一路主导结果**：如果把不同分支的分数直接相加，某一分支会主导最终结果 [1]。\n- **只使用排名可以把两路拉到同一尺度**：RRF 只看排名、不看原始分数，从而让不同分支处于同一尺度 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1415,
+          "LatencyMs": 2834,
+          "TotalTokens": 2788,
+          "EstimatedCostCny": 0.002807,
+          "Error": null
+        },
+        {
+          "QuestionId": "S05",
+          "Category": "semantic",
+          "Question": "重排模型与向量检索在打分方式上有什么不同？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "rerank 模型和向量检索的评分机制差异",
+            "重排序模型与稠密向量检索在相关性打分上的区别"
+          ],
+          "Answer": "重排模型与向量检索在打分方式上的不同：\n\n- **向量检索**：把问题和切片**分别编码**成向量，再在向量空间中寻找与问题最接近的切片，速度快但精度有限 [1][5]。\n- **重排模型**：把问题和候选切片**放在一起编码**，属于 cross-encoder，能捕捉两者之间的细粒度匹配关系，因此通常更准，也更慢 [1]。\n\n简言之，向量检索是“分别编码后比较向量距离”，重排是“问题和切片联合编码后打分” [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1423,
+          "LatencyMs": 2740,
+          "TotalTokens": 2820,
+          "EstimatedCostCny": 0.002791,
+          "Error": null
+        },
+        {
+          "QuestionId": "S06",
+          "Category": "semantic",
+          "Question": "中文关键词为什么要切成二元组？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "中文分词 二元组 切分 原因",
+            "中文信息检索 二元切分 优势"
+          ],
+          "Answer": "根据资料片段，中文关键词切成二元组的原因如下：\n\n- 中文没有天然的空格分隔，无法像拉丁文本那样直接按空格切词，因此采用连续 CJK 片段生成重叠二元组的方式切词 [1]。\n- 这种切法既能覆盖多数中文词组，又不需要引入外部词典 [1]。\n\n补充说明：该切词规则中，单字保留，拉丁字母和数字连续片段长度至少为 2，编号为 KV-BIGRAM-2；例如「混合检索」会生成「混合」「合检」「检索」三个词元 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-6b3d-563c-4038a38dacdb"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1222,
+          "LatencyMs": 2615,
+          "TotalTokens": 2757,
+          "EstimatedCostCny": 0.002785,
+          "Error": null
+        },
+        {
+          "QuestionId": "S07",
+          "Category": "semantic",
+          "Question": "Recall 和 nDCG 衡量检索效果时有什么区别？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b745-fd84-7ffb-83af9448528c",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "Recall 与 nDCG 在信息检索评价中的差异",
+            "Recall vs nDCG: difference in retrieval evaluation metrics"
+          ],
+          "Answer": "根据资料片段，Recall 和 nDCG 的区别如下：\n\n1. **衡量维度不同**：nDCG 同时反映召回数量和排序质量，而 Recall 侧重相关切片是否被召回 [1][3]。nDCG@5 会对命中位置做对数折损，排得越靠前贡献越大，再除以理想排序的增益做归一化 [1]。\n\n2. **适用场景不同**：nDCG 适合比较两套排序策略 [1]；检索评估本身要回答两个问题——相关切片有没有被召回，以及它们排得够不够靠前 [3]。\n\n3. **可比性前提**：语料固定、切片参数固定，Recall 和 nDCG 的变化才能归因到检索策略本身；若调整切片容量或重叠，旧向量必须重新生成，否则新旧切片混在同一集合里，指标不再可比 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b926-4974-1471-3b17b084eecd",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b51c-637d-e910-97d511963499"
+          ],
+          "CitationCount": 3,
+          "CitationHit": true,
+          "CitationPrecision": 0.3333333333333333,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1061,
+          "LatencyMs": 2650,
+          "TotalTokens": 2791,
+          "EstimatedCostCny": 0.003302,
+          "Error": null
+        },
+        {
+          "QuestionId": "S08",
+          "Category": "semantic",
+          "Question": "切片重叠能解决什么问题？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "切片重叠的作用和优势",
+            "overlapping slices 在数据处理中解决什么问题"
+          ],
+          "Answer": "切片重叠主要解决**切点附近答案被边界切断而漏召回**的问题：相邻切片共享一段上下文，当答案刚好落在切点附近时，前一条切片尾部与后一条切片开头都能提供线索，从而降低因边界切断导致漏召回的概率 [1]。\n\n但重叠并非越大越好：它会放大存储与向量化成本，并使相邻切片内容高度相似、挤占检索结果名额 [1]。相关参数上，默认重叠为 120 个字符（KV-OVERLAP-120），且重叠不会超过容量的一半，以防止相邻切片互相吞没 [3]。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51b-2027-ac2e-aed306770943"
+          ],
+          "CitationCount": 2,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1816,
+          "LatencyMs": 3308,
+          "TotalTokens": 2765,
+          "EstimatedCostCny": 0.002731,
+          "Error": null
+        },
+        {
+          "QuestionId": "S09",
+          "Category": "semantic",
+          "Question": "回答里的方括号编号有什么作用？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05",
+            "3a248e57-b51b-1869-3f36-83b5b65025e1",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b926-e19f-7aa1-ea7406d1c583"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "回答中引用编号的作用是什么",
+            "方括号数字标注在回答中的用途"
+          ],
+          "Answer": "回答里的方括号编号用于**引用溯源**，作用如下：\n\n1. **对应检索到的切片**：编号对应检索到的资料片段，例如 [1] 表示第一条资料片段 [1]。\n2. **支持逐条核对**：前端根据编号展示原文、文档标题和标题层级，用户可以逐条核对答案是否有据可查 [1]。\n3. **标识可疑内容**：没有引用支撑的断言应当被视为可疑内容 [1]。\n\n引用溯源也是 RAG 区别于普通聊天的重要能力 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b744-d511-37cc-c8083ead7e05"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1037,
+          "LatencyMs": 2353,
+          "TotalTokens": 2863,
+          "EstimatedCostCny": 0.002706,
+          "Error": null
+        },
+        {
+          "QuestionId": "S10",
+          "Category": "semantic",
+          "Question": "把关键词权重设为 0 后混合检索会怎样？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b63a-b9df-a8f8-ea17ee05e011",
+            "3a248e57-b63c-013d-b480-336573f88ab0"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "关键词检索权重设为0对混合检索效果的影响",
+            "hybrid retrieval with keyword search weight set to zero"
+          ],
+          "Answer": "把关键词权重设为 0 时，融合结果与纯向量检索一致 [1]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "CitationCount": 1,
+          "CitationHit": true,
+          "CitationPrecision": 1,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1135,
+          "LatencyMs": 2002,
+          "TotalTokens": 2271,
+          "EstimatedCostCny": 0.001937,
+          "Error": null
+        },
+        {
+          "QuestionId": "X01",
+          "Category": "cross-document",
+          "Question": "切片容量与向量维度分别如何影响检索成本？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b9de-4f42-fac3-5256a04776d2",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b51c-d138-c569-faf7f781a967"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "切片大小和 embedding 维度对检索开销的影响",
+            "chunk size 与 vector dimension 如何影响检索性能和成本"
+          ],
+          "Answer": "根据现有资料，只能回答「切片容量」对检索成本的影响；资料中没有关于「向量维度」如何影响检索成本的信息。\n\n**切片容量对检索成本的影响：**\n\n- 切片越细（越短），候选切片越多，重排需要打分的文本越多，检索延迟与重排成本上升 [1]。\n- 切片越粗（越长），单条切片越长，向量化与存储开销越高 [1]。\n- 因此选择容量时需要在召回精度与成本之间取平衡 [1]。\n- 切片过长还会稀释向量，一条切片混入多个主题，导致检索得分不再聚焦 [3]；切片过短则会丢失上下文 [3]。\n- 此外，重叠会放大存储与向量化成本，并使相邻切片高度相似、挤占检索结果名额 [5]；调整容量或重叠后，旧向量必须重新生成，否则新旧切片混在同一集合里，指标不再可比 [4]。\n\n**关于向量维度：** 资料片段中未提及向量维度与检索成本的关系，根据现有资料无法回答该部分。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-d138-c569-faf7f781a967",
+            "3a248e57-b51c-637d-e910-97d511963499"
+          ],
+          "CitationCount": 4,
+          "CitationHit": false,
+          "CitationPrecision": 0,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1305,
+          "LatencyMs": 3112,
+          "TotalTokens": 2990,
+          "EstimatedCostCny": 0.003589,
+          "Error": null
+        },
+        {
+          "QuestionId": "X02",
+          "Category": "cross-document",
+          "Question": "混合检索已经做了融合，为什么还需要重排？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b80d-ec98-6dff-c3879727e7b8"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-013d-b480-336573f88ab0",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "混合检索融合后为什么还要进行重排序",
+            "hybrid retrieval fusion 后 reranking 的必要性"
+          ],
+          "Answer": "根据资料片段，混合检索和重排解决的是不同层面的问题：\n\n1. **混合检索解决的是召回覆盖问题，最终排序仍交给重排模型** [2]。也就是说，融合只是把候选召回来，并不负责最终排序质量。\n\n2. **融合结果的排序规则较简单**：按总分降序排列，同分时先比最佳排名，再按切片 ID 升序兜底，目的是保证每次运行顺序稳定 [5]。这属于确定性的稳定排序，而非对候选与问题的相关性做精细打分。\n\n3. **重排有独立的候选裁剪机制**：默认最多把 20 条候选送进重排（配置编号 KV-RERANK-20），候选来自混合检索的融合结果；候选太少会让重排没有发挥空间，候选太多会线性增加延迟和 token 成本，且候选数至少要等于最终 topK [1]。这说明重排是在融合结果之上再做一层精排与裁剪。\n\n4. **重排可能失败并降级**：重排失败时系统退回融合顺序并记录警告，不阻断问答，只是排序质量下降 [4]。这从反面说明融合顺序是「兜底顺序」，重排才是提升排序质量的一层。\n\n简言之：混合检索负责「召回覆盖」，重排负责在融合候选之上做「最终排序与裁剪」[1][2]。",
+          "CitedChunkIds": [
+            "3a248e57-b63c-013d-b480-336573f88ab0",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b80d-8b9e-b946-7d4b139f95c8"
+          ],
+          "CitationCount": 4,
+          "CitationHit": false,
+          "CitationPrecision": 0,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1694,
+          "LatencyMs": 4275,
+          "TotalTokens": 2887,
+          "EstimatedCostCny": 0.004036,
+          "Error": null
+        },
+        {
+          "QuestionId": "X03",
+          "Category": "cross-document",
+          "Question": "固定切片参数为什么对检索评估很重要？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b9df-1e28-5c55-e9ed6b40d202",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "固定切片参数在检索评估中的作用和意义",
+            "为什么检索评估需要保持切片参数一致 fixed chunking parameters"
+          ],
+          "Answer": "固定切片参数对检索评估很重要，原因如下：\n\n1. **保证指标变化可归因**：只有语料固定、切片参数固定，Recall 和 nDCG 的变化才能归因到检索策略本身 [1]。\n\n2. **保证新旧向量可比**：若调整切片容量或重叠，旧向量必须重新生成，否则新旧切片会混在同一个集合里，指标不再可比 [1]。\n\n3. **提供统一的比较基准**：有了固定语料和金标集，每次调整检索策略都可以用同一把尺子比较；没有固定语料和金标集，指标只能凭感觉 [2]。\n\n补充一点相关背景：切片参数本身会影响检索效果与成本——切片太短会丢失上下文，太长会稀释向量、使检索得分不聚焦 [4]；切片越细候选越多、重排成本越高，越粗则向量化与存储开销越高 [5]。因此固定切片参数也是让评估在稳定条件下进行的前提。",
+          "CitedChunkIds": [
+            "3a248e57-b51c-637d-e910-97d511963499",
+            "3a248e57-b925-0466-b9df-92eb109dda11",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b51c-7792-412e-3aa30f3e82c4"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1088,
+          "LatencyMs": 2785,
+          "TotalTokens": 2763,
+          "EstimatedCostCny": 0.003298,
+          "Error": null
+        },
+        {
+          "QuestionId": "X04",
+          "Category": "cross-document",
+          "Question": "查询改写与 RRF 权重如何配合提升召回？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378"
+          ],
+          "RecallAt5": 1,
+          "MrrAt10": 1,
+          "NdcgAt5": 1,
+          "RewriteQueries": [
+            "查询改写与倒数排名融合 RRF 权重调优提升召回率的方法",
+            "query rewriting with Reciprocal Rank Fusion weights for improving recall"
+          ],
+          "Answer": "根据资料片段，可以分两部分说明：\n\n**查询改写的作用**\n- 查询改写是检索前的可选步骤，会把一个自然语言问题扩展成最多两条替代表述，再与原问题一起参与召回 [2]。\n- 它适合口语化、缩写较多或术语不统一的问题，但每次改写都会增加一次模型调用，因此 KnowVault 默认关闭，只在需要时按请求开启 [2]。\n\n**加权 RRF 的权重设置**\n- 融合使用应用层加权 RRF，平滑常数为 60（配置编号 KV-RRF-60）；每条查询的每个分支按排名贡献分数，公式为权重乘以 1/(60+排名)，同一文档在多路命中时累加 [1]。\n- 原问题权重固定为 1，改写查询权重默认为 0.8 [1]。\n- RRF 只看排名、不看原始分数，因为不同检索分支的原始分数不可直接比较（向量余弦值可能集中在 0.7 到 0.9，关键词得分没有固定上界），直接相加会让某一路主导结果 [5]。\n\n**两者的配合方式**\n综合上述片段：改写产生的替代表述与原问题一起参与召回，在加权 RRF 融合时，原问题以权重 1、改写查询以默认权重 0.8 按排名贡献并累加 [1][2]，即改写结果参与召回但权重略低于原问题。\n\n资料片段未提供关于这种配合对召回提升幅度的量化结论；仅提到评估设有「纯向量、混合检索、混合检索加查询改写」三组对比 [4]，但未给出对比结果。",
+          "CitedChunkIds": [
+            "3a248e57-b744-2942-6c57-7446e15b3755",
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-9f0a-a0ae-faadfb472378",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.5,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1477,
+          "LatencyMs": 3936,
+          "TotalTokens": 3136,
+          "EstimatedCostCny": 0.004692,
+          "Error": null
+        },
+        {
+          "QuestionId": "X05",
+          "Category": "cross-document",
+          "Question": "重排候选数、topK 与 Recall@5 之间是什么关系？",
+          "Answerable": true,
+          "GoldChunkIds": [
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505"
+          ],
+          "RetrievedChunkIds": [
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b926-da88-d663-fb60653eedb0"
+          ],
+          "RecallAt5": 0.5,
+          "MrrAt10": 0.3333333333333333,
+          "NdcgAt5": 0.3065735963827292,
+          "RewriteQueries": [
+            "重排序候选数量、topK 取值与 Recall@5 指标之间的关系",
+            "rerank candidate size、topK 和 Recall@5 的关联"
+          ],
+          "Answer": "根据资料片段，三者的关系如下：\n\n1. **topK 决定 Recall@5 的统计范围**：最终 topK 默认是 5 条 [1]；Recall@5 统计的是前 5 条里命中的金标切片占全部金标切片的比例，只关心是否命中、不关心排第几 [3]。\n\n2. **重排负责把相关切片推进前 5 条**：重排候选数、topK 和评估指标需要一起看，重排的作用是把真正相关的切片推进前 5 条 [1]。\n\n3. **候选数足够大但重排质量差，Recall@5 不会提升**：资料明确指出，候选数足够大但重排质量差时，Recall@5 仍然不会提升 [1]。\n\n4. **候选数过小的负面影响**：top-k 太小会漏掉相关切片，太大则把噪声送进重排并增加成本 [4]。KnowVault 默认先宽召回约 20 条候选，再由重排模型精排，最终只保留 5 条作为引用 [4]。\n\n5. **topK 可在应用层灵活调整**：重排服务返回每条候选的索引与分数，服务端 top_n 参数传全量候选，最终保留几条由应用层决定，因此 topK 可随请求调整而不必重新调用模型 [2]。",
+          "CitedChunkIds": [
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17",
+            "3a248e57-b926-8eab-ea1a-9ba16a739505",
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b80d-5555-4f49-3a92b5998d32"
+          ],
+          "CitationCount": 4,
+          "CitationHit": true,
+          "CitationPrecision": 0.25,
+          "IsRefusal": null,
+          "RetrievalLatencyMs": 1474,
+          "LatencyMs": 3873,
+          "TotalTokens": 2596,
+          "EstimatedCostCny": 0.004312,
+          "Error": null
+        },
+        {
+          "QuestionId": "U01",
+          "Category": "unanswerable",
+          "Question": "KnowVault 计划采用哪种开源许可证发布？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b745-357f-051d-e1493fcc8b2b",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b925-12ab-d383-94ddc8c7605f",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "KnowVault 使用的开源许可证类型",
+            "KnowVault open source license"
+          ],
+          "Answer": "根据现有资料无法回答该问题。",
+          "CitedChunkIds": [],
+          "CitationCount": 0,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 1102,
+          "LatencyMs": 1990,
+          "TotalTokens": 2778,
+          "EstimatedCostCny": 0.001871,
+          "Error": null
+        },
+        {
+          "QuestionId": "U02",
+          "Category": "unanswerable",
+          "Question": "Qdrant 默认每个 collection 分成多少个分片？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b51b-2027-ac2e-aed306770943",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b9df-eda1-940c-0f46cf195085",
+            "3a248e57-b63a-ab5b-3212-5e03efffb363",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "Qdrant collection 默认分片数量是多少",
+            "Qdrant default number of shards per collection"
+          ],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只提到 Qdrant 使用 HNSW 图索引、默认索引参数、共用 collection 及向量维度等内容 [2][3][5]，没有涉及 collection 的分片数量。",
+          "CitedChunkIds": [
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b9df-eda1-940c-0f46cf195085",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "CitationCount": 3,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 1104,
+          "LatencyMs": 2259,
+          "TotalTokens": 2830,
+          "EstimatedCostCny": 0.002263,
+          "Error": null
+        },
+        {
+          "QuestionId": "U03",
+          "Category": "unanswerable",
+          "Question": "DeepSeek 模型的上下文窗口是多少 token？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b9de-f184-7d61-fb971add4018",
+            "3a248e57-b80d-6951-736f-2c198b45ac10",
+            "3a248e57-b51b-767d-3e92-f14c71ca56e6",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b80e-307a-46b3-a17d95fa8a17"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "DeepSeek 模型支持的上下文长度是多少 tokens",
+            "DeepSeek model context window size in tokens"
+          ],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段仅涉及向量检索、重排、文档切片和检索评估指标等内容，未提及 DeepSeek 模型的上下文窗口大小。",
+          "CitedChunkIds": [],
+          "CitationCount": 0,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 1292,
+          "LatencyMs": 2224,
+          "TotalTokens": 2764,
+          "EstimatedCostCny": 0.002124,
+          "Error": null
+        },
+        {
+          "QuestionId": "U04",
+          "Category": "unanswerable",
+          "Question": "项目支持哪些格式的 OCR 图片识别？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072",
+            "3a248e57-b744-159f-814e-858bf57ca09f",
+            "3a248e57-b9de-4cef-cb89-af93c17ec0c6",
+            "3a248e57-b80d-d13c-c09a-1983f7cd3f9e",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "OCR 图片识别支持哪些文件格式",
+            "OCR image recognition supported file formats"
+          ],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段中只提到解析环节负责从 PDF、Word、Markdown 等格式中抽取纯文本 [1]，并未涉及 OCR 或图片识别所支持的格式。",
+          "CitedChunkIds": [
+            "3a248e57-b744-cd83-c111-bbe5c1190072"
+          ],
+          "CitationCount": 1,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 1155,
+          "LatencyMs": 2186,
+          "TotalTokens": 2311,
+          "EstimatedCostCny": 0.002175,
+          "Error": null
+        },
+        {
+          "QuestionId": "U05",
+          "Category": "unanswerable",
+          "Question": "如何在 Gitee Go 上配置 CI 流水线？",
+          "Answerable": false,
+          "GoldChunkIds": [],
+          "RetrievedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "RecallAt5": 0,
+          "MrrAt10": 0,
+          "NdcgAt5": 0,
+          "RewriteQueries": [
+            "Gitee Go 持续集成流水线配置方法",
+            "Gitee Go CI pipeline setup configuration"
+          ],
+          "Answer": "根据现有资料无法回答该问题。\n\n资料片段仅涉及混合检索与加权 RRF [1][3]、重排候选裁剪 [2]、检索评估指标 [4] 和向量检索维度 [5]，均未提及 Gitee Go 或 CI 流水线配置。",
+          "CitedChunkIds": [
+            "3a248e57-b63b-4113-c08f-db1c32408b8c",
+            "3a248e57-b63c-2a04-c8ab-4537209fd85b",
+            "3a248e57-b80d-a774-c3ea-dc4180c4e10d",
+            "3a248e57-b926-da88-d663-fb60653eedb0",
+            "3a248e57-b9de-54d4-e088-bdf74d50d333"
+          ],
+          "CitationCount": 5,
+          "CitationHit": null,
+          "CitationPrecision": null,
+          "IsRefusal": true,
+          "RetrievalLatencyMs": 1105,
+          "LatencyMs": 2172,
+          "TotalTokens": 2516,
+          "EstimatedCostCny": 0.002310,
+          "Error": null
+        }
+      ]
+    }
+  ]
+}

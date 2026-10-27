@@ -108,7 +108,7 @@ KnowVault.slnx
 | **P2 快速加分** | SignalR 流式输出、Rerank 重排、多轮会话历史、知识库管理界面 | ✅ 已完成（2026-10-14 端到端验收 15 项通过，🔥 demo 效果拉满）：见 [`docs/plans/2026-10-14-knowvault-p2-mvp.md`](docs/plans/2026-10-14-knowvault-p2-mvp.md) |
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
 | **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘、知识库工作台 | ✅ 已完成（2026-10-26）：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)；代码导读见 [`docs/P4-代码导读.md`](docs/P4-代码导读.md) |
-| **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | 进行中（2026-10-27）：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md) 与 [`docs/driver/需求/需求分析-1027-P5.md`](docs/driver/需求/需求分析-1027-P5.md) |
+| **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | ✅ 已完成（2026-10-27）：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)、[`docs/P5-代码导读.md`](docs/P5-代码导读.md)；三组评估结论见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)（本语料判为持平） |
 | **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | 待实施（同上路线图） |
 
 ---
@@ -233,9 +233,9 @@ KnowVault.slnx
 | `Ai:QueryRewriteEnabled` | `false` |
 | `Ai:QueryRewrite:MaxVariants` / `MinQuestionLength` / `MaxTokens` | `2` / `6` / `200` |
 | `Ai:Pricing:DeepSeekInputPerMillion` / `DeepSeekOutputPerMillion` | `2` / `8` |
-| `Ai:Pricing:EmbeddingPerMillion` / `RerankPerMillion` | `0.5` / `0.5` |
+| `Ai:Pricing:EmbeddingPerMillion` / `RerankPerMillion` | `0.07` / `0.07` |
 
-价格单位为 CNY / 百万 token，T5 开工当日按官网核对后写入配置
+价格单位为 CNY / 百万 token，2026-10-27 按 DeepSeek 与 SiliconFlow 官网标价写入配置；费用为估算值，以账单为准
 
 #### 9.7.1 检索流程
 
@@ -276,7 +276,7 @@ KnowVault.slnx
 - `AppAiUsageRecords` 记录 Chat / Embedding / Rerank / QueryRewrite 的模型、输入/输出 token、耗时、估算费用；`AskId` 关联同一次问答，摄取 embedding 带 `DocumentId` 且 `AskId` 为 null
 - 价格配置化（`Ai:Pricing:*`，CNY/百万 token），写入时固化 `EstimatedCostCny`；usage 缺失时按字符数估算并置 `IsEstimated=true`
 - 记录走独立小 UoW，写失败只 warning，不阻断问答/摄取主流程
-- 仪表盘新增用量区：今日/近 7 天 token 与费用、按操作类型、按知识库（多库/全局单列）
+- 仪表盘新增用量区：今日/近 7 天 token 与费用、每日趋势、平均每次提问 token、按知识库（多库/全局单列），并明示是否存在本地估算值
 
 #### 9.7.6 评估方法与三组模式
 
@@ -284,6 +284,7 @@ KnowVault.slnx
 - 三组模式：A 纯向量、B 混合、C 混合 + 改写；同一金标集、同一 TopK 与重排配置
 - 指标：Recall@5、MRR@10、nDCG@5、CitationHitRate、CitationPrecision、NoAnswerRate、平均耗时、token、费用
 - 工具：`tools/KnowVault.Eval` 控制台直连 `RagService` / `QdrantVectorStore`，报告写 `docs/eval/reports/*.md` + `*.json`
+- 2026-10-27 结果：三组检索指标完全相同（Recall@5 0.900、MRR@10 0.847、nDCG@5 0.858），混合与改写未带来可测增益，也未回退；结论与限制见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)
 
 ## 10. P1 执行计划
 

@@ -1370,3 +1370,52 @@ public static class CitationParser
    - 多库提问不使用单库自定义系统提示词；
    - `Completed` 帧不新增 token / 成本（只在仪表盘看）；
    - 用量记录每次操作独立小事务，记录失败只记日志。
+
+---
+
+## §5 执行记录（2026-10-27）
+
+> 验收环境：Aspire 编排（Qdrant v1.15 / PostgreSQL / Redis / MinIO / RabbitMQ / Seq），API `https://localhost:44300`，前端 `http://localhost:5173`；浏览器为后台标签（viewport 0×0，鼠标事件不可用），交互以 DOM 点击、网络响应与数据库核对取证，无法截图；临时评估知识库与测试会话只存在本地，不入仓。
+
+### 5.1 A1–A17 验收结果
+
+| 编号 | 结果 | 证据 |
+|---|---|---|
+| A1 | ✅ 通过 | 关闭「混合检索」后提问，Started 帧 `hybridEnabled=false`，服务端只走 `RetrieveDenseAsync`；评估 `vector` 模式与 P4 纯 dense 口径一致 |
+| A2 | ⚠️ 持平（未复现增益） | `KV-RRF-60` 在混合与纯向量下都排第 1，未出现「纯向量不命中或排名更低」；关键词分支可独立命中由 A3 `DenseWeight=0` 与 `Sparse_failure_falls_back_to_dense` 单测佐证 |
+| A3 | ✅ 通过 | 临时覆盖 `KeywordWeight=0`：结果与纯向量一致；`DenseWeight=0`：仍返回关键词命中的金标锚点 |
+| A4 | ✅ 通过 | `Sparse_failure_falls_back_to_dense` 单测通过；`RetrieveHybridAsync` 捕获非取消异常、记 warning 并继续 dense |
+| A5 | ✅ 通过 | 关闭改写提问：回答上方无「改写为」行，Started `rewriteQueries=[]`，请求 `rewriteEnabled=false` |
+| A6 | ✅ 通过（按 T3 契约） | 开启改写：回答上方显示 2 条变体；Started 只含变体（原问题由前端单独展示），与 §Task 3 的 `Skip(1)` 契约一致 |
+| A7 | ✅ 通过 | `Rewrite_failure_falls_back_to_original` 单测通过；`TryRewriteAsync` 捕获异常只记 warning |
+| A8 | ✅ 通过 | 选「默认知识库 + P5 评估语料」提问：引用来自两个库，chip 显示「库名 · 文档标题」 |
+| A9 | ✅ 通过 | `AllKnowledgeBases` 由服务端解析：admin 得到两个库（默认库优先）；evalviewer 只得到默认库 |
+| A10 | ✅ 通过 | evalviewer 提问评估库返回 403 `无权访问以下知识库：P5 评估语料`，未静默过滤 |
+| A11 | ✅ 通过 | 刷新后打开多库会话：提问范围恢复为两个库并可继续追问，追问沿用同一集合 |
+| A12 | ✅ 通过 | 多库回答点开默认库引用：工作台从评估库切到默认库、加载 4 篇文档并打开详情抽屉 |
+| A13 | ✅ 通过 | 30 题 × 3 模式跑完（47 个切片，锚点全部可解析），Markdown + JSON 报告入仓 |
+| A14 | ✅ 通过 | 仪表盘实测 21 问 / 58,301 tokens；评估库 12 问 / 32,736；多库/全局 7 问 / 19,611；默认库 2 问 / 5,954 |
+| A15 | ✅ 通过 | 评估库上传处理后即出现 Embedding 用量（当时 0 次提问、tokens 非 0） |
+| A16 | ✅ 通过 | P4 旧 collection（56 点、无 sparse）：启动日志提示重建，检索返回 500 + `VectorSchemaMismatchException`；调 `rebuild-vector-index` 重新入队 4 篇，全部 Ready 后 56 点均带 `text` 稀疏向量，问答成功 |
+| A17 | ✅ 通过 | 个人中心弹窗、退出、会话改名/删除入口、引用抽屉、文档详情 14 个切片、反馈（未评价为 0，点赞后高亮）、重生成（消息数不变、答案变化、耗时 2,844 ms）、检索设置、库设置/成员按钮均正常 |
+
+### 5.2 质量门禁
+
+| 项 | 结果 |
+|---|---|
+| `dotnet build KnowVault.slnx` | 0 错误 0 警告 |
+| `dotnet test`（仓库根目录） | 单测 109/109、集成测试 4/4，全通过 |
+| `npm run build`（`frontend/`） | 通过；仅有既有 chunk > 500 kB 提示 |
+| `dotnet format style KnowVault.slnx --verify-no-changes --diagnostics IDE1006` | 无 IDE1006；仅 3 条历史 `IMPORTS`（与 P1–P3 基线一致，`--diagnostics` 不生效是既有现象） |
+| 行尾 / BOM | 改动文件 CRLF；新迁移与快照的 EF 生成 BOM 已在 T9 去除（内容未改）；`Dockerfile*` / `*.sh` 保持 LF |
+| 密钥 | 仓库与评估报告无真实 Key；运行时 Qdrant API Key 只在 Aspire 进程内，未落盘 |
+
+### 5.3 实测偏差与处理
+
+| 项 | 偏差 | 处理 |
+|---|---|---|
+| A2 | 本语料纯向量已把关键词题全部排到第 1，无法复现混合增益 | 不为验收改语料或调权重；报告如实写「持平」，关键词链路由 A3 与单测佐证 |
+| A6 | 验收表写「Started 可见原问题第一」，T3 规格写「Started 只返回变体」 | 以 T3 详细规格为准：内部原问题第一，对外 `Skip(1)`；验收按实际契约执行 |
+| T5 | 计划示例价 0.5，实际官网价 0.07；实体基类使用 `CreationAuditedAggregateRoot<Guid>` | 配置与代码按实际实现写回 `TECH_STACK.md` §9.7；费用标注估算 |
+| 测试命令 | `dotnet test KnowVault.slnx` 报项目文件不存在 | 在仓库根目录执行 `dotnet test`（自动发现解决方案） |
+| 评估结论 | 三组检索指标完全相同 | 报告保留真实结果并说明小样本限制；不引入额外优化赶指标 |
