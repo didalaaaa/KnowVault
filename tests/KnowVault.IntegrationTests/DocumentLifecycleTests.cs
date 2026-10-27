@@ -60,7 +60,7 @@ namespace KnowVault.IntegrationTests
 				new VectorFilter
 				{
 					TenantId = Guid.Empty,
-					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId
+					KnowledgeBaseIds = [KnowVaultConsts.DefaultKnowledgeBaseId]
 				},
 				10);
 			hits.Should().Contain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
@@ -73,7 +73,7 @@ namespace KnowVault.IntegrationTests
 				new VectorFilter
 				{
 					TenantId = Guid.Empty,
-					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId
+					KnowledgeBaseIds = [KnowVaultConsts.DefaultKnowledgeBaseId]
 				},
 				10);
 			sparseHits.Should().Contain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
@@ -91,7 +91,7 @@ namespace KnowVault.IntegrationTests
 				new VectorFilter
 				{
 					TenantId = Guid.Empty,
-					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId
+					KnowledgeBaseIds = [KnowVaultConsts.DefaultKnowledgeBaseId]
 				},
 				10);
 			remainingHits.Should().NotContain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);
@@ -101,7 +101,7 @@ namespace KnowVault.IntegrationTests
 				new VectorFilter
 				{
 					TenantId = Guid.Empty,
-					KnowledgeBaseId = KnowVaultConsts.DefaultKnowledgeBaseId
+					KnowledgeBaseIds = [KnowVaultConsts.DefaultKnowledgeBaseId]
 				},
 				10);
 			remainingSparseHits.Should().NotContain(x => ChunkPayload.ReadGuid(x.Payload, ChunkPayload.DocumentId) == document.Id);

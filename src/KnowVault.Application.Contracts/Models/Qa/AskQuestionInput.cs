@@ -18,6 +18,11 @@ namespace KnowVault.Application.Contracts
 		/// <summary>重新生成：不插入新的用户消息，历史中剔除上一轮问答；必须带会话 ID。</summary>
 		public bool Regenerate { get; set; }
 
+		/// <summary>
+		/// 可选：本次提问是否启用混合检索；为空时使用服务端配置
+		/// </summary>
+		public bool? HybridEnabled { get; set; }
+
 		[Required]
 		[StringLength(2000)]
 		public string Question { get; set; } = string.Empty;

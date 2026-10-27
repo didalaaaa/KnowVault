@@ -118,7 +118,8 @@ namespace KnowVault.Application
 				// 请求参数优先，其次知识库设置，最后交给全局配置
 				TopK = input.TopK ?? knowledgeBase?.TopK ?? 0,
 				SystemPromptOverride = knowledgeBase?.SystemPrompt,
-				History = history
+				History = history,
+				HybridEnabled = input.HybridEnabled
 			}, cancellationToken);
 
 			var citations = streamResult.Chunks.Select(chunk => new RagCitationDto

@@ -43,6 +43,16 @@ namespace KnowVault.Ai
 		/// 带入提示词的历史消息条数上限（按时间取最近若干条）
 		/// </summary>
 		public int HistoryMaxMessages { get; set; } = 6;
+
+		/// <summary>
+		/// 是否启用混合检索；关闭时只走向量召回
+		/// </summary>
+		public bool HybridEnabled { get; set; } = true;
+
+		/// <summary>
+		/// 混合检索参数
+		/// </summary>
+		public HybridOptions Hybrid { get; set; } = new();
 	}
 
 }

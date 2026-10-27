@@ -18,14 +18,16 @@ namespace KnowVault.Domain
 		public Dictionary<string, object> Payload { get; set; } = [];
 	}
 
-	/// <summary>检索过滤条件（P1 只用租户 + 知识库两个维度）。</summary>
+	/// <summary>检索过滤条件（租户 + 一个或多个知识库）。</summary>
 	public class VectorFilter
 	{
 		/// <summary>租户 ID；调用方须把 null 归一化为 <see cref="Guid.Empty"/>。</summary>
 		public Guid TenantId { get; set; }
 
-		/// <summary>知识库 ID。</summary>
-		public Guid KnowledgeBaseId { get; set; }
+		/// <summary>
+		/// 知识库 ID 集合；空集合表示不查询
+		/// </summary>
+		public IReadOnlyList<Guid> KnowledgeBaseIds { get; set; } = [];
 	}
 
 	/// <summary>检索命中。</summary>

@@ -131,7 +131,9 @@ namespace KnowVault.Tests
 			{
 				TopK = 5,
 				RerankEnabled = rerankEnabled,
-				RerankCandidateCount = 20
+				RerankCandidateCount = 20,
+				// 这组测试锁定 P4 纯向量路径，混合检索由 RagServiceHybridTests 覆盖
+				HybridEnabled = false
 			});
 
 			return new RagService(options, new FakeEmbeddingService(), store, new FakeChatService(), rerank, NullLogger<RagService>.Instance);

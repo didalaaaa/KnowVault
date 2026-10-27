@@ -27,6 +27,27 @@ namespace KnowVault.Ai
 		/// 历史轮次（时间升序，不含本轮提问）
 		/// </summary>
 		public IReadOnlyList<LlmChatMessage> History { get; set; } = [];
+
+		/// <summary>
+		/// 请求级混合检索开关；为空时使用 <see cref="AiOptions.HybridEnabled"/>
+		/// </summary>
+		public bool? HybridEnabled { get; set; }
+	}
+
+	/// <summary>
+	/// 检索阶段的结果：引用切片与实际参与召回的查询
+	/// </summary>
+	public class RagRetrievalResult
+	{
+		/// <summary>
+		/// 检索并按需重排后的切片，顺序即引用编号顺序
+		/// </summary>
+		public required IReadOnlyList<RagRetrievedChunk> Chunks { get; init; }
+
+		/// <summary>
+		/// 实际参与召回的查询（第一条为原问题，其余为改写变体）
+		/// </summary>
+		public required IReadOnlyList<string> RewriteQueries { get; init; }
 	}
 
 	/// <summary>RAG 回答。</summary>

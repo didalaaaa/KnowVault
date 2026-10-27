@@ -90,6 +90,8 @@ namespace KnowVault.EntityFrameworkCore
 			int topK,
 			CancellationToken cancellationToken = default)
 		{
+			if (filter.KnowledgeBaseIds.Count == 0) return [];
+
 			await EnsureCollectionAsync(cancellationToken);
 
 			// 用新版 Query API（1.19 起 SearchAsync 已标记过时）；显式开启 payload 回传
@@ -111,7 +113,7 @@ namespace KnowVault.EntityFrameworkCore
 			int topK,
 			CancellationToken cancellationToken = default)
 		{
-			if (sparseVector.IsEmpty || topK <= 0) return [];
+			if (sparseVector.IsEmpty || topK <= 0 || filter.KnowledgeBaseIds.Count == 0) return [];
 
 			await EnsureCollectionAsync(cancellationToken);
 
@@ -199,14 +201,22 @@ namespace KnowVault.EntityFrameworkCore
 
 		// 单租户运行时 filter.TenantId 为 Guid.Empty，与写入侧归一化保持一致
 		// 注意：GUID 以 keyword（字符串）落 payload，因此必须用 MatchKeyword 而不是数值型 Match
-		private static Filter BuildFilter(VectorFilter filter) => new()
+		private static Filter BuildFilter(VectorFilter filter)
 		{
-			Must =
+			var result = new Filter();
+			result.Must.Add(MatchKeyword(ChunkPayload.TenantId, filter.TenantId.ToString()));
+
+			if (filter.KnowledgeBaseIds.Count == 1)
 			{
-				MatchKeyword(ChunkPayload.TenantId, filter.TenantId.ToString()),
-				MatchKeyword(ChunkPayload.KnowledgeBaseId, filter.KnowledgeBaseId.ToString())
+				result.Must.Add(MatchKeyword(ChunkPayload.KnowledgeBaseId, filter.KnowledgeBaseIds[0].ToString()));
 			}
-		};
+			else
+			{
+				result.Must.Add(Match(ChunkPayload.KnowledgeBaseId, [.. filter.KnowledgeBaseIds.Select(id => id.ToString())]));
+			}
+
+			return result;
+		}
 
 		private static Vectors BuildVectors(VectorPoint point)
 		{
