@@ -126,7 +126,7 @@ namespace KnowVault.Application
 			UserName = user.UserName ?? string.Empty,
 			DisplayName = user.Name,
 			Email = user.Email,
-			Roles = roles.ToList()
+			Roles = [.. roles]
 		};
 
 		private static void EnsureSucceeded(IdentityResult result, string action)

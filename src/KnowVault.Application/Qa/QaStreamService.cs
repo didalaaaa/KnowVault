@@ -127,9 +127,7 @@ namespace KnowVault.Application
 				Title = chunk.DocumentTitle,
 				ChunkIndex = chunk.ChunkIndex,
 				Score = chunk.Score,
-				Snippet = chunk.Content.Length <= CitationSnippetLength
-					? chunk.Content
-					: chunk.Content[..CitationSnippetLength],
+				Snippet = chunk.Content.Length <= CitationSnippetLength ? chunk.Content : chunk.Content[..CitationSnippetLength],
 				HeadingPath = string.IsNullOrWhiteSpace(chunk.HeadingPath) ? null : chunk.HeadingPath
 			}).ToList();
 

@@ -16,7 +16,9 @@ namespace KnowVault.Domain
 
 		public string Content { get; set; } = default!;
 
-		/// <summary>引用溯源（JSON 数组：documentId/title/chunkIndex/score），可空。</summary>
+		/// <summary>
+		/// 引用溯源（JSON 数组：documentId/title/chunkIndex/score），可空
+		/// </summary>
 		public string? CitationsJson { get; set; }
 
 		/// <summary>
