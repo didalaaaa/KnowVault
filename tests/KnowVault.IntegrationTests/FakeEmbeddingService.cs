@@ -8,12 +8,15 @@ namespace KnowVault.IntegrationTests
 	public sealed class FakeEmbeddingService : IEmbeddingService
 	{
 		/// <inheritdoc />
-		public Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+		public Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
 		{
-			IReadOnlyList<float[]> vectors = texts
-				.Select(_ => Enumerable.Repeat(0.01f, 1024).ToArray())
-				.ToList();
-			return Task.FromResult(vectors);
+			return Task.FromResult(new EmbeddingResult
+			{
+				Vectors = [.. texts.Select(_ => Enumerable.Repeat(0.01f, 1024).ToArray())],
+				Model = "fake-embedding",
+				TotalTokens = texts.Sum(text => text.Length),
+				IsEstimated = true
+			});
 		}
 	}
 }

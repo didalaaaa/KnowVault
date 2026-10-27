@@ -62,6 +62,8 @@ namespace KnowVault.EntityFrameworkCore
 			var configuration = context.Services.GetConfiguration();
 			Configure<QdrantOptions>(configuration.GetSection("Qdrant"));
 			Configure<MinioOptions>(configuration.GetSection("Minio"));
+			// AI 计价（元 / 百万 token），用量记录写入时按当前价格计算估算费用
+			Configure<AiPricingOptions>(configuration.GetSection("Ai:Pricing"));
 
 			// Qdrant 官方 gRPC 客户端（单例，内部持有 channel）
 			context.Services.AddSingleton(sp =>

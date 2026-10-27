@@ -41,12 +41,19 @@ namespace KnowVault.Ai
 		}
 
 		/// <inheritdoc />
-		public async Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
+		public async Task<RerankServiceResult> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 		{
 			using var activity = ActivitySource.StartActivity("rerank.rerank");
 			activity?.SetTag("rerank.document_count", documents.Count);
 
-			if (documents.Count == 0) return [];
+			if (documents.Count == 0)
+			{
+				return new RerankServiceResult
+				{
+					Results = [],
+					Model = _options.SiliconFlowRerankModel
+				};
+			}
 
 			EnsureConfigured();
 
@@ -71,8 +78,17 @@ namespace KnowVault.Ai
 			}
 
 			var results = SiliconFlowRerankResponseParser.Parse(body);
+			var inputTokens = SiliconFlowRerankResponseParser.ParseInputTokens(body);
+			var totalTokens = inputTokens ?? TokenEstimator.Estimate(query) + documents.Sum(TokenEstimator.Estimate);
+
 			_logger.LogDebug("SiliconFlow rerank 完成：候选 {Candidates} 条，返回 {Count} 条", documents.Count, results.Count);
-			return results;
+			return new RerankServiceResult
+			{
+				Results = results,
+				Model = _options.SiliconFlowRerankModel,
+				TotalTokens = totalTokens,
+				IsEstimated = inputTokens is null
+			};
 		}
 
 		private void EnsureConfigured()

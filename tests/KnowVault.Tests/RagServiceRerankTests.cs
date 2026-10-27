@@ -143,6 +143,7 @@ namespace KnowVault.Tests
 				new FakeChatService(),
 				rerank,
 				new FakeQueryRewriteService(),
+				new FakeUsageRecorder(),
 				NullLogger<RagService>.Instance);
 		}
 
@@ -162,8 +163,13 @@ namespace KnowVault.Tests
 
 		private sealed class FakeEmbeddingService : IEmbeddingService
 		{
-			public Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
-				=> Task.FromResult<IReadOnlyList<float[]>>([new float[8]]);
+			public Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+				=> Task.FromResult(new EmbeddingResult
+				{
+					Vectors = [new float[8]],
+					Model = "fake-embedding",
+					TotalTokens = 5
+				});
 		}
 
 		private sealed class FakeVectorStore : IVectorStore
@@ -240,12 +246,28 @@ namespace KnowVault.Tests
 			/// <summary>最后一次请求的候选条数，用于断言候选全量交给重排打分</summary>
 			public int LastCandidateCount { get; private set; }
 
-			public Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
+			public Task<RerankServiceResult> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 			{
 				CallCount++;
 				LastCandidateCount = documents.Count;
 				if (_exception is not null) throw _exception;
-				return Task.FromResult(_results!);
+				return Task.FromResult(new RerankServiceResult
+				{
+					Results = _results!,
+					Model = "fake-rerank",
+					TotalTokens = 10
+				});
+			}
+		}
+
+		private sealed class FakeUsageRecorder : IAiUsageRecorder
+		{
+			public List<AiUsageEntry> Entries { get; } = [];
+
+			public Task RecordAsync(AiUsageEntry entry, CancellationToken cancellationToken = default)
+			{
+				Entries.Add(entry);
+				return Task.CompletedTask;
 			}
 		}
 	}

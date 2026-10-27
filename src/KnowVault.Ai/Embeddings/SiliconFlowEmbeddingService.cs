@@ -43,7 +43,7 @@ namespace KnowVault.Ai
 		}
 
 		/// <inheritdoc />
-		public async Task<IReadOnlyList<float[]>> EmbedAsync(
+		public async Task<EmbeddingResult> EmbedAsync(
 			IReadOnlyList<string> texts,
 			CancellationToken cancellationToken = default)
 		{
@@ -52,21 +52,39 @@ namespace KnowVault.Ai
 
 			if (texts.Count == 0)
 			{
-				return Array.Empty<float[]>();
+				return new EmbeddingResult
+				{
+					Vectors = [],
+					Model = _options.SiliconFlowEmbeddingModel
+				};
 			}
 
 			EnsureConfigured();
 
 			var all = new List<float[]>(texts.Count);
+			var totalTokens = 0;
+			var isEstimated = false;
+			string? responseModel = null;
+
 			foreach (var batch in texts.Chunk(MaxBatchSize))
 			{
-				all.AddRange(await EmbedBatchAsync(batch, cancellationToken));
+				var batchResult = await EmbedBatchAsync(batch, cancellationToken);
+				all.AddRange(batchResult.Vectors);
+				totalTokens += batchResult.Tokens;
+				isEstimated |= batchResult.IsEstimated;
+				responseModel ??= batchResult.Model;
 			}
 
-			return all;
+			return new EmbeddingResult
+			{
+				Vectors = all,
+				Model = responseModel ?? _options.SiliconFlowEmbeddingModel,
+				TotalTokens = totalTokens,
+				IsEstimated = isEstimated
+			};
 		}
 
-		private async Task<List<float[]>> EmbedBatchAsync(string[] batch, CancellationToken cancellationToken)
+		private async Task<EmbeddingBatchResult> EmbedBatchAsync(string[] batch, CancellationToken cancellationToken)
 		{
 			var client = _httpClientFactory.CreateClient(nameof(SiliconFlowEmbeddingService));
 			using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.SiliconFlowBaseUrl.TrimEnd('/')}/embeddings");
@@ -87,7 +105,8 @@ namespace KnowVault.Ai
 			}
 
 			using var document = JsonDocument.Parse(body);
-			var data = document.RootElement.GetProperty("data");
+			var root = document.RootElement;
+			var data = root.GetProperty("data");
 			var ordered = new float[data.GetArrayLength()][];
 			foreach (var item in data.EnumerateArray())
 			{
@@ -101,9 +120,30 @@ namespace KnowVault.Ai
 				throw new AiCallException("SiliconFlow embedding 响应缺少部分 index，无法保证顺序对齐。");
 			}
 
+			var model = root.TryGetProperty("model", out var modelElement) && modelElement.ValueKind == JsonValueKind.String
+				? modelElement.GetString() ?? _options.SiliconFlowEmbeddingModel
+				: _options.SiliconFlowEmbeddingModel;
+
+			var tokens = 0;
+			var isEstimated = true;
+			if (root.TryGetProperty("usage", out var usage)
+				&& usage.TryGetProperty("total_tokens", out var totalElement)
+				&& totalElement.TryGetInt32(out var totalTokens))
+			{
+				tokens = totalTokens;
+				isEstimated = false;
+			}
+			else
+			{
+				// 部分代理端点不回传 usage：按输入文本估算，并在用量记录里标记
+				tokens = batch.Sum(TokenEstimator.Estimate);
+			}
+
 			_logger.LogDebug("SiliconFlow embedding 完成一批：{Count} 条，维度 {Dimension}", batch.Length, ordered[0].Length);
-			return ordered.ToList();
+			return new EmbeddingBatchResult(ordered, model, tokens, isEstimated);
 		}
+
+		private sealed record EmbeddingBatchResult(IReadOnlyList<float[]> Vectors, string Model, int Tokens, bool IsEstimated);
 
 		private void EnsureConfigured()
 		{

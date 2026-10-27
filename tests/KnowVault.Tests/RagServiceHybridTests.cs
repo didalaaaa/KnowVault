@@ -267,6 +267,59 @@ namespace KnowVault.Tests
 		}
 
 		/// <summary>
+		/// 单库问答的用量记录带同一个 AskId 与知识库 ID
+		/// </summary>
+		[Fact]
+		public async Task Usage_entries_carry_ask_id_and_single_knowledge_base()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var usage = new FakeUsageRecorder();
+			var service = CreateService(store, usageRecorder: usage);
+			var askId = Guid.NewGuid();
+			var conversationId = Guid.NewGuid();
+
+			await service.AnswerAsync(new RagRequest
+			{
+				Question = "问题",
+				TopK = 1,
+				KnowledgeBaseIds = [KnowledgeBaseId],
+				ConversationId = conversationId,
+				AskId = askId
+			});
+
+			Assert.Contains(usage.Entries, entry => entry.Operation == AiOperationEnum.Embedding);
+			Assert.Contains(usage.Entries, entry => entry.Operation == AiOperationEnum.Chat);
+			Assert.All(usage.Entries, entry =>
+			{
+				Assert.Equal(askId, entry.AskId);
+				Assert.Equal(conversationId, entry.ConversationId);
+				Assert.Equal(KnowledgeBaseId, entry.KnowledgeBaseId);
+				Assert.False(string.IsNullOrWhiteSpace(entry.Model));
+			});
+		}
+
+		/// <summary>
+		/// 多库问答不归属单个知识库，用量记录的知识库 ID 为空
+		/// </summary>
+		[Fact]
+		public async Task Usage_entries_leave_knowledge_base_empty_for_multi_knowledge_base_requests()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var usage = new FakeUsageRecorder();
+			var service = CreateService(store, usageRecorder: usage);
+
+			await service.AnswerAsync(new RagRequest
+			{
+				Question = "问题",
+				TopK = 1,
+				KnowledgeBaseIds = [KnowledgeBaseId, Guid.NewGuid()]
+			});
+
+			Assert.NotEmpty(usage.Entries);
+			Assert.All(usage.Entries, entry => Assert.Null(entry.KnowledgeBaseId));
+		}
+
+		/// <summary>
 		/// 构造被测服务（配置与日志用最简实现）
 		/// </summary>
 		/// <param name="store">假向量库</param>
@@ -274,6 +327,10 @@ namespace KnowVault.Tests
 		/// <param name="hybridEnabled">是否启用混合检索</param>
 		/// <param name="rerankEnabled">是否启用重排</param>
 		/// <param name="rerank">假重排服务</param>
+		/// <param name="embedding">假向量化服务</param>
+		/// <param name="rewrite">假改写服务</param>
+		/// <param name="rewriteEnabled">是否启用改写</param>
+		/// <param name="usageRecorder">假用量记录器</param>
 		/// <returns>被测的 RagService</returns>
 		private static RagService CreateService(
 			FakeVectorStore store,
@@ -283,7 +340,8 @@ namespace KnowVault.Tests
 			FakeRerankService? rerank = null,
 			FakeEmbeddingService? embedding = null,
 			FakeQueryRewriteService? rewrite = null,
-			bool rewriteEnabled = false)
+			bool rewriteEnabled = false,
+			FakeUsageRecorder? usageRecorder = null)
 		{
 			var options = Options.Create(new AiOptions
 			{
@@ -302,6 +360,7 @@ namespace KnowVault.Tests
 				new FakeChatService(),
 				rerank ?? new FakeRerankService([]),
 				rewrite ?? new FakeQueryRewriteService(),
+				usageRecorder ?? new FakeUsageRecorder(),
 				NullLogger<RagService>.Instance);
 		}
 
@@ -325,10 +384,15 @@ namespace KnowVault.Tests
 		{
 			public IReadOnlyList<string> LastTexts { get; private set; } = [];
 
-			public Task<IReadOnlyList<float[]>> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
+			public Task<EmbeddingResult> EmbedAsync(IReadOnlyList<string> texts, CancellationToken cancellationToken = default)
 			{
 				LastTexts = texts;
-				return Task.FromResult<IReadOnlyList<float[]>>([.. texts.Select(_ => new float[8])]);
+				return Task.FromResult(new EmbeddingResult
+				{
+					Vectors = [.. texts.Select(_ => new float[8])],
+					Model = "fake-embedding",
+					TotalTokens = texts.Sum(text => text.Length)
+				});
 			}
 		}
 
@@ -443,10 +507,26 @@ namespace KnowVault.Tests
 
 			public int CallCount { get; private set; }
 
-			public Task<IReadOnlyList<RerankResult>> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
+			public Task<RerankServiceResult> RerankAsync(string query, IReadOnlyList<string> documents, CancellationToken cancellationToken = default)
 			{
 				CallCount++;
-				return Task.FromResult(_results);
+				return Task.FromResult(new RerankServiceResult
+				{
+					Results = _results,
+					Model = "fake-rerank",
+					TotalTokens = documents.Count
+				});
+			}
+		}
+
+		private sealed class FakeUsageRecorder : IAiUsageRecorder
+		{
+			public List<AiUsageEntry> Entries { get; } = [];
+
+			public Task RecordAsync(AiUsageEntry entry, CancellationToken cancellationToken = default)
+			{
+				Entries.Add(entry);
+				return Task.CompletedTask;
 			}
 		}
 	}

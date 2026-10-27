@@ -24,6 +24,7 @@ namespace KnowVault.Ingest
 		private readonly IDocumentChunker _chunker;
 		private readonly IEmbeddingService _embeddingService;
 		private readonly IVectorStore _vectorStore;
+		private readonly IAiUsageRecorder _usageRecorder;
 		private readonly IGuidGenerator _guidGenerator;
 		private readonly IOptions<IngestOptions> _ingestOptions;
 		private readonly ILogger<DocumentProcessor> _logger;
@@ -37,6 +38,7 @@ namespace KnowVault.Ingest
 		/// <param name="chunker">切片器。</param>
 		/// <param name="embeddingService">向量化服务。</param>
 		/// <param name="vectorStore">向量库。</param>
+		/// <param name="usageRecorder">AI 用量记录器。</param>
 		/// <param name="guidGenerator">GUID 生成器（ABP 约定）。</param>
 		/// <param name="ingestOptions">全局摄入参数（知识库未设置时回落）</param>
 		/// <param name="logger">日志。</param>
@@ -49,6 +51,7 @@ namespace KnowVault.Ingest
 			IDocumentChunker chunker,
 			IEmbeddingService embeddingService,
 			IVectorStore vectorStore,
+			IAiUsageRecorder usageRecorder,
 			IGuidGenerator guidGenerator,
 			IOptions<IngestOptions> ingestOptions,
 			ILogger<DocumentProcessor> logger)
@@ -61,6 +64,7 @@ namespace KnowVault.Ingest
 			_chunker = chunker;
 			_embeddingService = embeddingService;
 			_vectorStore = vectorStore;
+			_usageRecorder = usageRecorder;
 			_guidGenerator = guidGenerator;
 			_ingestOptions = ingestOptions;
 			_logger = logger;
@@ -111,7 +115,22 @@ namespace KnowVault.Ingest
 				throw new InvalidOperationException("未从文档中解析出任何文本内容。");
 			}
 
-			var vectors = await _embeddingService.EmbedAsync(chunks.Select(c => c.Content).ToList(), cancellationToken);
+			var stopwatch = Stopwatch.StartNew();
+			var embedding = await _embeddingService.EmbedAsync(chunks.Select(c => c.Content).ToList(), cancellationToken);
+			stopwatch.Stop();
+			var vectors = embedding.Vectors;
+
+			// 摄取按文档聚合：一次 EmbedAsync 只记一条，AskId 为空
+			await _usageRecorder.RecordAsync(new AiUsageEntry
+			{
+				KnowledgeBaseId = document.KnowledgeBaseId,
+				DocumentId = document.Id,
+				Operation = AiOperationEnum.Embedding,
+				Model = embedding.Model,
+				PromptTokens = embedding.TotalTokens,
+				LatencyMs = (int)Math.Min(stopwatch.ElapsedMilliseconds, int.MaxValue),
+				IsEstimated = embedding.IsEstimated
+			}, cancellationToken);
 
 			// 单租户运行时 TenantId 为 null：payload 必须归一化成 Guid.Empty，否则 Qdrant 过滤恒不命中
 			var tenantId = document.TenantId ?? Guid.Empty;

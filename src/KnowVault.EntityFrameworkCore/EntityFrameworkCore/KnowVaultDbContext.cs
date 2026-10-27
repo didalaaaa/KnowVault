@@ -67,6 +67,7 @@ namespace KnowVault.EntityFrameworkCore
 		public DbSet<Conversation> Conversations { get; set; }
 		public DbSet<Message> Messages { get; set; }
 		public DbSet<MessageFeedback> MessageFeedbacks { get; set; }
+		public DbSet<AiUsageRecord> AiUsageRecords { get; set; }
 
 		#endregion KnowVault 业务实体
 

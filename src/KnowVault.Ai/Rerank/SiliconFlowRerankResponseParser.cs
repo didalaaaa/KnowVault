@@ -34,5 +34,20 @@ namespace KnowVault.Ai
 			// 服务端当前就按分数降序返回，但排序是我们的契约，不能依赖对端行为
 			return [.. results.OrderByDescending(result => result.Score)];
 		}
+
+		/// <summary>
+		/// 解析重排响应中的输入 token 用量
+		/// </summary>
+		/// <param name="json">接口返回的 JSON 文本</param>
+		/// <returns>输入 token 数；响应没有该字段时返回 <c>null</c></returns>
+		public static int? ParseInputTokens(string json)
+		{
+			using var document = JsonDocument.Parse(json);
+			if (!document.RootElement.TryGetProperty("meta", out var meta)) return null;
+			if (!meta.TryGetProperty("tokens", out var tokens)) return null;
+			if (!tokens.TryGetProperty("input_tokens", out var input) || !input.TryGetInt32(out var value)) return null;
+
+			return value;
+		}
 	}
 }

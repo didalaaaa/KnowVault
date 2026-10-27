@@ -64,5 +64,27 @@ namespace KnowVault.Tests
 
 			Assert.Empty(results);
 		}
+
+		/// <summary>
+		/// 从 meta.tokens.input_tokens 解析输入 token 用量
+		/// </summary>
+		[Fact]
+		public void ParseInputTokens_reads_meta_tokens()
+		{
+			const string json = """
+			{"id":"rerank-abc","results":[{"index":0,"relevance_score":0.9}],"meta":{"tokens":{"input_tokens":1234,"output_tokens":0}}}
+			""";
+
+			Assert.Equal(1234, SiliconFlowRerankResponseParser.ParseInputTokens(json));
+		}
+
+		/// <summary>
+		/// 响应缺少 meta.tokens 时返回 null
+		/// </summary>
+		[Fact]
+		public void ParseInputTokens_returns_null_when_missing()
+		{
+			Assert.Null(SiliconFlowRerankResponseParser.ParseInputTokens("""{"id":"rerank-abc","results":[]}"""));
+		}
 	}
 }

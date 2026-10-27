@@ -78,7 +78,7 @@ namespace KnowVault.Application
 			// 重新生成要沿用当前会话与上一轮问题，没有会话 ID 就无从定位
 			if (input.Regenerate && !input.ConversationId.HasValue) throw new UserFriendlyException("重新生成需要指定会话");
 
-			// 同一次问答的各阶段记录共用一个 AskId（用量记录在 T5 落库）
+			// 同一次问答的各阶段记录共用一个 AskId，便于用量聚合
 			var askId = GuidGenerator.Create();
 
 			var stopwatch = Stopwatch.StartNew();
@@ -123,6 +123,7 @@ namespace KnowVault.Application
 				KnowledgeBaseIds = scope.Ids,
 				TenantId = CurrentTenant.Id ?? Guid.Empty,
 				ConversationId = conversation.Id,
+				AskId = askId,
 				Question = input.Question,
 				// 请求参数优先，其次单库设置，最后交给全局配置
 				TopK = input.TopK ?? knowledgeBase?.TopK ?? 0,

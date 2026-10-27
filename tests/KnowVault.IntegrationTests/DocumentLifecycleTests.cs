@@ -56,6 +56,12 @@ namespace KnowVault.IntegrationTests
 			var chunks = await chunkRepository.GetListAsync(x => x.DocumentId == document.Id);
 			chunks.Should().NotBeEmpty();
 
+			var usageRepository = GetRequiredService<IRepository<AiUsageRecord, Guid>>();
+			var usages = await usageRepository.GetListAsync(x => x.DocumentId == document.Id);
+			usages.Should().ContainSingle(x => x.Operation == AiOperationEnum.Embedding);
+			usages.Should().OnlyContain(x => x.KnowledgeBaseId == KnowVaultConsts.DefaultKnowledgeBaseId);
+			usages.Should().OnlyContain(x => x.TotalTokens > 0);
+
 			var hits = await vectorStore.SearchAsync(
 				Enumerable.Repeat(0.01f, 1024).ToArray(),
 				new VectorFilter

@@ -29,6 +29,7 @@ namespace KnowVault.Ai
 		private readonly ILlmChatService _chatService;
 		private readonly IRerankService _rerankService;
 		private readonly IQueryRewriteService _queryRewriteService;
+		private readonly IAiUsageRecorder _usageRecorder;
 		private readonly ILogger<RagService> _logger;
 
 		/// <summary>
@@ -40,6 +41,7 @@ namespace KnowVault.Ai
 		/// <param name="chatService">生成服务</param>
 		/// <param name="rerankService">重排服务</param>
 		/// <param name="queryRewriteService">查询改写服务</param>
+		/// <param name="usageRecorder">AI 用量记录器</param>
 		/// <param name="logger">日志</param>
 		public RagService(
 			IOptions<AiOptions> options,
@@ -48,6 +50,7 @@ namespace KnowVault.Ai
 			ILlmChatService chatService,
 			IRerankService rerankService,
 			IQueryRewriteService queryRewriteService,
+			IAiUsageRecorder usageRecorder,
 			ILogger<RagService> logger)
 		{
 			_options = options.Value;
@@ -56,6 +59,7 @@ namespace KnowVault.Ai
 			_chatService = chatService;
 			_rerankService = rerankService;
 			_queryRewriteService = queryRewriteService;
+			_usageRecorder = usageRecorder;
 			_logger = logger;
 		}
 
@@ -95,7 +99,7 @@ namespace KnowVault.Ai
 			{
 				Chunks = retrieval.Chunks,
 				RewriteQueries = [.. retrieval.RewriteQueries.Skip(1)],
-				Deltas = StreamWithEmptyCheckAsync(system, messages, cancellationToken)
+				Deltas = StreamWithEmptyCheckAsync(system, messages, request, cancellationToken)
 			};
 		}
 
@@ -131,8 +135,8 @@ namespace KnowVault.Ai
 			};
 
 			var chunks = hybridEnabled || queries.Count > 1
-				? await RetrieveHybridAsync(queries, filter, candidateCount, hybridEnabled, cancellationToken)
-				: await RetrieveDenseAsync(request.Question, filter, candidateCount, cancellationToken);
+				? await RetrieveHybridAsync(request, queries, filter, candidateCount, hybridEnabled, cancellationToken)
+				: await RetrieveDenseAsync(request, filter, candidateCount, cancellationToken);
 
 			activity?.SetTag("rag.hit_count", chunks.Count);
 
@@ -141,7 +145,7 @@ namespace KnowVault.Ai
 				request.KnowledgeBaseIds.Count, chunks.Count, topK, candidateCount, hybridEnabled, queries.Count - 1);
 
 			// 重排只打分（top_n 传全量），保留前 topK 条由本地负责
-			var reranked = await RerankAsync(request.Question, chunks, cancellationToken);
+			var reranked = await RerankAsync(request, chunks, cancellationToken);
 			return new RagRetrievalResult
 			{
 				Chunks = [.. reranked.Take(topK)],
@@ -152,15 +156,15 @@ namespace KnowVault.Ai
 		/// <summary>
 		/// 纯向量召回（P4 行为）：只 embed 原问题并做一次 dense 检索
 		/// </summary>
-		/// <param name="question">用户问题。</param>
+		/// <param name="request">提问入参。</param>
 		/// <param name="filter">检索过滤条件。</param>
 		/// <param name="limit">召回条数。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>按相似度降序的切片。</returns>
-		private async Task<List<RagRetrievedChunk>> RetrieveDenseAsync(string question, VectorFilter filter, int limit, CancellationToken cancellationToken)
+		private async Task<List<RagRetrievedChunk>> RetrieveDenseAsync(RagRequest request, VectorFilter filter, int limit, CancellationToken cancellationToken)
 		{
-			var vectors = await _embeddingService.EmbedAsync([question], cancellationToken);
-			var hits = await _vectorStore.SearchAsync(vectors[0], filter, limit, cancellationToken);
+			var embedding = await EmbedAsync([request.Question], request, cancellationToken);
+			var hits = await _vectorStore.SearchAsync(embedding.Vectors[0], filter, limit, cancellationToken);
 
 			return [.. hits.Select(ToChunk)];
 		}
@@ -168,6 +172,7 @@ namespace KnowVault.Ai
 		/// <summary>
 		/// 混合召回：每条查询分别走 dense 与 sparse，再按加权 RRF 融合
 		/// </summary>
+		/// <param name="request">提问入参。</param>
 		/// <param name="queries">参与召回的查询（第一条为原问题）。</param>
 		/// <param name="filter">检索过滤条件。</param>
 		/// <param name="candidateCount">送重排的候选条数。</param>
@@ -175,6 +180,7 @@ namespace KnowVault.Ai
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>按融合得分降序的候选切片。</returns>
 		private async Task<List<RagRetrievedChunk>> RetrieveHybridAsync(
+			RagRequest request,
 			IReadOnlyList<string> queries,
 			VectorFilter filter,
 			int candidateCount,
@@ -188,7 +194,7 @@ namespace KnowVault.Ai
 			var rrfK = Math.Clamp(hybrid.RrfK, MinRrfK, MaxRrfK);
 			var perQueryLimit = Math.Clamp(hybrid.PerQueryCandidateCount, MinPerQueryCandidateCount, MaxPerQueryCandidateCount);
 
-			var vectors = await _embeddingService.EmbedAsync(queries, cancellationToken);
+			var embedding = await EmbedAsync(queries, request, cancellationToken);
 			var chunksById = new Dictionary<Guid, RagRetrievedChunk>();
 			var branches = new List<RrfBranch>();
 			var sparseAvailable = keywordWeight > 0;
@@ -199,7 +205,7 @@ namespace KnowVault.Ai
 
 				if (denseWeight > 0)
 				{
-					var denseHits = await _vectorStore.SearchAsync(vectors[index], filter, perQueryLimit, cancellationToken);
+					var denseHits = await _vectorStore.SearchAsync(embedding.Vectors[index], filter, perQueryLimit, cancellationToken);
 					branches.Add(new RrfBranch
 					{
 						Ids = [.. denseHits.Select(hit => hit.Id)],
@@ -283,8 +289,25 @@ namespace KnowVault.Ai
 
 			try
 			{
+				var stopwatch = Stopwatch.StartNew();
 				var result = await _queryRewriteService.RewriteAsync(request.Question, request.History, cancellationToken);
-				return result.Queries.Count > maxVariants ? [.. result.Queries.Take(maxVariants)] : result.Queries;
+				stopwatch.Stop();
+
+				var variants = result.Queries.Count > maxVariants ? [.. result.Queries.Take(maxVariants)] : result.Queries;
+				await _usageRecorder.RecordAsync(new AiUsageEntry
+				{
+					KnowledgeBaseId = ResolveUsageKnowledgeBaseId(request),
+					ConversationId = NullIfEmpty(request.ConversationId),
+					AskId = NullIfEmpty(request.AskId),
+					Operation = AiOperationEnum.QueryRewrite,
+					Model = result.Model,
+					PromptTokens = result.Usage?.PromptTokens ?? TokenEstimator.Estimate(request.Question),
+					CompletionTokens = result.Usage?.CompletionTokens ?? variants.Sum(TokenEstimator.Estimate),
+					LatencyMs = ToMilliseconds(stopwatch),
+					IsEstimated = result.Usage is null
+				}, cancellationToken);
+
+				return variants;
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
@@ -299,44 +322,82 @@ namespace KnowVault.Ai
 		/// </summary>
 		/// <param name="systemPrompt">系统提示词。</param>
 		/// <param name="messages">完整对话消息。</param>
+		/// <param name="request">提问入参（用于用量关联）。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>增量文本流；usage 帧原样透传。</returns>
 		/// <exception cref="AiCallException">模型没有产出任何文本。</exception>
-		private async IAsyncEnumerable<LlmStreamChunk> StreamWithEmptyCheckAsync(string systemPrompt, IReadOnlyList<LlmChatMessage> messages, [EnumeratorCancellation] CancellationToken cancellationToken)
+		private async IAsyncEnumerable<LlmStreamChunk> StreamWithEmptyCheckAsync(
+			string systemPrompt,
+			IReadOnlyList<LlmChatMessage> messages,
+			RagRequest request,
+			[EnumeratorCancellation] CancellationToken cancellationToken)
 		{
-			var totalLength = 0;
+			var stopwatch = Stopwatch.StartNew();
+			var answer = new StringBuilder();
+			LlmUsage? usage = null;
+
 			await foreach (var chunk in _chatService.CompleteStreamAsync(systemPrompt, messages, cancellationToken).WithCancellation(cancellationToken))
 			{
-				if (!string.IsNullOrEmpty(chunk.Delta)) totalLength += chunk.Delta.Length;
+				if (!string.IsNullOrEmpty(chunk.Delta)) answer.Append(chunk.Delta);
+				if (chunk.Usage is not null) usage = chunk.Usage;
 
 				// 只带 usage 的尾帧要保留给上层记录用量，完全空的帧直接丢弃
 				if (string.IsNullOrEmpty(chunk.Delta) && chunk.Usage is null) continue;
 				yield return chunk;
 			}
 
-			if (totalLength == 0) throw new AiCallException("DeepSeek 返回了空回答。");
+			if (answer.Length == 0) throw new AiCallException("DeepSeek 返回了空回答。");
+
+			stopwatch.Stop();
+			await _usageRecorder.RecordAsync(new AiUsageEntry
+			{
+				KnowledgeBaseId = ResolveUsageKnowledgeBaseId(request),
+				ConversationId = NullIfEmpty(request.ConversationId),
+				AskId = NullIfEmpty(request.AskId),
+				Operation = AiOperationEnum.Chat,
+				Model = _options.DeepSeekModel,
+				PromptTokens = usage?.PromptTokens ?? EstimatePromptTokens(systemPrompt, messages),
+				CompletionTokens = usage?.CompletionTokens ?? TokenEstimator.Estimate(answer.ToString()),
+				LatencyMs = ToMilliseconds(stopwatch),
+				IsEstimated = usage is null
+			}, cancellationToken);
 		}
 
 		/// <summary>
 		/// 调重排服务对候选切片重排，失败时退回向量检索顺序
 		/// </summary>
-		/// <param name="question">用户问题。</param>
+		/// <param name="request">提问入参（用于用量关联）。</param>
 		/// <param name="chunks">向量检索得到的候选切片（按相似度降序）。</param>
 		/// <param name="cancellationToken">取消令牌。</param>
 		/// <returns>按相关性降序的切片；重排不可用时返回原列表。</returns>
-		private async Task<List<RagRetrievedChunk>> RerankAsync(string question, List<RagRetrievedChunk> chunks, CancellationToken cancellationToken)
+		private async Task<List<RagRetrievedChunk>> RerankAsync(RagRequest request, List<RagRetrievedChunk> chunks, CancellationToken cancellationToken)
 		{
 			if (!_options.RerankEnabled || chunks.Count <= 1) return chunks;
 
 			try
 			{
 				var documents = chunks.Select(chunk => chunk.Content).ToList();
-				var results = await _rerankService.RerankAsync(question, documents, cancellationToken);
-				if (results.Count == 0) return chunks;
+				var stopwatch = Stopwatch.StartNew();
+				var result = await _rerankService.RerankAsync(request.Question, documents, cancellationToken);
+				stopwatch.Stop();
 
-				return [.. results
-					.Where(result => result.Index >= 0 && result.Index < chunks.Count)
-					.Select(result => chunks[result.Index].WithScore(result.Score))];
+				await _usageRecorder.RecordAsync(new AiUsageEntry
+				{
+					KnowledgeBaseId = ResolveUsageKnowledgeBaseId(request),
+					ConversationId = NullIfEmpty(request.ConversationId),
+					AskId = NullIfEmpty(request.AskId),
+					Operation = AiOperationEnum.Rerank,
+					Model = result.Model,
+					PromptTokens = result.TotalTokens,
+					LatencyMs = ToMilliseconds(stopwatch),
+					IsEstimated = result.IsEstimated
+				}, cancellationToken);
+
+				if (result.Results.Count == 0) return chunks;
+
+				return [.. result.Results
+					.Where(rank => rank.Index >= 0 && rank.Index < chunks.Count)
+					.Select(rank => chunks[rank.Index].WithScore(rank.Score))];
 			}
 			catch (Exception ex) when (ex is not OperationCanceledException)
 			{
@@ -345,5 +406,57 @@ namespace KnowVault.Ai
 				return chunks;
 			}
 		}
+
+		/// <summary>
+		/// 调向量化服务并记录用量
+		/// </summary>
+		/// <param name="texts">待向量化文本</param>
+		/// <param name="request">提问入参（用于用量关联）</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>向量化结果</returns>
+		private async Task<EmbeddingResult> EmbedAsync(
+			IReadOnlyList<string> texts,
+			RagRequest request,
+			CancellationToken cancellationToken)
+		{
+			var stopwatch = Stopwatch.StartNew();
+			var result = await _embeddingService.EmbedAsync(texts, cancellationToken);
+			stopwatch.Stop();
+
+			await _usageRecorder.RecordAsync(new AiUsageEntry
+			{
+				KnowledgeBaseId = ResolveUsageKnowledgeBaseId(request),
+				ConversationId = NullIfEmpty(request.ConversationId),
+				AskId = NullIfEmpty(request.AskId),
+				Operation = AiOperationEnum.Embedding,
+				Model = result.Model,
+				PromptTokens = result.TotalTokens,
+				LatencyMs = ToMilliseconds(stopwatch),
+				IsEstimated = result.IsEstimated
+			}, cancellationToken);
+
+			return result;
+		}
+
+		/// <summary>
+		/// 估算提示词 token：system 与全部对话消息的文本长度
+		/// </summary>
+		/// <param name="systemPrompt">系统提示词</param>
+		/// <param name="messages">对话消息</param>
+		/// <returns>估算的输入 token 数</returns>
+		private static int EstimatePromptTokens(string systemPrompt, IReadOnlyList<LlmChatMessage> messages)
+			=> TokenEstimator.Estimate(systemPrompt) + messages.Sum(message => TokenEstimator.Estimate(message.Content));
+
+		/// <summary>
+		/// 单库提问记录知识库；多库/全局为空
+		/// </summary>
+		/// <param name="request">提问入参</param>
+		/// <returns>用于用量记录的知识库 ID</returns>
+		private static Guid? ResolveUsageKnowledgeBaseId(RagRequest request)
+			=> request.KnowledgeBaseIds.Count == 1 ? request.KnowledgeBaseIds[0] : null;
+
+		private static Guid? NullIfEmpty(Guid value) => value == Guid.Empty ? null : value;
+
+		private static int ToMilliseconds(Stopwatch stopwatch) => (int)Math.Min(stopwatch.ElapsedMilliseconds, int.MaxValue);
 	}
 }

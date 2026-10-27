@@ -9,8 +9,11 @@ namespace KnowVault.Ai
 		/// <summary>租户 ID（单租户运行时为 Guid.Empty，用于 Qdrant payload 过滤）。</summary>
 		public Guid TenantId { get; set; }
 
-		/// <summary>会话 ID（用于日志追踪；P1 不带多轮历史）。</summary>
+		/// <summary>会话 ID（用于日志追踪与用量关联）。</summary>
 		public Guid ConversationId { get; set; }
+
+		/// <summary>同一次问答的关联 ID，用于串联各阶段用量记录；为空表示不关联。</summary>
+		public Guid AskId { get; set; }
 
 		/// <summary>用户问题。</summary>
 		public string Question { get; set; } = default!;
