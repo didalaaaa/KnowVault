@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\KnowVault.Domain\KnowVault.Domain.csproj" />
     <ProjectReference Include="..\..\src\KnowVault.Ai\KnowVault.Ai.csproj" />
+    <ProjectReference Include="..\..\src\KnowVault.Application\KnowVault.Application.csproj" />
     <ProjectReference Include="..\..\src\KnowVault.Ingest\KnowVault.Ingest.csproj" />
     <ProjectReference Include="..\..\src\KnowVault.EntityFrameworkCore\KnowVault.EntityFrameworkCore.csproj" />
   </ItemGroup>

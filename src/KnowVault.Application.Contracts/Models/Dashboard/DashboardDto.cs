@@ -49,5 +49,10 @@ namespace KnowVault.Application.Contracts
 		/// 最近 7 天每天提问数（含今天，按日期升序）
 		/// </summary>
 		public IReadOnlyList<DashboardTrendPointDto> Last7DayQuestions { get; set; } = [];
+
+		/// <summary>
+		/// 最近 7 天 AI 用量与估算成本
+		/// </summary>
+		public DashboardUsageDto Usage { get; set; } = new();
 	}
 }

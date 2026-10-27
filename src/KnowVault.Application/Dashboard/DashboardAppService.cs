@@ -16,6 +16,8 @@ namespace KnowVault.Application
 		private readonly IRepository<Document, Guid> _documentRepository;
 		private readonly IRepository<Conversation, Guid> _conversationRepository;
 		private readonly IRepository<Message, Guid> _messageRepository;
+		private readonly IRepository<AiUsageRecord, Guid> _usageRepository;
+		private readonly IRepository<KnowledgeBase, Guid> _knowledgeBaseRepository;
 		private readonly KnowledgeBaseAccessChecker _accessChecker;
 		private readonly IClock _clock;
 
@@ -25,18 +27,24 @@ namespace KnowVault.Application
 		/// <param name="documentRepository">文档仓储</param>
 		/// <param name="conversationRepository">会话仓储</param>
 		/// <param name="messageRepository">消息仓储</param>
+		/// <param name="usageRepository">AI 用量记录仓储</param>
+		/// <param name="knowledgeBaseRepository">知识库仓储（取用量表里的库名）</param>
 		/// <param name="accessChecker">知识库访问检查器</param>
 		/// <param name="clock">时钟（按本地日期切分今日与趋势）</param>
 		public DashboardAppService(
 			IRepository<Document, Guid> documentRepository,
 			IRepository<Conversation, Guid> conversationRepository,
 			IRepository<Message, Guid> messageRepository,
+			IRepository<AiUsageRecord, Guid> usageRepository,
+			IRepository<KnowledgeBase, Guid> knowledgeBaseRepository,
 			KnowledgeBaseAccessChecker accessChecker,
 			IClock clock)
 		{
 			_documentRepository = documentRepository;
 			_conversationRepository = conversationRepository;
 			_messageRepository = messageRepository;
+			_usageRepository = usageRepository;
+			_knowledgeBaseRepository = knowledgeBaseRepository;
 			_accessChecker = accessChecker;
 			_clock = clock;
 		}
@@ -66,6 +74,31 @@ namespace KnowVault.Application
 			var today = _clock.Now.Date;
 			var trendStart = today.AddDays(-6);
 
+			// 用量只统计本人问答与可访问库的摄取，旁路记录写入失败也不会影响这里的展示
+			var usageRecords = await _usageRepository.GetListAsync(
+				record => record.CreationTime >= trendStart,
+				cancellationToken: cancellationToken);
+			var visibleUsages = usageRecords
+				.Where(record =>
+					(userId is not null && record.AskId.HasValue && record.CreatorId == userId)
+					|| (record.Operation == AiOperationEnum.Embedding
+						&& record.DocumentId.HasValue
+						&& record.KnowledgeBaseId.HasValue
+						&& accessibleIds.Contains(record.KnowledgeBaseId.Value)))
+				.ToList();
+
+			var usageKnowledgeBaseIds = visibleUsages
+				.Where(record => record.KnowledgeBaseId.HasValue)
+				.Select(record => record.KnowledgeBaseId!.Value)
+				.Distinct()
+				.ToList();
+			IReadOnlyDictionary<Guid, string> knowledgeBaseNames = usageKnowledgeBaseIds.Count == 0
+				? new Dictionary<Guid, string>()
+				: (await _knowledgeBaseRepository.GetListAsync(
+					knowledgeBase => usageKnowledgeBaseIds.Contains(knowledgeBase.Id),
+					cancellationToken: cancellationToken))
+					.ToDictionary(knowledgeBase => knowledgeBase.Id, knowledgeBase => knowledgeBase.Name);
+
 			var questions = messages.Where(message => message.Role == MessageRoleEnum.User).ToList();
 			var latencySamples = messages
 				.Where(message => message.Role == MessageRoleEnum.Assistant
@@ -92,7 +125,8 @@ namespace KnowVault.Application
 						Date = date,
 						Count = questions.Count(question => question.CreationTime.Date == date)
 					};
-				})]
+				})],
+				Usage = AiUsageAggregator.Aggregate(visibleUsages, knowledgeBaseNames, today)
 			};
 		}
 	}
