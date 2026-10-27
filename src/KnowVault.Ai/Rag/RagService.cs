@@ -77,6 +77,7 @@ namespace KnowVault.Ai
 				Citations = [..streamResult.Chunks.Select(chunk => new RagCitation
 				{
 					DocumentId = chunk.DocumentId,
+					KnowledgeBaseId = chunk.KnowledgeBaseId,
 					Title = chunk.DocumentTitle,
 					ChunkIndex = chunk.ChunkIndex,
 					Score = chunk.Score
@@ -102,7 +103,8 @@ namespace KnowVault.Ai
 		public async Task<RagRetrievalResult> RetrieveAsync(RagRequest request, CancellationToken cancellationToken = default)
 		{
 			using var activity = ActivitySource.StartActivity("rag.retrieve");
-			activity?.SetTag("rag.knowledge_base_id", request.KnowledgeBaseId);
+			activity?.SetTag("rag.knowledge_base_ids", string.Join(",", request.KnowledgeBaseIds));
+			activity?.SetTag("rag.knowledge_base_count", request.KnowledgeBaseIds.Count);
 
 			// top-k 上限 8（TECH_STACK §9：top-k≈5–8）
 			var topK = Math.Clamp(request.TopK <= 0 ? _options.TopK : request.TopK, 1, 8);
@@ -125,7 +127,7 @@ namespace KnowVault.Ai
 			var filter = new VectorFilter
 			{
 				TenantId = request.TenantId,
-				KnowledgeBaseIds = [request.KnowledgeBaseId]
+				KnowledgeBaseIds = request.KnowledgeBaseIds
 			};
 
 			var chunks = hybridEnabled || queries.Count > 1
@@ -135,8 +137,8 @@ namespace KnowVault.Ai
 			activity?.SetTag("rag.hit_count", chunks.Count);
 
 			_logger.LogInformation(
-				"检索完成：知识库 {KnowledgeBaseId} 命中 {Count} 个片段（topK={TopK}，候选 {CandidateCount}，混合 {Hybrid}，改写 {RewriteCount}）",
-				request.KnowledgeBaseId, chunks.Count, topK, candidateCount, hybridEnabled, queries.Count - 1);
+				"检索完成：知识库 {KnowledgeBaseCount} 个命中 {Count} 个片段（topK={TopK}，候选 {CandidateCount}，混合 {Hybrid}，改写 {RewriteCount}）",
+				request.KnowledgeBaseIds.Count, chunks.Count, topK, candidateCount, hybridEnabled, queries.Count - 1);
 
 			// 重排只打分（top_n 传全量），保留前 topK 条由本地负责
 			var reranked = await RerankAsync(request.Question, chunks, cancellationToken);
@@ -257,6 +259,7 @@ namespace KnowVault.Ai
 		private static RagRetrievedChunk ToChunk(VectorSearchHit hit) => new()
 		{
 			DocumentId = ChunkPayload.ReadGuid(hit.Payload, ChunkPayload.DocumentId),
+			KnowledgeBaseId = ChunkPayload.ReadGuid(hit.Payload, ChunkPayload.KnowledgeBaseId),
 			DocumentTitle = ChunkPayload.ReadString(hit.Payload, ChunkPayload.DocumentTitle),
 			ChunkIndex = ChunkPayload.ReadInt(hit.Payload, ChunkPayload.ChunkIndex),
 			HeadingPath = ChunkPayload.ReadString(hit.Payload, ChunkPayload.HeadingPath),

@@ -3,8 +3,8 @@ namespace KnowVault.Ai
 	/// <summary>一次 RAG 提问的入参。</summary>
 	public class RagRequest
 	{
-		/// <summary>知识库 ID。</summary>
-		public Guid KnowledgeBaseId { get; set; }
+		/// <summary>参与检索的知识库 ID 集合；空集合不查询。</summary>
+		public IReadOnlyList<Guid> KnowledgeBaseIds { get; set; } = [];
 
 		/// <summary>租户 ID（单租户运行时为 Guid.Empty，用于 Qdrant payload 过滤）。</summary>
 		public Guid TenantId { get; set; }
@@ -70,6 +70,9 @@ namespace KnowVault.Ai
 	{
 		/// <summary>文档 ID。</summary>
 		public Guid DocumentId { get; set; }
+
+		/// <summary>文档所属知识库 ID。</summary>
+		public Guid KnowledgeBaseId { get; set; }
 
 		/// <summary>文档标题。</summary>
 		public string Title { get; set; } = default!;

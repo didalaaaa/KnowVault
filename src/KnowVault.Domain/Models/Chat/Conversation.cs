@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Volo.Abp.Domain.Entities.Auditing;
 using Volo.Abp.MultiTenancy;
 
@@ -15,6 +16,16 @@ namespace KnowVault.Domain
 		/// 会话归属的知识库；历史数据为空
 		/// </summary>
 		public Guid? KnowledgeBaseId { get; set; }
+
+		/// <summary>
+		/// 提问范围的知识库 ID 列表（JSON 数组）；旧会话为空
+		/// </summary>
+		public string? KnowledgeBaseScopeJson { get; set; }
+
+		/// <summary>
+		/// 提问范围是否为「全部知识库」
+		/// </summary>
+		public bool ScopeAll { get; set; }
 
 		/// <summary>
 		/// 最后一条消息时间，用于会话列表排序；为空时回落创建时间
@@ -49,6 +60,19 @@ namespace KnowVault.Domain
 		/// </summary>
 		/// <param name="at">活动时间</param>
 		public void Touch(DateTime at) => LastMessageAt = at;
+
+		/// <summary>
+		/// 更新本轮提问范围；主库用于会话列表归组
+		/// </summary>
+		/// <param name="primaryKnowledgeBaseId">主知识库 ID</param>
+		/// <param name="knowledgeBaseIds">范围包含的知识库 ID</param>
+		/// <param name="all">是否覆盖全部可访问知识库</param>
+		public void UpdateScope(Guid primaryKnowledgeBaseId, IReadOnlyList<Guid> knowledgeBaseIds, bool all)
+		{
+			KnowledgeBaseId = primaryKnowledgeBaseId;
+			ScopeAll = all;
+			KnowledgeBaseScopeJson = JsonSerializer.Serialize(knowledgeBaseIds);
+		}
 	}
 
 }

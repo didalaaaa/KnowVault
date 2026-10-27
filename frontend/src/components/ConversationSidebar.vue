@@ -42,7 +42,10 @@
         @dblclick="startRename(item)"
       >
         <span class="conv-main">
-          <span class="conv-title" :title="item.title">{{ item.title }}</span>
+          <span class="conv-title-row">
+            <span v-if="isMultiScope(item)" class="conv-tag">{{ item.allKnowledgeBases ? '全部' : '多库' }}</span>
+            <span class="conv-title" :title="item.title">{{ item.title }}</span>
+          </span>
           <span class="conv-time">{{ formatTime(item.lastMessageAt || item.creationTime) }}</span>
         </span>
         <span class="conv-actions">
@@ -91,11 +94,9 @@ import { NAlert, NButton, NInput, NModal, NPopconfirm, NSpin, useMessage } from 
 import KvIcon from './KvIcon.vue'
 import { useChatStore } from '../stores/chat'
 import { useConversationStore } from '../stores/conversations'
-import { useDocumentStore } from '../stores/documents'
 
 const chat = useChatStore()
 const conversations = useConversationStore()
-const documents = useDocumentStore()
 const message = useMessage()
 
 const renameVisible = ref(false)
@@ -113,20 +114,29 @@ function startNewChat() {
   message.success('已开始新会话')
 }
 
-// 切换知识库或首次加载时刷新会话列表
-watch(
-  () => documents.knowledgeBaseId,
-  (knowledgeBaseId) => conversations.refresh(knowledgeBaseId || undefined),
-  { immediate: true },
+// 提问范围为单库时按该库过滤；多库/全部时展示全部会话（会话按主库归组）
+const scopeFilterId = computed(() =>
+  !chat.scopeAll && chat.scopeIds.length === 1 ? chat.scopeIds[0] : undefined,
 )
 
+watch(scopeFilterId, (knowledgeBaseId) => conversations.refresh(knowledgeBaseId), { immediate: true })
+
 /**
- * 打开历史会话：拉取消息并恢复引用。
+ * 会话是否跨多个知识库，用于列表上的「多库/全部」标识
+ * @param {object} item 会话摘要
+ * @returns {boolean} 是否多库范围
+ */
+function isMultiScope(item) {
+  return !!item.allKnowledgeBases || (item.knowledgeBaseIds?.length || 0) > 1
+}
+
+/**
+ * 打开历史会话：拉取消息并恢复引用与提问范围。
  * @param {object} item 会话摘要
  */
 function open(item) {
   if (chat.conversationId === item.id) return
-  chat.loadConversation(item.id)
+  chat.loadConversation(item.id, item)
 }
 
 /**
@@ -322,7 +332,25 @@ function describeError(e) {
   gap: 3px;
 }
 
+.conv-title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.conv-tag {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--kv-accent-soft);
+  color: var(--kv-accent);
+  font-size: 10px;
+  font-weight: 600;
+}
+
 .conv-title {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

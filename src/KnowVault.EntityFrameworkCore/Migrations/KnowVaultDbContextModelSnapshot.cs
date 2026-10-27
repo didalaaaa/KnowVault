@@ -52,8 +52,16 @@ namespace KnowVault.Migrations
                     b.Property<Guid?>("KnowledgeBaseId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("KnowledgeBaseScopeJson")
+                        .HasColumnType("text");
+
                     b.Property<DateTime?>("LastMessageAt")
                         .HasColumnType("timestamp without time zone");
+
+                    b.Property<bool>("ScopeAll")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")

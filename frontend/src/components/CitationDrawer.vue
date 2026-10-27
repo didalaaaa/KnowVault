@@ -15,6 +15,7 @@
             <span v-if="scoreText" class="score-pill">{{ scoreText }}</span>
           </div>
           <div class="source-meta">
+            <span v-if="citation.knowledgeBaseName" class="meta-chip kb">{{ citation.knowledgeBaseName }}</span>
             <span class="meta-chip">片段 #{{ citation.chunkIndex }}</span>
             <span v-if="headingPath" class="meta-chip heading" :title="headingPath">{{ headingPath }}</span>
           </div>
@@ -204,6 +205,11 @@ function describeError(e) {
   white-space: nowrap;
   color: var(--kv-primary);
   border-color: #d6e9e4;
+}
+
+.meta-chip.kb {
+  font-weight: 600;
+  color: var(--kv-text);
 }
 
 .snippet-section {

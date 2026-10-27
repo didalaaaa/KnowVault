@@ -32,6 +32,27 @@ namespace KnowVault.Tests
 			Assert.Equal(1.0 / 61 + 1.0 / 62, result.Chunks[0].Score, 6);
 			Assert.Equal(1.0 / 61, result.Chunks[1].Score, 6);
 			Assert.Equal(new[] { "甲乙" }, result.RewriteQueries);
+			Assert.All(result.Chunks, chunk => Assert.Equal(KnowledgeBaseId, chunk.KnowledgeBaseId));
+		}
+
+		/// <summary>
+		/// 请求里的知识库集合原样透传给向量库过滤条件
+		/// </summary>
+		[Fact]
+		public async Task Retrieve_forwards_all_knowledge_base_ids()
+		{
+			var store = new FakeVectorStore([Hit("甲", 0.90, 0)], []);
+			var service = CreateService(store, hybridEnabled: false);
+			var knowledgeBaseIds = new[] { KnowledgeBaseId, Guid.NewGuid() };
+
+			await service.RetrieveAsync(new RagRequest
+			{
+				Question = "问题",
+				TopK = 1,
+				KnowledgeBaseIds = knowledgeBaseIds
+			});
+
+			Assert.Equal(knowledgeBaseIds, store.LastFilter?.KnowledgeBaseIds);
 		}
 
 		/// <summary>
@@ -338,6 +359,8 @@ namespace KnowVault.Tests
 
 			public int LastSparseLimit { get; private set; }
 
+			public VectorFilter? LastFilter { get; private set; }
+
 			public Task EnsureCollectionAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
 			public Task UpsertAsync(IReadOnlyList<VectorPoint> points, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -346,6 +369,7 @@ namespace KnowVault.Tests
 			{
 				DenseCallCount++;
 				LastDenseLimit = topK;
+				LastFilter = filter;
 				if (_denseException is not null) throw _denseException;
 				return Task.FromResult<IReadOnlyList<VectorSearchHit>>([.. _denseHits.Take(topK)]);
 			}

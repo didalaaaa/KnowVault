@@ -6,6 +6,9 @@ namespace KnowVault.Ai
 		/// <summary>文档 ID。</summary>
 		public Guid DocumentId { get; set; }
 
+		/// <summary>文档所属知识库 ID。</summary>
+		public Guid KnowledgeBaseId { get; set; }
+
 		/// <summary>文档标题。</summary>
 		public string DocumentTitle { get; set; } = string.Empty;
 
@@ -27,6 +30,7 @@ namespace KnowVault.Ai
 		public RagRetrievedChunk WithScore(double score) => new()
 		{
 			DocumentId = DocumentId,
+			KnowledgeBaseId = KnowledgeBaseId,
 			DocumentTitle = DocumentTitle,
 			ChunkIndex = ChunkIndex,
 			HeadingPath = HeadingPath,

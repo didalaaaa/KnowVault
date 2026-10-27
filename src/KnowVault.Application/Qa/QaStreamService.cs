@@ -34,7 +34,7 @@ namespace KnowVault.Application
 		private readonly IRepository<KnowledgeBase, Guid> _knowledgeBaseRepository;
 		private readonly IUnitOfWorkManager _unitOfWorkManager;
 		private readonly IOptions<AiOptions> _aiOptions;
-		private readonly KnowledgeBaseAccessChecker _accessChecker;
+		private readonly KnowledgeBaseScopeResolver _scopeResolver;
 		private readonly IClock _clock;
 
 		/// <summary>
@@ -46,7 +46,7 @@ namespace KnowVault.Application
 		/// <param name="knowledgeBaseRepository">知识库仓储（读取切片与检索设置）</param>
 		/// <param name="unitOfWorkManager">工作单元管理器</param>
 		/// <param name="aiOptions">AI 配置（历史轮数）</param>
-		/// <param name="accessChecker">知识库访问检查器</param>
+		/// <param name="scopeResolver">知识库范围解析与权限检查</param>
 		/// <param name="clock">时钟（记录会话活动时间）</param>
 		public QaStreamService(
 			IRagService ragService,
@@ -55,7 +55,7 @@ namespace KnowVault.Application
 			IRepository<KnowledgeBase, Guid> knowledgeBaseRepository,
 			IUnitOfWorkManager unitOfWorkManager,
 			IOptions<AiOptions> aiOptions,
-			KnowledgeBaseAccessChecker accessChecker,
+			KnowledgeBaseScopeResolver scopeResolver,
 			IClock clock)
 		{
 			_ragService = ragService;
@@ -64,22 +64,28 @@ namespace KnowVault.Application
 			_knowledgeBaseRepository = knowledgeBaseRepository;
 			_unitOfWorkManager = unitOfWorkManager;
 			_aiOptions = aiOptions;
-			_accessChecker = accessChecker;
+			_scopeResolver = scopeResolver;
 			_clock = clock;
 		}
 
 		/// <inheritdoc />
 		public async IAsyncEnumerable<QaStreamEventDto> AskStreamAsync(AskQuestionInput input, [EnumeratorCancellation] CancellationToken cancellationToken = default)
 		{
-			var knowledgeBaseId = input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId;
-			await _accessChecker.EnsureAsync(knowledgeBaseId, KnowledgeBaseRoleEnum.Viewer, cancellationToken);
+			// 先解析范围并逐个校验 Viewer 权限，无权知识库直接报错而不是静默丢弃
+			var scope = await _scopeResolver.ResolveAsync(input.KnowledgeBaseIds, input.AllKnowledgeBases, cancellationToken);
+			var singleKnowledgeBaseId = !scope.All && scope.Ids.Count == 1 ? scope.Ids[0] : (Guid?)null;
 
 			// 重新生成要沿用当前会话与上一轮问题，没有会话 ID 就无从定位
 			if (input.Regenerate && !input.ConversationId.HasValue) throw new UserFriendlyException("重新生成需要指定会话");
 
+			// 同一次问答的各阶段记录共用一个 AskId（用量记录在 T5 落库）
+			var askId = GuidGenerator.Create();
+
 			var stopwatch = Stopwatch.StartNew();
 			using var activity = ActivitySource.StartActivity("qa.ask");
-			activity?.SetTag("qa.knowledge_base_id", input.KnowledgeBaseId);
+			activity?.SetTag("qa.ask_id", askId);
+			activity?.SetTag("qa.knowledge_base_count", scope.Ids.Count);
+			activity?.SetTag("qa.knowledge_base_all", scope.All);
 			activity?.SetTag("qa.question_length", input.Question.Length);
 			activity?.SetTag("qa.regenerate", input.Regenerate);
 
@@ -91,9 +97,12 @@ namespace KnowVault.Application
 			// 第一段 UoW：解析会话、读历史、落用户消息，随即释放，不跨模型生成持有连接
 			using (var unitOfWork = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: false))
 			{
-				conversation = await ResolveConversationAsync(input, cancellationToken);
+				conversation = await ResolveConversationAsync(input, scope, cancellationToken);
 				history = await LoadHistoryAsync(conversation.Id, input.Regenerate, cancellationToken);
-				knowledgeBase = await _knowledgeBaseRepository.FindAsync(knowledgeBaseId, cancellationToken: cancellationToken);
+				// 只有单库提问才沿用该库的 TopK 与自定义提示词；多库/全部使用全局配置与内置模板
+				knowledgeBase = singleKnowledgeBaseId.HasValue
+					? await _knowledgeBaseRepository.FindAsync(singleKnowledgeBaseId.Value, cancellationToken: cancellationToken)
+					: null;
 
 				// 重新生成不重复插入用户消息，只重新回答上一轮问题
 				if (!input.Regenerate)
@@ -108,14 +117,14 @@ namespace KnowVault.Application
 
 			activity?.SetTag("qa.conversation_id", conversation.Id);
 
-			// RAG 编排：知识库缺省回落默认知识库；租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
+			// RAG 编排：租户 null 归一化为 Guid.Empty（与 Qdrant payload 一致）
 			var streamResult = await _ragService.AnswerStreamAsync(new RagRequest
 			{
-				KnowledgeBaseId = knowledgeBaseId,
+				KnowledgeBaseIds = scope.Ids,
 				TenantId = CurrentTenant.Id ?? Guid.Empty,
 				ConversationId = conversation.Id,
 				Question = input.Question,
-				// 请求参数优先，其次知识库设置，最后交给全局配置
+				// 请求参数优先，其次单库设置，最后交给全局配置
 				TopK = input.TopK ?? knowledgeBase?.TopK ?? 0,
 				SystemPromptOverride = knowledgeBase?.SystemPrompt,
 				History = history,
@@ -126,6 +135,8 @@ namespace KnowVault.Application
 			var citations = streamResult.Chunks.Select(chunk => new RagCitationDto
 			{
 				DocumentId = chunk.DocumentId,
+				KnowledgeBaseId = chunk.KnowledgeBaseId,
+				KnowledgeBaseName = scope.Names.GetValueOrDefault(chunk.KnowledgeBaseId),
 				Title = chunk.DocumentTitle,
 				ChunkIndex = chunk.ChunkIndex,
 				Score = chunk.Score,
@@ -139,6 +150,7 @@ namespace KnowVault.Application
 				ConversationId = conversation.Id,
 				UserMessageId = userMessageId,
 				Citations = citations,
+				KnowledgeBaseIds = scope.Ids,
 				HybridEnabled = input.HybridEnabled ?? _aiOptions.Value.HybridEnabled,
 				RewriteQueries = streamResult.RewriteQueries
 			};
@@ -183,26 +195,33 @@ namespace KnowVault.Application
 		}
 
 		/// <summary>
-		/// 取已有会话，或按问题前 128 字符为标题新建会话
+		/// 取已有会话，或按问题前 128 字符为标题新建会话，并写入本次提问范围
 		/// </summary>
 		/// <param name="input">提问参数</param>
+		/// <param name="scope">本次解析后的知识库范围</param>
 		/// <param name="cancellationToken">取消令牌</param>
 		/// <returns>会话实体</returns>
-		private async Task<Conversation> ResolveConversationAsync(AskQuestionInput input, CancellationToken cancellationToken)
+		private async Task<Conversation> ResolveConversationAsync(AskQuestionInput input, KnowledgeBaseScope scope, CancellationToken cancellationToken)
 		{
 			if (input.ConversationId.HasValue)
 			{
 				var existing = await _conversationRepository.GetAsync(input.ConversationId.Value, cancellationToken: cancellationToken);
 				if (existing.CreatorId != CurrentUser.Id) throw new AbpAuthorizationException("无权访问该会话");
 
+				// 追问可能更换范围，主库一并更新以保持会话列表归组正确
+				existing.UpdateScope(scope.PrimaryId, scope.Ids, scope.All);
+				await _conversationRepository.UpdateAsync(existing, autoSave: true, cancellationToken: cancellationToken);
 				return existing;
 			}
 
+			var conversation = new Conversation(
+				GuidGenerator.Create(),
+				input.Question.Length <= 128 ? input.Question : input.Question[..128],
+				knowledgeBaseId: scope.PrimaryId);
+			conversation.UpdateScope(scope.PrimaryId, scope.Ids, scope.All);
+
 			return await _conversationRepository.InsertAsync(
-				new Conversation(
-					GuidGenerator.Create(),
-					input.Question.Length <= 128 ? input.Question : input.Question[..128],
-					knowledgeBaseId: input.KnowledgeBaseId ?? KnowVaultConsts.DefaultKnowledgeBaseId),
+				conversation,
 				autoSave: true,
 				cancellationToken: cancellationToken);
 		}

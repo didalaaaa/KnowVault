@@ -26,6 +26,11 @@ namespace KnowVault.Application.Contracts
 		public IReadOnlyList<RagCitationDto> Citations { get; set; } = [];
 
 		/// <summary>
+		/// 本次提问实际使用的知识库 ID，仅首帧携带；「全部知识库」时为解析后的集合
+		/// </summary>
+		public IReadOnlyList<Guid> KnowledgeBaseIds { get; set; } = [];
+
+		/// <summary>
 		/// 本轮用户消息 ID，仅首帧携带；重新生成时为空
 		/// </summary>
 		public Guid? UserMessageId { get; set; }

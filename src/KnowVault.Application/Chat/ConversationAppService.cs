@@ -132,14 +132,43 @@ namespace KnowVault.Application
 			return conversation;
 		}
 
-		private static ConversationDto MapToDto(Conversation conversation) => new()
+		private static ConversationDto MapToDto(Conversation conversation)
 		{
-			Id = conversation.Id,
-			Title = conversation.Title,
-			KnowledgeBaseId = conversation.KnowledgeBaseId,
-			CreationTime = conversation.CreationTime,
-			LastMessageAt = conversation.LastMessageAt
-		};
+			var scopeIds = ParseScopeIds(conversation.KnowledgeBaseScopeJson);
+
+			// P5 之前的会话没有 scope JSON，回落到单库字段
+			if (scopeIds.Count == 0 && conversation.KnowledgeBaseId is { } singleId) scopeIds.Add(singleId);
+
+			return new ConversationDto
+			{
+				Id = conversation.Id,
+				Title = conversation.Title,
+				KnowledgeBaseId = conversation.KnowledgeBaseId,
+				KnowledgeBaseIds = scopeIds,
+				AllKnowledgeBases = conversation.ScopeAll,
+				CreationTime = conversation.CreationTime,
+				LastMessageAt = conversation.LastMessageAt
+			};
+		}
+
+		/// <summary>
+		/// 反序列化会话的提问范围；旧数据或非法 JSON 按空列表处理
+		/// </summary>
+		/// <param name="json">范围 JSON</param>
+		/// <returns>知识库 ID 列表</returns>
+		private static List<Guid> ParseScopeIds(string? json)
+		{
+			if (string.IsNullOrWhiteSpace(json)) return [];
+
+			try
+			{
+				return JsonSerializer.Deserialize<List<Guid>>(json) ?? [];
+			}
+			catch (JsonException)
+			{
+				return [];
+			}
+		}
 
 		/// <summary>
 		/// 反序列化引用 JSON；旧数据格式不合法时按空引用返回，不能打断消息回放

@@ -16,9 +16,19 @@ namespace KnowVault.Application.Contracts
 		public string Title { get; set; } = string.Empty;
 
 		/// <summary>
-		/// 归属知识库；历史会话为空
+		/// 归属知识库（主库）；历史会话为空
 		/// </summary>
 		public Guid? KnowledgeBaseId { get; set; }
+
+		/// <summary>
+		/// 会话提问范围包含的知识库；旧会话回落到 <see cref="KnowledgeBaseId"/> 单值
+		/// </summary>
+		public IReadOnlyList<Guid> KnowledgeBaseIds { get; set; } = [];
+
+		/// <summary>
+		/// 会话是否以「全部知识库」为范围
+		/// </summary>
+		public bool AllKnowledgeBases { get; set; }
 
 		/// <summary>
 		/// 创建时间

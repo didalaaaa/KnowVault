@@ -3,6 +3,7 @@ import { qaApi } from '../api/qa'
 import { askStream, startQaHub } from '../api/qaHub'
 import { conversationApi } from '../api/conversations'
 import { feedbackApi } from '../api/feedback'
+import { useDocumentStore } from './documents'
 
 // 服务端流订阅句柄与收尾回调：放模块级而不是 state，避免把不可序列化的对象塞进 devtools 快照
 let subscription = null
@@ -21,6 +22,11 @@ export const useChatStore = defineStore('chat', {
     loading: false,
     streaming: false,
     conversationId: null,
+    // 提问范围：scopeIds 为选中的知识库；scopeAll 覆盖全部可访问知识库
+    scopeIds: [],
+    scopeAll: false,
+    // 载入历史会话时范围被过滤的提示，由界面消费后清空
+    scopeNotice: '',
     // { id, role: 'user' | 'assistant', content, citations?, streaming?, feedback, latencyMs }
     messages: [],
   }),
@@ -41,10 +47,10 @@ export const useChatStore = defineStore('chat', {
     /**
      * 提问：优先走 SignalR 服务端流，连接不可用时降级为 REST 一次性回答。
      * @param {string} question 用户问题
-     * @param {string} knowledgeBaseId 目标知识库
+     * @param {{ids: string[], all: boolean}} scope 提问范围
      * @param {boolean} [regenerate] 是否为重新生成（不追加用户气泡，服务端不重复落用户消息）
      */
-    async ask(question, knowledgeBaseId, regenerate = false) {
+    async ask(question, scope, regenerate = false) {
       this.loading = true
       if (!regenerate) {
         this.messages.push({ id: null, role: 'user', content: question, feedback: null, latencyMs: null })
@@ -63,7 +69,9 @@ export const useChatStore = defineStore('chat', {
 
       const payload = {
         question,
-        knowledgeBaseId: knowledgeBaseId || undefined,
+        // 「全部知识库」时不再传具体 ID，由服务端按当前可访问范围解析
+        knowledgeBaseIds: scope?.all ? undefined : scope?.ids ?? [],
+        allKnowledgeBases: !!scope?.all,
         conversationId: this.conversationId || undefined,
         regenerate,
       }
@@ -121,14 +129,14 @@ export const useChatStore = defineStore('chat', {
 
     /**
      * 重新生成最后一条回答：移除旧气泡，带同一条问题重发，服务端会剔除上一轮上下文。
-     * @param {string} knowledgeBaseId 目标知识库
+     * @param {{ids: string[], all: boolean}} scope 提问范围
      */
-    async regenerate(knowledgeBaseId) {
+    async regenerate(scope) {
       if (this.loading) return
       const lastUser = [...this.messages].reverse().find((m) => m.role === 'user')
       if (!lastUser) return
       if (this.messages[this.messages.length - 1]?.role === 'assistant') this.messages.pop()
-      await this.ask(lastUser.content, knowledgeBaseId, true)
+      await this.ask(lastUser.content, scope, true)
     },
 
     /**
@@ -201,10 +209,48 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
-     * 载入历史会话：停止当前流后整体替换消息与引用。
-     * @param {string} id 会话 ID
+     * 设置提问范围；scopeAll 优先，具体 ID 去重后保存。
+     * @param {string[]} ids 知识库 ID
+     * @param {boolean} all 是否全部知识库
      */
-    async loadConversation(id) {
+    setScope(ids, all) {
+      this.scopeAll = !!all
+      this.scopeIds = this.scopeAll ? [] : [...new Set((ids || []).filter(Boolean))]
+    },
+
+    /**
+     * 从历史会话摘要恢复提问范围；已删除/无权库按当前列表过滤并给出提示。
+     * @param {object} summary 会话摘要
+     */
+    restoreScope(summary) {
+      if (summary.allKnowledgeBases) {
+        this.setScope([], true)
+        this.scopeNotice = ''
+        return
+      }
+
+      const rawIds = summary.knowledgeBaseIds?.length
+        ? summary.knowledgeBaseIds
+        : summary.knowledgeBaseId
+          ? [summary.knowledgeBaseId]
+          : []
+      const documents = useDocumentStore()
+      const available = new Set(documents.knowledgeBases.map((kb) => kb.id))
+      // 知识库列表尚未加载时不能据此过滤，否则会把仍然有效的库误删
+      const ids = available.size ? rawIds.filter((id) => available.has(id)) : rawIds
+      const removedCount = rawIds.length - ids.length
+      const fallback = documents.knowledgeBaseId || documents.knowledgeBases[0]?.id
+
+      this.setScope(ids.length ? ids : fallback ? [fallback] : [], false)
+      this.scopeNotice = removedCount > 0 ? '部分知识库已被删除或无权访问，已从提问范围中移除' : ''
+    },
+
+    /**
+     * 载入历史会话：停止当前流后整体替换消息与引用，并按摘要恢复提问范围。
+     * @param {string} id 会话 ID
+     * @param {object} [summary] 会话摘要（含 knowledgeBaseIds / allKnowledgeBases）
+     */
+    async loadConversation(id, summary) {
       this.stop()
       this.loading = true
       try {
@@ -220,6 +266,7 @@ export const useChatStore = defineStore('chat', {
           latencyMs: m.latencyMs ?? null,
         }))
         this.conversationId = id
+        if (summary) this.restoreScope(summary)
       } catch (e) {
         this.messages = []
         this.conversationId = null
@@ -229,11 +276,12 @@ export const useChatStore = defineStore('chat', {
       }
     },
 
-    /** 清空当前会话（新会话）。 */
+    /** 清空当前会话（新会话）；提问范围保留，便于连续提问同一批知识库。 */
     reset() {
       this.stop()
       this.messages = []
       this.conversationId = null
+      this.scopeNotice = ''
     },
   },
 })

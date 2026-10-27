@@ -14,7 +14,8 @@ namespace KnowVault.IntegrationTests
 	/// <summary>
 	/// 文档上传 → 解析 → 向量化 → 可检索 → 删除清理 的端到端测试
 	/// </summary>
-	public class DocumentLifecycleTests : KnowVaultIntegrationTestBase, IClassFixture<TestEnvironment>
+	[Collection(IntegrationCollection.Name)]
+	public class DocumentLifecycleTests : KnowVaultIntegrationTestBase
 	{
 		/// <inheritdoc />
 		public DocumentLifecycleTests(TestEnvironment environment)

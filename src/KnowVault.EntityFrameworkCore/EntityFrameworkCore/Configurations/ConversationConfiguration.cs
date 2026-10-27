@@ -20,6 +20,8 @@ namespace KnowVault.EntityFrameworkCore.Configurations
 			builder.ConfigureByConvention();
 
 			builder.Property(x => x.Title).HasMaxLength(256).IsRequired();
+			builder.Property(x => x.KnowledgeBaseScopeJson).HasColumnType("text");
+			builder.Property(x => x.ScopeAll).HasDefaultValue(false);
 
 			// 会话列表按租户过滤
 			builder.HasIndex(x => x.TenantId);

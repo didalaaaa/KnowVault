@@ -11,11 +11,13 @@
       <div class="chat-scope">
         <span class="chat-scope-label">提问范围</span>
         <n-select
-          v-model:value="documents.knowledgeBaseId"
-          :options="kbOptions"
+          :value="scopeValue"
+          :options="scopeOptions"
+          multiple
+          :max-tag-count="2"
           size="small"
           class="chat-scope-select"
-          :disabled="kbOptions.length === 0"
+          :disabled="scopeOptions.length === 0"
           aria-label="选择提问的知识库"
           @update:value="onScopeChange"
         />
@@ -70,7 +72,7 @@
                   @click="openCitation(c)"
                 >
                   <span class="cite-index">{{ j + 1 }}</span>
-                  <span class="cite-name" :title="c.title">{{ c.title }}</span>
+                  <span class="cite-name" :title="citationLabel(c)">{{ citationLabel(c) }}</span>
                   <span class="cite-meta">片段 {{ c.chunkIndex }} · {{ c.score.toFixed(3) }}</span>
                 </button>
               </div>
@@ -194,15 +196,86 @@ const activeCitation = ref(null)
 const detailVisible = ref(false)
 const detailDoc = ref(null)
 
-const kbOptions = computed(() =>
-  documents.knowledgeBases.map((kb) => ({ label: kb.name, value: kb.id })),
+// 「全部知识库」是一个虚拟选项：选中后清空具体库，具体库选中时取消它
+const ALL_KB_VALUE = '__all__'
+
+const scopeOptions = computed(() => [
+  { label: '全部知识库', value: ALL_KB_VALUE },
+  ...documents.knowledgeBases.map((kb) => ({ label: kb.name, value: kb.id })),
+])
+
+const scopeValue = computed(() => (chat.scopeAll ? [ALL_KB_VALUE] : chat.scopeIds))
+
+// 多库/全部时引用 chip 需要带上库名，单库保持 P4 的简洁样式
+const multiScope = computed(() => chat.scopeAll || chat.scopeIds.length > 1)
+
+/**
+ * 引用 chip 文案：多库时显示「库名 · 文档标题」
+ * @param {object} citation 引用
+ * @returns {string} 展示文本
+ */
+function citationLabel(citation) {
+  if (multiScope.value && citation.knowledgeBaseName) {
+    return `${citation.knowledgeBaseName} · ${citation.title}`
+  }
+  return citation.title
+}
+
+/**
+ * 切换提问范围：只改聊天范围，不联动知识库工作台的当前库
+ * @param {Array<string>} value 选择器返回值
+ */
+function onScopeChange(value) {
+  const selected = Array.isArray(value) ? value : []
+  if (selected.includes(ALL_KB_VALUE)) {
+    chat.setScope([], true)
+    return
+  }
+
+  const ids = selected.filter((item) => item !== ALL_KB_VALUE)
+  if (ids.length === 0) {
+    // 至少要留一个可提问知识库，清空时回落到工作台当前库/默认库
+    const fallback = documents.knowledgeBaseId || documents.knowledgeBases[0]?.id
+    chat.setScope(fallback ? [fallback] : [], false)
+    return
+  }
+
+  chat.setScope(ids, false)
+}
+
+// 知识库列表就绪后初始化范围；库被删除/权限变化时剔除已不可用的 ID
+watch(
+  () => documents.knowledgeBases.map((kb) => kb.id).join(','),
+  () => {
+    if (chat.scopeAll) return
+    const available = new Set(documents.knowledgeBases.map((kb) => kb.id))
+    const ids = chat.scopeIds.filter((id) => available.has(id))
+    if (ids.length) {
+      chat.scopeIds = ids
+      return
+    }
+    const fallback = documents.knowledgeBases[0]?.id
+    chat.scopeIds = fallback ? [fallback] : []
+  },
+  { immediate: true },
+)
+
+// 载入历史会话时范围被裁剪：提示一次后清空标记
+watch(
+  () => chat.scopeNotice,
+  (notice) => {
+    if (!notice) return
+    message.warning(notice)
+    chat.scopeNotice = ''
+  },
 )
 
 /**
- * 切换提问范围：文档列表与会话侧栏都跟随当前知识库
+ * 会话侧栏过滤条件：单库范围按该库过滤，多库/全部显示全部会话
+ * @returns {string|undefined} 知识库 ID
  */
-function onScopeChange() {
-  documents.refresh()
+function conversationFilter() {
+  return !chat.scopeAll && chat.scopeIds.length === 1 ? chat.scopeIds[0] : undefined
 }
 
 /** 滚到底部，让最新内容始终可见。 */
@@ -217,14 +290,14 @@ watch(
   () => scrollToBottom(),
 )
 
-// 发送问题：带上当前选中的知识库（检索按 knowledgeBaseId 过滤）
+// 发送问题：带上当前提问范围（单库/多库/全部）
 async function send() {
   const q = question.value.trim()
   if (!q || chat.loading) return
   question.value = ''
-  await chat.ask(q, documents.knowledgeBaseId)
+  await chat.ask(q, { ids: chat.scopeIds, all: chat.scopeAll })
   // 新一轮问答会新建会话或刷新活动时间：同步侧栏列表的顺序与标题
-  if (chat.conversationId) conversations.refresh(documents.knowledgeBaseId)
+  if (chat.conversationId) conversations.refresh(conversationFilter())
   await scrollToBottom()
 }
 
@@ -259,8 +332,8 @@ async function copyAnswer(index) {
 // 重新生成：复用最后一条用户提问，回答原地替换
 async function regenerate() {
   if (chat.loading) return
-  await chat.regenerate(documents.knowledgeBaseId)
-  if (chat.conversationId) conversations.refresh(documents.knowledgeBaseId)
+  await chat.regenerate({ ids: chat.scopeIds, all: chat.scopeAll })
+  if (chat.conversationId) conversations.refresh(conversationFilter())
   await scrollToBottom()
 }
 
@@ -283,18 +356,18 @@ function openCitation(citation) {
 }
 
 /**
- * 从引用跳到文档详情：先用当前文档列表，找不到时刷新一次再找
+ * 从引用跳到文档详情：先切到引用所属知识库，再在列表中查找
  * @param {object} citation 引用
  */
 async function openCitationDocument(citation) {
   citationVisible.value = false
-  let doc = documents.documents.find((item) => item.id === citation.documentId)
+
+  // 引用可能来自其它知识库，旧引用没有 knowledgeBaseId 时沿用当前库
+  await documents.refresh(citation.knowledgeBaseId || undefined)
+
+  const doc = documents.documents.find((item) => item.id === citation.documentId)
   if (!doc) {
-    await documents.refresh()
-    doc = documents.documents.find((item) => item.id === citation.documentId)
-  }
-  if (!doc) {
-    message.warning('文档可能已被删除')
+    message.warning('文档可能已被删除或无权访问')
     return
   }
   detailDoc.value = doc
@@ -374,7 +447,7 @@ async function openCitationDocument(citation) {
 }
 
 .chat-scope-select {
-  width: 200px;
+  width: 240px;
 }
 
 .messages {
@@ -856,7 +929,7 @@ async function openCitationDocument(citation) {
   }
 
   .chat-scope-select {
-    width: 148px;
+    width: 180px;
   }
 
   .messages {
