@@ -1,0 +1,316 @@
+{
+  "version": "1.0",
+  "description": "KnowVault P5 检索评估金标集：6 篇自写语料、30 道题、四类问题；anchor 为语料原文中的连续片段",
+  "questions": [
+    {
+      "id": "K01",
+      "category": "keyword",
+      "question": "KV-RRF-60 代表什么检索参数？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "加权 RRF 的平滑常数是 60" }
+      ],
+      "answerPoints": ["加权 RRF 的平滑常数是 60"],
+      "answerable": true
+    },
+    {
+      "id": "K02",
+      "category": "keyword",
+      "question": "KV-CHUNK-1000 规定的默认切片容量是多少字符？",
+      "relevant": [
+        { "document": "chunking.md", "anchor": "默认切片容量是 1000 个字符" }
+      ],
+      "answerPoints": ["默认切片容量是 1000 个字符"],
+      "answerable": true
+    },
+    {
+      "id": "K03",
+      "category": "keyword",
+      "question": "KV-OVERLAP-120 的重叠长度是多少？",
+      "relevant": [
+        { "document": "chunking.md", "anchor": "重叠是 120 个字符" }
+      ],
+      "answerPoints": ["重叠长度是 120 个字符"],
+      "answerable": true
+    },
+    {
+      "id": "K04",
+      "category": "keyword",
+      "question": "KV-VEC-1024 中的 1024 指什么？",
+      "relevant": [
+        { "document": "vector-search.md", "anchor": "固定输出 1024 维" }
+      ],
+      "answerPoints": ["bge-m3 向量固定输出 1024 维"],
+      "answerable": true
+    },
+    {
+      "id": "K05",
+      "category": "keyword",
+      "question": "KV-RERANK-20 默认最多把多少条候选送进重排？",
+      "relevant": [
+        { "document": "rerank.md", "anchor": "默认最多把 20 条候选送进重排" }
+      ],
+      "answerPoints": ["默认最多 20 条候选进入重排"],
+      "answerable": true
+    },
+    {
+      "id": "K06",
+      "category": "keyword",
+      "question": "KV-METRIC-5 对应哪个指标的前 5 条统计？",
+      "relevant": [
+        { "document": "retrieval-metrics.md", "anchor": "Recall@5 统计前 5 条里命中的金标切片" }
+      ],
+      "answerPoints": ["对应 Recall@5"],
+      "answerable": true
+    },
+    {
+      "id": "K07",
+      "category": "keyword",
+      "question": "BAAI/bge-m3 的向量维度是多少？",
+      "relevant": [
+        { "document": "vector-search.md", "anchor": "BAAI/bge-m3 作为向量模型" }
+      ],
+      "answerPoints": ["1024 维"],
+      "answerable": true
+    },
+    {
+      "id": "K08",
+      "category": "keyword",
+      "question": "FNV-1A-32 哈希会被映射到什么范围？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "映射到 1 到 uint 最大值减一" }
+      ],
+      "answerPoints": ["映射到 1 到 uint 最大值减一"],
+      "answerable": true
+    },
+    {
+      "id": "K09",
+      "category": "keyword",
+      "question": "KV-BIGRAM-2 描述了哪种中文切词方式？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "CJK 片段生成重叠二元组" }
+      ],
+      "answerPoints": ["对连续 CJK 片段生成重叠二元组，单字保留"],
+      "answerable": true
+    },
+    {
+      "id": "K10",
+      "category": "keyword",
+      "question": "KV-RAG-2026 在文档中代表什么？",
+      "relevant": [
+        { "document": "rag-basics.md", "anchor": "KnowVault 把这条流程编号为 KV-RAG-2026" }
+      ],
+      "answerPoints": ["KnowVault 的 RAG 流程编号"],
+      "answerable": true
+    },
+    {
+      "id": "S01",
+      "category": "semantic",
+      "question": "为什么文档需要先切成切片再向量化？",
+      "relevant": [
+        { "document": "chunking.md", "anchor": "切片太短会丢失上下文" }
+      ],
+      "answerPoints": ["切片是适合检索的文本单元，过长会稀释向量，过短会丢失上下文"],
+      "answerable": true
+    },
+    {
+      "id": "S02",
+      "category": "semantic",
+      "question": "余弦相似度比较的是向量大小还是方向？",
+      "relevant": [
+        { "document": "vector-search.md", "anchor": "余弦相似度只比较两个向量的方向" }
+      ],
+      "answerPoints": ["只比较方向，不关心向量长度"],
+      "answerable": true
+    },
+    {
+      "id": "S03",
+      "category": "semantic",
+      "question": "关键词检索和向量检索各自擅长什么？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "关键词分支擅长精确术语和编号" }
+      ],
+      "answerPoints": ["关键词擅长精确术语和编号，向量擅长语义相近但用词不同的表达"],
+      "answerable": true
+    },
+    {
+      "id": "S04",
+      "category": "semantic",
+      "question": "RRF 融合为什么只使用排名而不使用原始分数？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "不同检索分支的原始分数不可直接比较" }
+      ],
+      "answerPoints": ["不同分支的原始分数尺度不同，直接相加会让某一路主导结果"],
+      "answerable": true
+    },
+    {
+      "id": "S05",
+      "category": "semantic",
+      "question": "重排模型与向量检索在打分方式上有什么不同？",
+      "relevant": [
+        { "document": "rerank.md", "anchor": "重排模型把问题和候选切片放在一起编码" }
+      ],
+      "answerPoints": ["重排是 cross-encoder，把问题和候选一起编码；向量检索分别编码后比较距离"],
+      "answerable": true
+    },
+    {
+      "id": "S06",
+      "category": "semantic",
+      "question": "中文关键词为什么要切成二元组？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "中文没有天然空格分隔" }
+      ],
+      "answerPoints": ["中文没有空格分隔，二元组切分不需要外部词典也能覆盖多数词组"],
+      "answerable": true
+    },
+    {
+      "id": "S07",
+      "category": "semantic",
+      "question": "Recall 和 nDCG 衡量检索效果时有什么区别？",
+      "relevant": [
+        { "document": "retrieval-metrics.md", "anchor": "nDCG 同时反映召回数量和排序质量" }
+      ],
+      "answerPoints": ["Recall 只看有没有命中，nDCG 还反映命中位置的排序质量"],
+      "answerable": true
+    },
+    {
+      "id": "S08",
+      "category": "semantic",
+      "question": "切片重叠能解决什么问题？",
+      "relevant": [
+        { "document": "chunking.md", "anchor": "重叠让相邻切片共享一段上下文" }
+      ],
+      "answerPoints": ["降低答案落在切点附近时被切断而漏召回的概率"],
+      "answerable": true
+    },
+    {
+      "id": "S09",
+      "category": "semantic",
+      "question": "回答里的方括号编号有什么作用？",
+      "relevant": [
+        { "document": "rag-basics.md", "anchor": "回答里的方括号编号对应检索到的切片" }
+      ],
+      "answerPoints": ["对应检索到的切片，用于引用溯源和核对答案依据"],
+      "answerable": true
+    },
+    {
+      "id": "S10",
+      "category": "semantic",
+      "question": "把关键词权重设为 0 后混合检索会怎样？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "关键词权重设为 0 时，融合结果与纯向量检索一致" }
+      ],
+      "answerPoints": ["融合结果与纯向量检索一致"],
+      "answerable": true
+    },
+    {
+      "id": "X01",
+      "category": "cross-document",
+      "question": "切片容量与向量维度分别如何影响检索成本？",
+      "relevant": [
+        { "document": "chunking.md", "anchor": "默认切片容量是 1000 个字符" },
+        { "document": "vector-search.md", "anchor": "固定输出 1024 维" }
+      ],
+      "answerPoints": [
+        "容量越大切片越少但单条更长，影响向量化与存储成本",
+        "bge-m3 固定输出 1024 维，维度决定每条向量的存储开销"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "X02",
+      "category": "cross-document",
+      "question": "混合检索已经做了融合，为什么还需要重排？",
+      "relevant": [
+        { "document": "hybrid-retrieval.md", "anchor": "RRF 只看排名，不看原始分数" },
+        { "document": "rerank.md", "anchor": "重排模型把问题和候选切片放在一起编码" }
+      ],
+      "answerPoints": [
+        "RRF 只解决多路召回的排名融合，不判断细粒度语义匹配",
+        "重排对候选逐条打分，把真正相关的切片推进 topK"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "X03",
+      "category": "cross-document",
+      "question": "固定切片参数为什么对检索评估很重要？",
+      "relevant": [
+        { "document": "chunking.md", "anchor": "切片参数需要与评估配套" },
+        { "document": "retrieval-metrics.md", "anchor": "每次调整检索策略都可以用同一把尺子比较" }
+      ],
+      "answerPoints": [
+        "切片参数变化会改变候选切片集合，指标不再可比",
+        "语料与切片固定后，指标变化才能归因到检索策略"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "X04",
+      "category": "cross-document",
+      "question": "查询改写与 RRF 权重如何配合提升召回？",
+      "relevant": [
+        { "document": "rag-basics.md", "anchor": "查询改写会把一个自然语言问题扩展成最多两条替代表述" },
+        { "document": "hybrid-retrieval.md", "anchor": "原问题权重固定为 1，改写查询权重默认为 0.8" }
+      ],
+      "answerPoints": [
+        "改写把原问题扩展成最多两条替代表述参与召回",
+        "原问题权重固定为 1，改写变体权重 0.8，避免变体主导融合结果"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "X05",
+      "category": "cross-document",
+      "question": "重排候选数、topK 与 Recall@5 之间是什么关系？",
+      "relevant": [
+        { "document": "rerank.md", "anchor": "默认最多把 20 条候选送进重排" },
+        { "document": "retrieval-metrics.md", "anchor": "Recall@5 统计前 5 条里命中的金标切片" }
+      ],
+      "answerPoints": [
+        "候选数决定重排可选范围，topK 决定最终引用条数",
+        "Recall@5 衡量前 5 条是否覆盖金标，候选不足或重排差都会限制它"
+      ],
+      "answerable": true
+    },
+    {
+      "id": "U01",
+      "category": "unanswerable",
+      "question": "KnowVault 计划采用哪种开源许可证发布？",
+      "relevant": [],
+      "answerPoints": ["应说明资料不足，无法回答"],
+      "answerable": false
+    },
+    {
+      "id": "U02",
+      "category": "unanswerable",
+      "question": "Qdrant 默认每个 collection 分成多少个分片？",
+      "relevant": [],
+      "answerPoints": ["应说明资料不足，无法回答"],
+      "answerable": false
+    },
+    {
+      "id": "U03",
+      "category": "unanswerable",
+      "question": "DeepSeek 模型的上下文窗口是多少 token？",
+      "relevant": [],
+      "answerPoints": ["应说明资料不足，无法回答"],
+      "answerable": false
+    },
+    {
+      "id": "U04",
+      "category": "unanswerable",
+      "question": "项目支持哪些格式的 OCR 图片识别？",
+      "relevant": [],
+      "answerPoints": ["应说明资料不足，无法回答"],
+      "answerable": false
+    },
+    {
+      "id": "U05",
+      "category": "unanswerable",
+      "question": "如何在 Gitee Go 上配置 CI 流水线？",
+      "relevant": [],
+      "answerPoints": ["应说明资料不足，无法回答"],
+      "answerable": false
+    }
+  ]
+}

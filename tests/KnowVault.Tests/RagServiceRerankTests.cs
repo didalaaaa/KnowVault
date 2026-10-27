@@ -197,6 +197,9 @@ namespace KnowVault.Tests
 			public Task RecreateCollectionAsync(CancellationToken cancellationToken = default)
 				=> Task.CompletedTask;
 
+			public Task<IReadOnlyList<VectorSearchHit>> ScrollAsync(VectorFilter filter, int limit = 10000, CancellationToken cancellationToken = default)
+				=> Task.FromResult<IReadOnlyList<VectorSearchHit>>([]);
+
 			public Task DeleteByDocumentAsync(Guid tenantId, Guid knowledgeBaseId, Guid documentId, CancellationToken cancellationToken = default)
 				=> Task.CompletedTask;
 		}

@@ -130,6 +130,26 @@ namespace KnowVault.EntityFrameworkCore
 		}
 
 		/// <inheritdoc />
+		public async Task<IReadOnlyList<VectorSearchHit>> ScrollAsync(
+			VectorFilter filter,
+			int limit = 10000,
+			CancellationToken cancellationToken = default)
+		{
+			if (limit <= 0 || filter.KnowledgeBaseIds.Count == 0) return [];
+
+			await EnsureCollectionAsync(cancellationToken);
+
+			var points = await _client.ScrollAsync(
+				_options.CollectionName,
+				filter: BuildFilter(filter),
+				limit: (uint)limit,
+				payloadSelector: new WithPayloadSelector { Enable = true },
+				cancellationToken: cancellationToken);
+
+			return [.. points.Result.Select(ToHit)];
+		}
+
+		/// <inheritdoc />
 		public async Task RecreateCollectionAsync(CancellationToken cancellationToken = default)
 		{
 			await _ensureLock.WaitAsync(cancellationToken);
@@ -237,6 +257,14 @@ namespace KnowVault.EntityFrameworkCore
 		{
 			Id = Guid.TryParse(point.Id.Uuid, out var id) ? id : Guid.Empty,
 			Score = point.Score,
+			Payload = point.Payload.ToDictionary(kv => kv.Key, kv => FromValue(kv.Value))
+		};
+
+		// scroll 只用于评测导出全量切片，没有相似度得分
+		private static VectorSearchHit ToHit(RetrievedPoint point) => new()
+		{
+			Id = Guid.TryParse(point.Id.Uuid, out var id) ? id : Guid.Empty,
+			Score = 0,
 			Payload = point.Payload.ToDictionary(kv => kv.Key, kv => FromValue(kv.Value))
 		};
 

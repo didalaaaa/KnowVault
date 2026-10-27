@@ -39,6 +39,18 @@ namespace KnowVault.Domain
 			CancellationToken cancellationToken = default);
 
 		/// <summary>
+		/// 读取指定知识库的全部切片（评估建 anchor 映射用，不做相似度排序）
+		/// </summary>
+		/// <param name="filter">payload 过滤条件</param>
+		/// <param name="limit">最多读取条数</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>切片命中列表；得分固定为 0</returns>
+		Task<IReadOnlyList<VectorSearchHit>> ScrollAsync(
+			VectorFilter filter,
+			int limit = 10000,
+			CancellationToken cancellationToken = default);
+
+		/// <summary>
 		/// 删除并按当前 schema 重建 collection（会清空全部向量）
 		/// </summary>
 		/// <param name="cancellationToken">取消令牌</param>
