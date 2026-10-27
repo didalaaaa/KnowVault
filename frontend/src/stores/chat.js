@@ -14,6 +14,10 @@ const EVENT_STARTED = 0
 const EVENT_DELTA = 1
 const EVENT_COMPLETED = 2
 
+// 检索开关的本地存储键：只影响当前浏览器，不上云
+const HYBRID_STORAGE_KEY = 'knowvault.retrieval.hybrid'
+const REWRITE_STORAGE_KEY = 'knowvault.retrieval.rewrite'
+
 // 聊天状态（P2：SignalR 可用时逐字流式，否则降级一次性回答）
 export const useChatStore = defineStore('chat', {
   state: () => ({
@@ -27,7 +31,11 @@ export const useChatStore = defineStore('chat', {
     scopeAll: false,
     // 载入历史会话时范围被过滤的提示，由界面消费后清空
     scopeNotice: '',
-    // { id, role: 'user' | 'assistant', content, citations?, streaming?, feedback, latencyMs }
+    // 检索开关：混合检索默认开，查询改写默认关（多一次模型调用）
+    hybridEnabled: readStoredFlag(HYBRID_STORAGE_KEY, true),
+    rewriteEnabled: readStoredFlag(REWRITE_STORAGE_KEY, false),
+    // { id, role: 'user' | 'assistant', content, citations?, streaming?, feedback, latencyMs,
+    //   knowledgeBaseIds?, rewriteQueries?, hybridEnabled? }
     messages: [],
   }),
 
@@ -74,6 +82,8 @@ export const useChatStore = defineStore('chat', {
         allKnowledgeBases: !!scope?.all,
         conversationId: this.conversationId || undefined,
         regenerate,
+        hybridEnabled: this.hybridEnabled,
+        rewriteEnabled: this.rewriteEnabled,
       }
 
       const hubReady = await startQaHub()
@@ -91,6 +101,10 @@ export const useChatStore = defineStore('chat', {
               if (event.kind === EVENT_STARTED) {
                 this.conversationId = event.conversationId
                 assistant.citations = event.citations || []
+                // 「全部知识库」由服务端解析成具体集合，记在消息上供多库引用展示
+                assistant.knowledgeBaseIds = event.knowledgeBaseIds || []
+                assistant.rewriteQueries = event.rewriteQueries || []
+                assistant.hybridEnabled = !!event.hybridEnabled
                 // 首帧带回本轮用户消息 ID；重新生成时为空
                 if (event.userMessageId) {
                   const user = [...this.messages].reverse().find((m) => m.role === 'user')
@@ -219,6 +233,24 @@ export const useChatStore = defineStore('chat', {
     },
 
     /**
+     * 切换混合检索并持久化到 localStorage。
+     * @param {boolean} enabled 是否启用
+     */
+    setHybrid(enabled) {
+      this.hybridEnabled = !!enabled
+      writeStoredFlag(HYBRID_STORAGE_KEY, this.hybridEnabled)
+    },
+
+    /**
+     * 切换查询改写并持久化到 localStorage。
+     * @param {boolean} enabled 是否启用
+     */
+    setRewrite(enabled) {
+      this.rewriteEnabled = !!enabled
+      writeStoredFlag(REWRITE_STORAGE_KEY, this.rewriteEnabled)
+    },
+
+    /**
      * 从历史会话摘要恢复提问范围；已删除/无权库按当前列表过滤并给出提示。
      * @param {object} summary 会话摘要
      */
@@ -264,6 +296,10 @@ export const useChatStore = defineStore('chat', {
           streaming: false,
           feedback: m.feedback ?? null,
           latencyMs: m.latencyMs ?? null,
+          // 历史消息不落检索设置与改写查询，展示时按空处理
+          knowledgeBaseIds: [],
+          rewriteQueries: [],
+          hybridEnabled: null,
         }))
         this.conversationId = id
         if (summary) this.restoreScope(summary)
@@ -293,4 +329,24 @@ export const useChatStore = defineStore('chat', {
  */
 function describeError(err) {
   return err?.response?.data?.error?.message || err?.message || String(err)
+}
+
+/**
+ * 读取布尔开关；没有存过时用默认值。
+ * @param {string} key localStorage 键
+ * @param {boolean} fallback 默认值
+ * @returns {boolean} 开关状态
+ */
+function readStoredFlag(key, fallback) {
+  const stored = localStorage.getItem(key)
+  return stored === null ? fallback : stored === 'true'
+}
+
+/**
+ * 写入布尔开关。
+ * @param {string} key localStorage 键
+ * @param {boolean} value 开关状态
+ */
+function writeStoredFlag(key, value) {
+  localStorage.setItem(key, String(!!value))
 }

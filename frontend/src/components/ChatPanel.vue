@@ -21,6 +21,7 @@
           aria-label="选择提问的知识库"
           @update:value="onScopeChange"
         />
+        <RetrievalSettings />
       </div>
     </header>
 
@@ -46,6 +47,15 @@
         </div>
         <div class="msg-body">
           <div class="msg-meta">{{ m.role === 'assistant' ? 'KnowVault' : '你' }}</div>
+          <div
+            v-if="m.role === 'assistant' && m.rewriteQueries && m.rewriteQueries.length"
+            class="rewrite-line"
+            :title="m.rewriteQueries.join(' / ')"
+          >
+            <KvIcon name="search" :size="12" />
+            <span class="rewrite-label">改写查询</span>
+            <span class="rewrite-text">{{ m.rewriteQueries.join(' · ') }}</span>
+          </div>
           <div class="bubble">
             <div
               v-if="m.content && m.role === 'assistant'"
@@ -72,7 +82,7 @@
                   @click="openCitation(c)"
                 >
                   <span class="cite-index">{{ j + 1 }}</span>
-                  <span class="cite-name" :title="citationLabel(c)">{{ citationLabel(c) }}</span>
+                  <span class="cite-name" :title="citationLabel(c, m)">{{ citationLabel(c, m) }}</span>
                   <span class="cite-meta">片段 {{ c.chunkIndex }} · {{ c.score.toFixed(3) }}</span>
                 </button>
               </div>
@@ -178,6 +188,7 @@ import { NInput, NButton, NSelect, useMessage } from 'naive-ui'
 import KvIcon from './KvIcon.vue'
 import CitationDrawer from './CitationDrawer.vue'
 import DocumentDetailDrawer from './DocumentDetailDrawer.vue'
+import RetrievalSettings from './RetrievalSettings.vue'
 import { useChatStore } from '../stores/chat'
 import { useConversationStore } from '../stores/conversations'
 import { useDocumentStore } from '../stores/documents'
@@ -206,16 +217,15 @@ const scopeOptions = computed(() => [
 
 const scopeValue = computed(() => (chat.scopeAll ? [ALL_KB_VALUE] : chat.scopeIds))
 
-// 多库/全部时引用 chip 需要带上库名，单库保持 P4 的简洁样式
-const multiScope = computed(() => chat.scopeAll || chat.scopeIds.length > 1)
-
 /**
- * 引用 chip 文案：多库时显示「库名 · 文档标题」
+ * 引用 chip 文案：该条回答跨多个知识库时显示「库名 · 文档标题」
+ * 用消息首帧回填的实际知识库集合判断，避免用户后续切换范围影响历史回答
  * @param {object} citation 引用
+ * @param {object} message 所属助手消息
  * @returns {string} 展示文本
  */
-function citationLabel(citation) {
-  if (multiScope.value && citation.knowledgeBaseName) {
+function citationLabel(citation, message) {
+  if ((message?.knowledgeBaseIds?.length || 0) > 1 && citation.knowledgeBaseName) {
     return `${citation.knowledgeBaseName} · ${citation.title}`
   }
   return citation.title
@@ -578,6 +588,29 @@ async function openCitationDocument(citation) {
   color: var(--kv-text-3);
 }
 
+.rewrite-line {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 2px;
+  font-size: 11.5px;
+  color: var(--kv-text-3);
+}
+
+.rewrite-label {
+  flex: none;
+  color: var(--kv-primary);
+  font-weight: 600;
+}
+
+.rewrite-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bubble {
   max-width: 100%;
   padding: 13px 16px;
@@ -928,8 +961,12 @@ async function openCitationDocument(citation) {
     display: none;
   }
 
+  .chat-scope-label {
+    display: none;
+  }
+
   .chat-scope-select {
-    width: 180px;
+    width: 160px;
   }
 
   .messages {
