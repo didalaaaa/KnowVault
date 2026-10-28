@@ -49,10 +49,15 @@ KnowVault.slnx
 ├─ aspire/
 │  └─ KnowVault.AppHost              // Aspire 编排：Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq + API
 ├─ frontend/                          // Vue3 + Vite + JS + Naive UI
-└─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
+├─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
+├─ tools/
+│  └─ KnowVault.Eval                  // P5 检索评估控制台：语料 + 30 题金标集 + 三模式报告
+└─ docs/                              // 设计 / 执行计划 / 代码导读 / 评估文档
+   ├─ plans/                          // 每期冻结规格与执行计划
+   └─ eval/                           // 评估语料、金标集与 docs/eval/reports/ 历史报告
 ```
 
-> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Testcontainers 四件套）。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`；**P2** 的冻结规格与执行计划见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`（流式 Hub 在 `src/KnowVault.HttpApi/Hubs/`，重排与流式实现在 `src/KnowVault.Ai/Rerank/` 与 `src/KnowVault.Ai/Chat/`）；**P3** 见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`（OTel/Seq、角色+知识库 ACL、文档删除/重处理、摄入重试、Testcontainers、CI）。
+> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Testcontainers 四件套）。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`；**P2** 的冻结规格与执行计划见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`（流式 Hub 在 `src/KnowVault.HttpApi/Hubs/`，重排与流式实现在 `src/KnowVault.Ai/Rerank/` 与 `src/KnowVault.Ai/Chat/`）；**P3** 见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`（OTel/Seq、角色+知识库 ACL、文档删除/重处理、摄入重试、Testcontainers、CI）；**P4/P5** 见 `docs/plans/2026-10-24-knowvault-p4-mvp.md` 与 `docs/plans/2026-10-27-knowvault-p5-mvp.md`（P5 混合检索在 `src/KnowVault.Ai/Retrieval/` 与 `src/KnowVault.Domain/Search/`，评估工具在 `tools/KnowVault.Eval`）。
 
 ---
 
@@ -149,6 +154,24 @@ KnowVault.slnx
     /// <summary>短文档只产出一个切片，正文不丢字。</summary>
     ```
   - **注释正文结尾不写句号**：`<summary>` / `<param>` / `<returns>` / `<exception>` / 类级 `<summary>` 的正文行，以及行内 `//` 说明，**末尾一律不加** `。`（中文）或 `.`（英文点号）。句中标点照常（「，」「、」「；」「：」该用就用），只是不再用句号收尾。**标点收尾的例外**：正文本身以 `？` `！` `；` `：` `）` 等结尾时保持原样，不补句号；**多句正文**句间仍用 `。` 分隔，只去掉整段最后那个句号。**范围例外**：`<remarks>` 里成段的多句说明按普通行文加句号；`<param>` / `<returns>` 内的 `<see cref="…"/>`、`<c>…</c>`、代码示例、命令、URL、文件路径保持原样。
+  - **单行 `<param>` / `<returns>` 同样不写句号（易漏）**：这两类标签本身只占一行、`<summary>` 的多行展开规则管不到，VS 补全出来的默认产物就是 `提问入参。` 这种带句号写法，**写新方法与改动该方法注释时必须一并去掉**。示例（`src/KnowVault.Ai/Rag/RagService.cs:158-165` 即按此收敛）：
+
+    ```csharp
+    /// <summary>
+    /// 纯向量召回（P4 行为）：只 embed 原问题并做一次 dense 检索
+    /// </summary>
+    /// <param name="request">提问入参</param>
+    /// <param name="filter">检索过滤条件</param>
+    /// <param name="limit">召回条数</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>按相似度降序的切片</returns>
+    ```
+
+    **反面示例**（末尾多出一个句号，勿再用）：
+    ```csharp
+    /// <param name="request">提问入参。</param>
+    /// <returns>按相似度降序的切片。</returns>
+    ```
 - **C# 自动生成文件**（EF 迁移 `Migrations/*`、`*.Designer.cs`、`AssemblyInfo.cs`）不强制注释，勿随意改动。
 - **前端（JS / Vue）**：
   - 具名函数/工具用 JSDoc：`/** ... @param {...} ... @returns {...} */`。
@@ -212,11 +235,16 @@ cd frontend && npm install && npm run dev
 
 # 测试（含 Testcontainers，需要 Docker 运行）
 dotnet test
+
+# 检索评估（需 Docker 依赖与 Ai__SiliconFlowApiKey；含生成/改写时另需 Ai__DeepSeekApiKey）
+dotnet run --project tools/KnowVault.Eval -- \
+  --knowledge-base-id <评估知识库 GUID> --modes vector,hybrid,hybrid-rewrite
 ```
 
 - 依赖用 **Aspire** 启动，避免手工起容器。
 - **API Key（DeepSeek/SiliconFlow）放环境变量**，**严禁进仓库/hardcode**（用 `.env` + 环境变量注入；变量清单参照根目录 `.env.example`）。
 - 提交/PR 前保证 `dotnet build` 无错误、`dotnet test` 通过。
+- 评估工具的完整参数、语料要求与报告位置见 [`docs/eval/README.md`](docs/eval/README.md)；P4 旧 Qdrant collection 升级 P5 需先调 Admin `POST /api/app/maintenance/rebuild-vector-index` 重建，详见 `TECH_STACK.md` §9.7.3。
 
 ---
 

@@ -14,6 +14,8 @@
 | 大模型 (生成) | **DeepSeek**（`deepseek-chat`） |
 | Embedding + Rerank | **SiliconFlow / 硅基流动**（`BAAI/bge-m3` + `BAAI/bge-reranker-v2-m3`） |
 | 向量数据库 | **Qdrant**（自托管，Docker 一键起） |
+| 混合检索 | **dense + 命名稀疏向量 `text`**（bigram + FNV-1a，应用层加权 RRF，见 §9.7） |
+| 检索评估 | 自研控制台 **`tools/KnowVault.Eval`**（6 篇语料 + 30 题金标集 + 三模式报告） |
 | 主库 / ORM | **PostgreSQL** + EF Core |
 | 缓存 | **Redis** |
 | 对象存储 | **MinIO**（原始上传文档，S3 兼容） |
@@ -32,6 +34,7 @@
 - **生成（回答）**：DeepSeek `deepseek-chat` —— 省钱、中文/推理好。
 - **向量化（Embedding）**：SiliconFlow（硅基流动）`BAAI/bge-m3` —— 1024 维，语义检索的"坐标"。
 - **重排（Rerank）**：SiliconFlow `BAAI/bge-reranker-v2-m3` —— 提升检索召回。
+- **查询改写（可选，默认关）**：DeepSeek `deepseek-chat` —— 低温短输出，为一次问答补充最多 2 条检索变体（非 HyDE）。
 
 > 选型说明：DeepSeek 官方未稳定提供 embedding/rerank，因此这三环不能全靠 DeepSeek；
 > embedding + rerank 由 SiliconFlow 统一承担，生成仍走 DeepSeek。跨厂商各取所长。
@@ -49,7 +52,7 @@ KnowVault.slnx
 │  ├─ KnowVault.Application.Contracts // AppService 契约 + DTO（上传/问答等入参出参）
 │  ├─ KnowVault.Application           // AppService 用例编排 + AI 编排入口
 │  ├─ KnowVault.EntityFrameworkCore   // EF Core(PostgreSQL) + DbContext / EF 迁移；Qdrant 与 MinIO 访问实现（接口定义在 KnowVault.Domain）
-│  ├─ KnowVault.Ai                   // Semantic Kernel：Prompt / RAG / 向量检索 / 重排 / 流式
+│  ├─ KnowVault.Ai                   // Semantic Kernel：Prompt / RAG / 混合检索 / 查询改写 / 重排 / 流式
 │  ├─ KnowVault.Ingest               // 文档解析后台 Worker（消费 RabbitMQ，产出切片+向量）
 │  ├─ KnowVault.HttpApi              // 动态 API 控制器（ABP 自动生成）
 │  ├─ KnowVault.HttpApi.Client       // HttpClient 强类型代理（供外部调用方使用）
@@ -58,10 +61,15 @@ KnowVault.slnx
 ├─ aspire/
 │  └─ KnowVault.AppHost              // Aspire 编排：Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq + API
 ├─ frontend/                          // Vue3 + Vite + JS + Naive UI
-└─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
+├─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
+├─ tools/
+│  └─ KnowVault.Eval                  // P5 检索评估控制台：加载语料/金标，直连 RagService 出报告
+└─ docs/
+   ├─ plans/                          // 每期冻结规格与执行计划
+   └─ eval/                           // 评估语料、金标集与 docs/eval/reports/ 历史报告
 ```
 
-> **说明（当前实现）**：以上是 P0 用 ABP 分层模板**实际落地**的结构（`KnowVault.slnx`）。相比早期设想，主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（而非 `KnowVault.Web`），并多出 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层；`tests/` 在 **P1** 先落 `KnowVault.Tests`（纯函数单测），Testcontainers 集成测试仍留 P3。
+> **说明（当前实现）**：以上是 P0 用 ABP 分层模板**实际落地**的结构（`KnowVault.slnx`）。相比早期设想，主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（而非 `KnowVault.Web`），并多出 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层；`tests/` 在 **P1** 先落 `KnowVault.Tests`（纯函数单测），**P3** 新增 Testcontainers 集成测试，**P5** 新增 `tools/KnowVault.Eval` 与 `docs/eval/`。
 
 ---
 
@@ -70,12 +78,15 @@ KnowVault.slnx
 > 采用「**结构按多租户设计、先只跑一个租户**」策略；ABP 多租户是一等公民，
 > 后续开多租户 = 开开关，数据模型无需返工。所有表都带 `TenantId`。
 
-- **KnowledgeBase 知识库**：`Id, Name, Description, TenantId, CreatedAt`
+- **KnowledgeBase 知识库**：`Id, Name, Description, ChunkSizeChars?, ChunkOverlapChars?, TopK?, SystemPrompt?, TenantId, CreatedAt`（库级设置 P4 起生效）
 - **Document 文档**：`Id, KnowledgeBaseId, Title, SourceFileName, SourceType, ObjectStorageKey, Status(Pending/Processing/Ready/Failed), ErrorMessage, CreatedAt`
-- **DocumentChunk 切片**：`Id(==Qdrant pointId), DocumentId, ChunkIndex, Content` —— 内容与溯源信息存进 Qdrant payload；文档元数据存 PostgreSQL
-- **Conversation 会话**：`Id, Title, TenantId, CreatedAt`
-- **Message 消息**：`Id, ConversationId, Role(User/Assistant), Content, CitationsJson, CreatedAt`
+- **DocumentChunk 切片**：`Id(==Qdrant pointId), DocumentId, ChunkIndex, Content, HeadingPath` —— 内容与溯源信息存进 Qdrant payload；文档元数据存 PostgreSQL
+- **Conversation 会话**：`Id, Title, KnowledgeBaseId, KnowledgeBaseScopeJson, ScopeAll, LastMessageAt, TenantId, CreatedAt` —— `KnowledgeBaseId` / `KnowledgeBaseScopeJson` / `ScopeAll` 记录提问范围（主库用于列表归组），`LastMessageAt` 用于排序
+- **Message 消息**：`Id, ConversationId, Role(User/Assistant), Content, CitationsJson, LatencyMs, CreatedAt`
+- **AiUsageRecord 用量记录（P5）**：`Id, KnowledgeBaseId?, ConversationId?, AskId?, DocumentId?, Operation(Chat/Embedding/Rerank/QueryRewrite), Model, PromptTokens, CompletionTokens, TotalTokens, LatencyMs, IsEstimated, EstimatedCostCny, TenantId, CreationTime` —— 每次 AI 调用一条，问答与摄取共用
 - **租户/用户**：由 ABP 的 Identity + 租户模块提供
+
+> 向量侧：Qdrant 单一 collection 同时存 **unnamed dense（1024 维 Cosine）** 与 **named sparse `text`（`Modifier.Idf`）**；payload 至少含 `tenantId / knowledgeBaseId / documentId / chunkIndex / content / documentTitle / headingPath / sourceType`，详见 §9.1 与 §9.7.3。
 
 > 权限：P3 已落 **系统角色（Admin/Member/Viewer）+ 知识库成员（Owner/Editor/Viewer）** 双层控制，默认知识库对所有登录用户开放写权限，其余知识库按成员表校验；详见 §9.3。
 
@@ -120,24 +131,25 @@ KnowVault.slnx
   - 不用 Aspire 时（本机验收路径）：复用 P1 遗留的手工容器 `kv-postgres` / `kv-redis` / `kv-qdrant` / `kv-rabbitmq` / `kv-minio`，`docker start kv-*` 即可（数据在容器可写层）；**Postgres 映射在宿主 5433**；仓库内**没有** docker-compose 文件，配置走环境变量覆盖 `ConnectionStrings__Default` / `ConnectionStrings__rabbitmq` / `Minio__*` / `Redis__Configuration` / `Qdrant__Endpoint`
 - **Aspire** 一键编排启动全部依赖
 - 模型：`DeepSeek` + `SiliconFlow` 的 **API Key**（环境变量，不进仓库）
-- 可选：本地 Ollama 用于离线 fallback
+- **P5 升级注意（Qdrant schema）**：P4 的 collection 没有稀疏向量，升级后需 Admin 调 `POST /api/app/maintenance/rebuild-vector-index` 重建，并等所有 Ready 文档重新处理完成；否则检索抛 `VectorSchemaMismatchException`，不会静默降级。详见 §9.7.3。
+- **评估**：`tools/KnowVault.Eval` 直连 Qdrant 与模型接口；只跑检索也要 `Ai__SiliconFlowApiKey`，含生成/改写时另需 `Ai__DeepSeekApiKey`。命令、参数与语料说明见 [`docs/eval/README.md`](docs/eval/README.md)。
 
 ---
 
 ## 8. 待确认的开放项
 
 - [x] DeepSeek / SiliconFlow 的 Key 已确认会配置（P1 端到端真跑；Key 走环境变量 `Ai__*`，严禁进仓库）
-- [ ] 前端首期用 `Naive UI` 的中文主题模板，还是从零写
+- [x] 前端首期用 `Naive UI` 的中文主题模板，还是从零写：P4 已落自定义「暖纸 / 墨绿」主题（Naive UI + CSS 变量 + scoped 样式），未套用现成模板
 
 ---
 
 ## 9. 实现细节定稿（动手前已敲定）
 
 - **项目初始化（P0 实际落地）**：用 **ABP Studio CLI** 执行 `abp new KnowVault -t app -u no-ui -d ef -dbms postgresql`（CLI 无 `--aspire` 参数；Aspire 版 `aspire/KnowVault.AppHost` 为手工搭建，负责 Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq 编排；前端另走 Vue3）
-- **文档解析（逐格式专库）**：PDF=`PdfPig`、Word=`.docx`→`DocumentFormat.OpenXml`、Excel=`.xlsx`→`NPOI`/`ClosedXML`、Markdown=`Markdig`、HTML=`HtmlAgilityPack`
-- **Qdrant**：单一 collection + payload 过滤（每个向量带 `tenantId / knowledgeBaseId / documentId / chunkIndex`），不按知识库建多个 collection
+- **文档解析（逐格式专库）**：PDF=`PdfPig`、Word=`.docx`→`DocumentFormat.OpenXml`、Excel=`.xlsx`→`ClosedXML`、Markdown=`Markdig`、HTML=`HtmlAgilityPack`
+- **Qdrant**：单一 collection + payload 过滤（每个向量带 `tenantId / knowledgeBaseId / documentId / chunkIndex`），不按知识库建多个 collection；P5 起同一 collection 另含命名稀疏向量 `text`（见 §9.7.2）
 - **切片 Chunking**：按段落/标题层级 + 固定长度，初值 chunk≈500–800 token、overlap≈50–100，可配置；保留段落/标题 metadata 供引用溯源
-- **检索 + 组装**：按 `tenantId + knowledgeBaseId` 做 payload 过滤，top-k≈5–8，二期加 rerank；System prompt 规定「只根据资料回答、不足就说不知道、标注来源」，top-k 切片 + 问题 → DeepSeek → answer + citations
+- **检索 + 组装**：按 `tenantId + knowledgeBaseId` 做 payload 过滤，top-k≈5–8；P2 起宽召回 + rerank，P5 起 dense + sparse 混合检索与可选查询改写（见 §9.7）；System prompt 规定「只根据资料回答、不足就说不知道、标注来源」，top-k 切片 + 问题 → DeepSeek → answer + citations
 - **认证**：MVP 纳入 ABP 开箱登录（用户名/密码）
 - **会话存储**：从第一天存 `Conversation` + `Message`（含 `CitationsJson`），为二期多轮/历史打底
 
@@ -286,6 +298,27 @@ KnowVault.slnx
 - 工具：`tools/KnowVault.Eval` 控制台直连 `RagService` / `QdrantVectorStore`，报告写 `docs/eval/reports/*.md` + `*.json`
 - 2026-10-27 结果：三组检索指标完全相同（Recall@5 0.900、MRR@10 0.847、nDCG@5 0.858），混合与改写未带来可测增益，也未回退；结论与限制见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)
 
+#### 9.7.7 API 与前端
+
+- **提问入参**：`AskQuestionInput` 用 `KnowledgeBaseIds`（多选）或 `AllKnowledgeBases`（服务端解析为当前用户可访问集合），两者互斥、同时传直接拒绝（`UserFriendlyException` + 中文提示）；`HybridEnabled` / `RewriteEnabled` 为空时取配置默认，非空时只覆盖本次请求
+- **会话回显**：`ConversationDto` 同步返回 `KnowledgeBaseIds` / `AllKnowledgeBases`，刷新会话后恢复当时的提问范围
+- **首帧**：`QaStreamEventDto` 的 `Started` 帧带 `KnowledgeBaseIds`（全部库时为解析后的集合）、`HybridEnabled` 与 `RewriteQueries`（不含原问题），前端据此展示改写变体与跨库引用
+- **维护接口**：`POST /api/app/maintenance/rebuild-vector-index`（仅 Admin），删除并按新 schema 重建 collection，再枚举 Ready 文档提交重新处理；返回重新排队数、跳过数（处理中的文档）与跳过 ID 列表
+- **前端开关**：`RetrievalSettings.vue` 提供混合检索 / 查询改写两个开关；`chat` store 用 `knowvault.retrieval.hybrid`、`knowvault.retrieval.rewrite` 持久化，默认开 / 关
+- **跨库引用**：一次回答命中多个知识库时，引用 chip 显示「库名 · 文档标题」；判断依据是首帧回填的实际库集合，不受之后切换范围影响
+- **仪表盘用量**：`DashboardUsageDto` 提供 `TodayTokens` / `Last7DayTokens` / `AverageTokensPerQuestion` / `Last7DayTrend` / `ByKnowledgeBase` / `HasEstimated`，按当前用户可见知识库聚合
+
+#### 9.7.8 代码地图与迁移
+
+- **稀疏索引**：`src/KnowVault.Domain/Search/`（`KeywordTokenizer` / `KeywordStopWords` / `SparseVectorBuilder` / `SparseVectorData`）；写入在 `DocumentProcessor`，查询为 `QdrantVectorStore.SearchSparseAsync`
+- **融合与编排**：融合算法在 `src/KnowVault.Ai/Retrieval/ReciprocalRankFusion.cs`；编排在 `src/KnowVault.Ai/Rag/RagService.cs`（`RetrieveHybridAsync` / `TryRewriteAsync`）
+- **范围与流式**：`KnowledgeBaseScopeResolver` 解析单库/多库/全局并逐库鉴权；`QaStreamService` 负责落会话范围与首帧字段
+- **用量**：实体 `src/KnowVault.Domain/Ai/AiUsageRecord.cs`；写入 `src/KnowVault.EntityFrameworkCore/Ai/AiUsageRecorder.cs`；聚合 `src/KnowVault.Application/Dashboard/AiUsageAggregator.cs`
+- **维护与 schema**：`MaintenanceAppService.RebuildVectorIndexAsync`；schema 常量在 `src/KnowVault.Domain/VectorStore/VectorSchema.cs`，collection 创建/校验在 `QdrantVectorStore`
+- **迁移**：`P5_ConversationScope`（`AppConversations` 增 `KnowledgeBaseScopeJson` / `ScopeAll`）、`P5_AiUsageRecords`（新表 `AppAiUsageRecords`）
+- **评估**：`tools/KnowVault.Eval`（`EvalRunner` / `GoldenSetLoader` / `EvaluationReportWriter`），语料与金标在 `docs/eval/`，报告写 `docs/eval/reports/`
+- **可观测**：沿用既有 `rag.retrieve` / `embedding.embed` / `rerank.rerank` / `llm.complete` span，稀疏召回与改写都在 `rag.retrieve` 之内，未新增 span 名
+
 ## 10. P1 执行计划
 
 - 详见 [`docs/plans/2026-10-05-knowvault-p1-mvp.md`](docs/plans/2026-10-05-knowvault-p1-mvp.md)：含冻结规格、14 个任务的文件级改动、完整代码与逐项验证命令、风险登记与完成定义。
@@ -304,3 +337,10 @@ KnowVault.slnx
 
 - 详见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)：含 D1–D13 决策、T1–T10 文件级改动、15 项端到端验收、风险登记与完成定义。
 - **状态：已完成（2026-10-26）**：`dotnet build KnowVault.slnx` 0 警告 0 错误、单测 35/35、集成测试 3/3、`npm run build` 通过；15 项验收逐项实测，Aspire 一键启动因本机 DCP 不稳定沿用等价手工容器路径（P1 已记录）。
+
+## 14. P5 执行计划
+
+- 详见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)：含 T1–T9 文件级改动、A1–A17 端到端验收、评估方法与结论；需求见 [`docs/driver/需求/需求分析-1027-P5.md`](docs/driver/需求/需求分析-1027-P5.md)，按主题阅读见 [`docs/P5-代码导读.md`](docs/P5-代码导读.md)。
+- **状态：已完成（2026-10-27）**：`dotnet build` 0 警告 0 错误、单测 109/109、集成测试 4/4、`npm run build` 通过；A1–A17 逐项实测（A2「关键词题命中提前」未复现，判为持平），三组评估检索指标相同（Recall@5 0.900、MRR@10 0.847、nDCG@5 0.858）。
+- **升级注意**：P4 旧 Qdrant collection 没有稀疏向量，必须由 Admin 调 `POST /api/app/maintenance/rebuild-vector-index` 重建，并等所有 Ready 文档重新处理完成；详见 §9.7.3。
+- **评估报告**：方法与复现命令见 [`docs/eval/README.md`](docs/eval/README.md)，2026-10-27 报告见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)。

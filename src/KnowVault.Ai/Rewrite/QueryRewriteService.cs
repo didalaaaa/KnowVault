@@ -29,10 +29,7 @@ namespace KnowVault.Ai
 		}
 
 		/// <inheritdoc />
-		public async Task<QueryRewriteResult> RewriteAsync(
-			string question,
-			IReadOnlyList<LlmChatMessage> history,
-			CancellationToken cancellationToken = default)
+		public async Task<QueryRewriteResult> RewriteAsync(string question, IReadOnlyList<LlmChatMessage> history, CancellationToken cancellationToken = default)
 		{
 			var options = _options.QueryRewrite;
 			var maxVariants = Math.Clamp(options.MaxVariants, 0, MaxVariantsLimit);

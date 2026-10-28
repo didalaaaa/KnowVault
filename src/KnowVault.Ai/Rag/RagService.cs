@@ -9,7 +9,9 @@ using Volo.Abp.DependencyInjection;
 
 namespace KnowVault.Ai
 {
-	/// <summary>RAG 编排：问题向量化 → dense/sparse 混合召回 → RRF 融合 → 重排 → 组装 Prompt → DeepSeek 生成 → 引用溯源。</summary>
+	/// <summary>
+	/// RAG 编排：问题向量化 → dense/sparse 混合召回 → RRF 融合 → 重排 → 组装 Prompt → DeepSeek 生成 → 引用溯源
+	/// </summary>
 	public class RagService : IRagService, ITransientDependency
 	{
 		// 重排候选数上限：一次多取几十条没有收益，还要为 rerank 付费
@@ -156,11 +158,11 @@ namespace KnowVault.Ai
 		/// <summary>
 		/// 纯向量召回（P4 行为）：只 embed 原问题并做一次 dense 检索
 		/// </summary>
-		/// <param name="request">提问入参。</param>
-		/// <param name="filter">检索过滤条件。</param>
-		/// <param name="limit">召回条数。</param>
-		/// <param name="cancellationToken">取消令牌。</param>
-		/// <returns>按相似度降序的切片。</returns>
+		/// <param name="request">提问入参</param>
+		/// <param name="filter">检索过滤条件</param>
+		/// <param name="limit">召回条数</param>
+		/// <param name="cancellationToken">取消令牌</param>
+		/// <returns>按相似度降序的切片</returns>
 		private async Task<List<RagRetrievedChunk>> RetrieveDenseAsync(RagRequest request, VectorFilter filter, int limit, CancellationToken cancellationToken)
 		{
 			var embedding = await EmbedAsync([request.Question], request, cancellationToken);
