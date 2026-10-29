@@ -19,7 +19,7 @@
 4. MIT LICENSE + 第三方许可清单 + 无真实密钥
 5. 干净克隆 + 干净数据卷走完十步陌生人测试，A1–A12 逐项留证
 
-P6 不新增检索/问答能力；不部署上线；不启用多租户；不做 Gitee Go（D7 后置）。
+P6 不新增检索/问答能力；不部署上线；不启用多租户；不做 CI 流水线（D7 后置，2026-10-29 以 GitHub Actions 补齐）。
 
 ## Architecture
 
@@ -63,7 +63,7 @@ api（Production，http://+:8080，非 root）
 | D4 | 演示账号 | 配置开关 `Demo:SeedAccounts` 种 `demo`（Member）+ `viewer`（Viewer）；admin 由 ABP 种子创建 |
 | D5 | 内部文档与历史 | 只清理 HEAD：`docs/driver/问题/` 与 `docs/interview/` 移出公开树并加入 `.gitignore`；保留 git 历史 |
 | D6 | Redis | 接入 `Volo.Abp.Caching.StackExchangeRedis` 10.5.0 |
-| D7 | Gitee Go CI | 后置，P6 不提交 `.workflow` |
+| D7 | CI | 后置，P6 不提交流水线（2026-10-29 以 GitHub Actions 单独补齐） |
 | D8 | README/素材 | 中文 README + 英文一句话；6–8 张 PNG；不做 GIF |
 
 ### 0.2 实现偏差（相对需求文档）
@@ -148,7 +148,7 @@ api（Production，http://+:8080，非 root）
 
 - 不做 HTTPS / 域名 / 公网部署 / WAF / 限流 / 备份。
 - 不做新的数据库迁移、不改 Qdrant schema、不改 API 契约。
-- 不做 Gitee Go、GIF、模型供应商配置界面。
+- 不做 CI、GIF、模型供应商配置界面。
 - 不把 `.env`、`appsettings.secrets.json`、`openiddict.pfx` 提交进仓库。
 
 ---
@@ -302,7 +302,7 @@ api（Production，http://+:8080，非 root）
 
 ### 验收
 
-- README 首屏在 Gitee 渲染正常，图片不破。
+- README 首屏在 GitHub 渲染正常，图片不破。
 - 6–8 张截图不含真实 Key、个人路径、浏览器插件。
 - 架构图 < 100KB，单张截图尽量 < 300KB。
 

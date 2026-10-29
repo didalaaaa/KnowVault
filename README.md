@@ -196,6 +196,7 @@ samples/kb-import/              7 份多格式示例文档
 docs/                           计划、代码导读、评估报告、部署说明
 aspire/KnowVault.AppHost        本地 Aspire 编排
 tests/                          纯函数单测 + Testcontainers 集成测试
+.github/workflows/            GitHub Actions CI（后端 + 集成测试 + 前端）
 ```
 
 ## 设计取舍
@@ -231,6 +232,7 @@ P4 的 Qdrant collection 没有稀疏向量。若沿用旧数据卷升级到当�
 - 不做公网部署所需的 HTTPS、WAF、限流、备份与高可用。
 - 演示账号与默认口令仅用于本地；正式环境必须关闭 `DEMO_SEED_ACCOUNTS` 并更换全部口令。
 - Seq 为商业软件，Compose 只使用官方镜像的单用户免费范围。
+- CI 覆盖后端构建、单测、IDE1006、集成测试与前端构建；未注入模型 API Key，端到端验收仍需本地执行。
 
 ## 开发与测试
 
@@ -242,6 +244,10 @@ dotnet format style --verify-no-changes --diagnostics IDE1006
 ```
 
 集成测试默认启动 PostgreSQL / RabbitMQ / MinIO / Qdrant 容器；MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 使用内存存储兜底。
+
+### 持续集成
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 是 GitHub Actions 流水线：push / PR 到 `main` 触发，三个并行 job——后端（.NET 10 构建 + 单测 + IDE1006 格式检查）、集成测试（Testcontainers 拉起 PostgreSQL / RabbitMQ / MinIO / Qdrant）、前端（Node 24 + `npm ci` + 生产构建）。CI 不注入 DeepSeek / SiliconFlow Key，端到端问答验收仍需本地执行。
 
 ## 文档索引
 

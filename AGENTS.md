@@ -54,13 +54,14 @@ KnowVault.slnx
 │  ├─ KnowVault.DemoSeed              // P6 示例数据导入：只调用公开 HTTP API
 │  └─ KnowVault.Eval                  // P5 检索评估控制台：语料 + 30 题金标集 + 三模式报告
 ├─ samples/kb-import/                  // P6 7 份多格式示例文档
+├─ .github/workflows/                  // GitHub Actions CI（build + 单测 + 集成测试 + 前端构建）
 └─ docs/                              // 设计 / 执行计划 / 代码导读 / 评估文档
    ├─ assets/                         // 架构图与功能截图（README 引用）
    ├─ plans/                          // 每期冻结规格与执行计划
    └─ eval/                           // 评估语料、金标集与 docs/eval/reports/ 历史报告
 ```
 
-> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Testcontainers 四件套）。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`；**P2** 的冻结规格与执行计划见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`（流式 Hub 在 `src/KnowVault.HttpApi/Hubs/`，重排与流式实现在 `src/KnowVault.Ai/Rerank/` 与 `src/KnowVault.Ai/Chat/`）；**P3** 见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`（OTel/Seq、角色+知识库 ACL、文档删除/重处理、摄入重试、Testcontainers、CI）；**P4/P5** 见 `docs/plans/2026-10-24-knowvault-p4-mvp.md` 与 `docs/plans/2026-10-27-knowvault-p5-mvp.md`（P5 混合检索在 `src/KnowVault.Ai/Retrieval/` 与 `src/KnowVault.Domain/Search/`，评估工具在 `tools/KnowVault.Eval`）。
+> **当前实现（P0 ABP 分层模板）**：主宿主为 ABP 约定的 `KnowVault.HttpApi.Host`（非 `KnowVault.Web`），并含 `Domain.Shared` / `Application.Contracts` / `HttpApi.Client` / `DbMigrator` 等标准层。**P1 起** `tests/` 落地 `KnowVault.Tests`（纯函数单测）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Testcontainers 四件套）。技术选型 / 架构 / 数据模型 / 路线图的权威定义见 `TECH_STACK.md`，P1 的冻结规格与执行计划见 `docs/plans/2026-10-05-knowvault-p1-mvp.md`；**P2** 的冻结规格与执行计划见 `docs/plans/2026-10-14-knowvault-p2-mvp.md`（流式 Hub 在 `src/KnowVault.HttpApi/Hubs/`，重排与流式实现在 `src/KnowVault.Ai/Rerank/` 与 `src/KnowVault.Ai/Chat/`）；**P3** 见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`（OTel/Seq、角色+知识库 ACL、文档删除/重处理、摄入重试、Testcontainers；CI 于 2026-10-29 补充）；**P4/P5** 见 `docs/plans/2026-10-24-knowvault-p4-mvp.md` 与 `docs/plans/2026-10-27-knowvault-p5-mvp.md`（P5 混合检索在 `src/KnowVault.Ai/Retrieval/` 与 `src/KnowVault.Domain/Search/`，评估工具在 `tools/KnowVault.Eval`）。
 
 ---
 
@@ -252,7 +253,7 @@ dotnet run --project tools/KnowVault.Eval -- \
 
 - 依赖用 **Aspire** 启动，避免手工起容器。
 - **API Key（DeepSeek/SiliconFlow）放环境变量**，**严禁进仓库/hardcode**（用 `.env` + 环境变量注入；变量清单参照根目录 `.env.example`）。
-- 提交/PR 前保证 `dotnet build` 无错误、`dotnet test` 通过。
+- 提交/PR 前保证 `dotnet build` 无错误、`dotnet test` 通过；CI（GitHub Actions）覆盖后端构建、单测、IDE1006、集成测试与前端构建，本地仍需自己跑一次端到端验收（CI 不含真实模型 Key）。
 - 评估工具的完整参数、语料要求与报告位置见 [`docs/eval/README.md`](docs/eval/README.md)；P4 旧 Qdrant collection 升级 P5 需先调 Admin `POST /api/app/maintenance/rebuild-vector-index` 重建，详见 `TECH_STACK.md` §9.7.3。
 
 ---
@@ -269,14 +270,15 @@ dotnet run --project tools/KnowVault.Eval -- \
 ## 七、待办/注意
 
 - DeepSeek / SiliconFlow 的 API Key：**P1 已确认会配置**（端到端真跑）。Key 一律走环境变量 `Ai__DeepSeekApiKey` / `Ai__SiliconFlowApiKey`（由 `aspire/KnowVault.AppHost` 从本地 `.env`/进程环境映射），严禁进仓库或硬编码。
-- `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）。**P1** 新增 `tests/KnowVault.Tests`（切片/解析/payload/Prompt 的**纯函数单测**）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Postgres/RabbitMQ/MinIO/Qdrant 容器；本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，CI 用真实 MinIO）。
+- `src/`、`frontend/` 已落地为 ABP 分层骨架（P0）。**P1** 新增 `tests/KnowVault.Tests`（切片/解析/payload/Prompt 的**纯函数单测**）；**P3** 新增 `tests/KnowVault.IntegrationTests`（Postgres/RabbitMQ/MinIO/Qdrant 容器；本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底；集成测试在 CI 的独立 job 运行）。
 - **P1 冻结规格与执行计划**：`docs/plans/2026-10-05-knowvault-p1-mvp.md`（含 14 个任务的文件级改动、代码与逐项验收命令）。规格变更必须先改该文档的 §0 再改代码。
 - **P2 冻结规格与执行计划**：`docs/plans/2026-10-14-knowvault-p2-mvp.md`（含 6 项决策、8 个任务的文件级改动、15 项端到端验收）。规格变更必须先改该文档的 §0 再改代码。P2 起 SignalR 服务端零 NuGet 包（.NET 10 共享框架自带），前端新增 npm `@microsoft/signalr ^10.0.11`；重排配置按 §七「Embedding / Rerank 切换 SiliconFlow」执行（与 Embedding 共用 `Ai:SiliconFlowBaseUrl`）。
 - **P2 已完成（2026-10-14）**：15 项端到端验收通过并逐项留证（见该文档 §2 / §5）。两条实测结论后续写 AppService 时会用到：①ABP 动态 API 把 `UpdateAsync(输入DTO)` 映射为 `PUT /api/app/{服务名}`（**路由不带 `{id}`**，实体 ID 走请求体），只有 `DeleteAsync(Guid id)` 才是 `DELETE /api/app/{服务名}/{id}`；②`/api` 前缀的认证失败已改写为 401 + `WWW-Authenticate: Bearer`（其它路径仍跳登录页）。
-- **P3 冻结规格与执行计划**：`docs/plans/2026-10-18-knowvault-p3-mvp.md`（含 5 项决策、T0–T7 文件级改动、12 项端到端验收）。P3 新增：Seq sink + OTLP/HTTP protobuf trace（EF 插桩锁 `1.17.0-beta.1`）；系统角色 `Admin/Member/Viewer` + 知识库成员表 `AppKnowledgeBaseMembers`（Owner/Editor/Viewer）；文档删除/重新处理；`document-ingest` 5×2s 重试 + `document-ingest_error`；Testcontainers 四件套；CI 暂未接入（不使用 GitHub，后续考虑 Gitee Go）。**权限缓存**：改角色/成员后需重新登录或等待缓存过期再验收 403。
+- **P3 冻结规格与执行计划**：`docs/plans/2026-10-18-knowvault-p3-mvp.md`（含 5 项决策、T0–T7 文件级改动、12 项端到端验收）。P3 新增：Seq sink + OTLP/HTTP protobuf trace（EF 插桩锁 `1.17.0-beta.1`）；系统角色 `Admin/Member/Viewer` + 知识库成员表 `AppKnowledgeBaseMembers`（Owner/Editor/Viewer）；文档删除/重新处理；`document-ingest` 5×2s 重试 + `document-ingest_error`；Testcontainers 四件套；P3 时 CI 未接入（2026-10-29 已接入 GitHub Actions，见本节末尾）。**权限缓存**：改角色/成员后需重新登录或等待缓存过期再验收 403。
 - **文档去重（2026-10-23）**：同一知识库内按原始文件名（忽略大小写）拒绝重复上传；`Document.SourceFileName` 可空、存量不回填，详见 `TECH_STACK.md` §9.4。
 - **Embedding / Rerank 切换 SiliconFlow（2026-10-23）**：向量化 `BAAI/bge-m3`（1024 维）+ 重排 `BAAI/bge-reranker-v2-m3`，共用 `Ai:SiliconFlowBaseUrl=https://api.siliconflow.cn/v1` 与 `Ai:SiliconFlowApiKey`；Qwen/DashScope 代码与配置已移除，历史数据已清空无需迁移。详见 `TECH_STACK.md` §9.5 与 `docs/plans/2026-10-23-siliconflow-model-switch.md`。
-- **开源作品路线图（2026-10-24）**：项目定位调整为**不部署上线、在 Gitee 开源作作品展示**；功能范围与阶段以 `docs/plans/2026-10-24-knowvault-open-source-roadmap.md` 为准（P4 演示完整度 → P5 检索含金量 → P6 开源交付）。多租户、开放 API/API Key、限流/审计/备份、外部数据源、OCR、移动端明确不做；每期开工前另写文件级实施计划。
+- **开源作品路线图（2026-10-24）**：项目定位调整为**不部署上线、在 GitHub 开源作作品展示**（2026-10-29 由 Gitee 改为 GitHub）；功能范围与阶段以 `docs/plans/2026-10-24-knowvault-open-source-roadmap.md` 为准（P4 演示完整度 → P5 检索含金量 → P6 开源交付）。多租户、开放 API/API Key、限流/审计/备份、外部数据源、OCR、移动端明确不做；每期开工前另写文件级实施计划。
 - **P4 已完成（2026-10-26）**：账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘与知识库工作台（T1–T10）。15 项端到端验收逐项实测，`dotnet build` 0 警告、单测 35/35、集成测试 3/3。**资料库已并入知识库页**（`KnowledgeWorkspace` + `KnowledgeDocuments`），问答页只保留会话侧栏 + 聊天头部「提问范围」；验收期修复了「未评价消息被误显示为已点赞」的可空映射问题。按主题阅读见 `docs/P4-代码导读.md`，规格见 `docs/plans/2026-10-24-knowvault-p4-mvp.md`。
 - **P5 已完成（2026-10-27）**：混合检索（dense + Qdrant 命名稀疏向量 `text` + 应用层加权 RRF）、查询改写（默认关）、多库/全局问答、AI 用量与费用记录、仪表盘用量区、评估工具与 30 题金标集（T1–T9）。A1–A17 逐项实测留证（见计划 §5），`dotnet build` 0 警告、单测 109/109、集成测试 4/4、`npm run build` 通过；三组评估在本语料上持平（Recall@5 0.900 三者相同），结论见 `docs/eval/reports/2026-10-27-p5-eval.md`。**升级注意**：P4 的旧 Qdrant collection 没有稀疏向量，应用会抛 `VectorSchemaMismatchException` 并提示重建；执行 Admin `POST /api/app/maintenance/rebuild-vector-index` 后需等所有 Ready 文档重新处理完成，步骤见 `TECH_STACK.md` §9.7.3。`AskQuestionInput.KnowledgeBaseId` 已删除，改为 `KnowledgeBaseIds` + `AllKnowledgeBases`；检索开关走请求级 `HybridEnabled` / `RewriteEnabled`。按主题阅读见 `docs/P5-代码导读.md`，规格与验收记录见 `docs/plans/2026-10-27-knowvault-p5-mvp.md`。
 - **P6 已完成（2026-10-29）**：Docker Compose 一键启动（前端 nginx + API + PostgreSQL/Redis/Qdrant/MinIO/RabbitMQ/Seq + 一次性 migrator/demo-seed）、`tools/KnowVault.DemoSeed` 导入「KnowVault 示例库」与 7 份样例、MIT LICENSE + `THIRD-PARTY-LICENSES.md`、README/架构图/截图与 `docs/docker-compose.md`。演示账号 `admin` / `demo` / `viewer`，密码统一 `1q2w3E*`，**仅本地演示**；由 `Demo:SeedAccounts` 开关控制（默认关，Development 与 Compose 打开）。**新增业务约束**：`DemoSeed` 只走公开 HTTP API，不依赖 ABP；镜像内不得出现 `.env` / `appsettings.secrets.json` / `openiddict.pfx`。规格与验收记录见 `docs/plans/2026-10-28-knowvault-p6-mvp.md`，部署说明见 `docs/docker-compose.md`。A1–A12 逐项实测通过（干净副本 + 干净卷、十步陌生人流程、端口切换 8088/8089、`dotnet build` 0 警告、单测 109/109、集成 4/4、`npm run build` 通过）；验收期修复 frontend 健康检查 IPv4 与 Production 401 被改写成 302 两个问题，偏差见计划 §5.3。
+- **CI（2026-10-29）**：GitHub Actions 流水线 `.github/workflows/ci.yml`，push / PR 到 `main` 触发，三个并行 job：`backend`（`actions/setup-dotnet@v4` 装 .NET 10 SDK → restore → Release 构建 → `tests/KnowVault.Tests` 单测 → `dotnet format style ... --diagnostics IDE1006`）、`integration`（`tests/KnowVault.IntegrationTests`，Testcontainers 四件套，运行器自带 Docker）、`frontend`（Node 24 + `npm ci` + `npm run build`）。CI 不注入 DeepSeek / SiliconFlow Key，端到端验收仍需本地跑。同日删除了此前的 Gitee Go `.workflow/ci.yml`（仓库托管由 Gitee 改为 GitHub）。

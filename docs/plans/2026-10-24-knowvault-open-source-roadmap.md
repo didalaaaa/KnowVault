@@ -1,6 +1,6 @@
 # KnowVault 开源作品路线图（2026-10-24）
 
-> 定位：**不部署上线**，在 Gitee 开源，作为作品展示
+> 定位：**不部署上线**，在 GitHub 开源，作为作品展示
 > 权威边界：功能范围与阶段以本文档为准；技术选型、数据模型与实现细节仍以 `TECH_STACK.md` 为准
 > 变更规则：范围变更先改本文档「三、范围决策」与「四、阶段路线图」，再进入代码
 > 执行方式：每个阶段开工前另写一份文件级实施计划（参照 `2026-10-18-knowvault-p3-mvp.md` 的结构）
@@ -87,7 +87,7 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 | 模型供应商配置界面 | 把 appsettings 的模型配置搬到界面，含连通性测试 |
 | URL 导入 | 输入网页地址抓取正文，复用现有 HTML 解析 |
 | 语义缓存 | 相似问题命中缓存，降低响应时间与成本 |
-| Gitee Go CI | 只跑 build + 单测；集成测试受额度限制不进 CI |
+| GitHub Actions CI | 后端构建 + 单测 + IDE1006 + 集成测试 + 前端构建；不注入模型 Key |
 | 多租户演示分支 | 仅演示租户隔离，不并入主线 |
 
 ### 3.3 明确不做
@@ -133,7 +133,7 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 
 ### P5 检索含金量
 
-> 状态：**已完成（2026-10-27）**。需求见 [`docs/driver/需求/需求分析-1027-P5.md`](../driver/需求/需求分析-1027-P5.md)，实施计划与验收记录见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](2026-10-27-knowvault-p5-mvp.md)，代码导读见 [`docs/P5-代码导读.md`](../P5-代码导读.md)，评估报告见 [`docs/eval/reports/2026-10-27-p5-eval.md`](../eval/reports/2026-10-27-p5-eval.md)。
+> 状态：**已完成（2026-10-27）**。需求见 `docs/driver/需求/需求分析-1027-P5.md`（内部文档，仅本地保留，未纳入仓库），实施计划与验收记录见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](2026-10-27-knowvault-p5-mvp.md)，代码导读见 [`docs/P5-代码导读.md`](../P5-代码导读.md)，评估报告见 [`docs/eval/reports/2026-10-27-p5-eval.md`](../eval/reports/2026-10-27-p5-eval.md)。
 
 **目标**：回答质量可度量、可对比、可解释，这是作品与"玩具 Demo"的分水岭。
 
@@ -167,7 +167,7 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 | P6-T3 | 示例数据 | 演示账号、示例知识库与 3–5 份示例文档 | P4 |
 | P6-T4 | 合规与清理 | LICENSE（MIT 或 Apache-2.0）、依赖许可核对、密钥扫描、仓库体积检查 | — |
 | P6-T5 | 文档校订 | 更新 `AGENTS.md`/`TECH_STACK.md` 路线图，补 P4/P5 代码导读 | P4、P5 |
-| P6-T6 | CI（可选） | Gitee Go 只跑 build + 单测 | P6-T1 |
+| P6-T6 | CI | GitHub Actions：后端构建 + 单测 + IDE1006 + 集成测试 + 前端构建（P6 之后接入，2026-10-29） | P6-T1 |
 | P6-T7 | 发布检查 | 干净机器跑通、README 完整、许可明确、无密钥、截图齐全 | 全部 |
 
 **验收标准**
@@ -182,9 +182,9 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 
 - 规格与任务级验收：[`docs/plans/2026-10-28-knowvault-p6-mvp.md`](2026-10-28-knowvault-p6-mvp.md)；快速开始：[`README.md`](../../README.md)；部署说明：[`docs/docker-compose.md`](../docker-compose.md)；交付说明：[`docs/P6-交付说明.md`](../P6-交付说明.md)。
 - 已交付：Compose 一键启动（8 个常驻服务 + migrator/demo-seed）、Redis 缓存接线、演示账号与 7 份样例导入、MIT LICENSE + 第三方许可清单、中文 README + 架构图 + 7 张截图、内部文档移出公开树。
-- 决策：D1 MIT；D2 Production + HTTP + 构建期自签 pfx；D3 DemoSeed 工具；D4 `Demo:SeedAccounts` 配置开关；D5 只清理 HEAD、保留历史；D6 接入 Redis；D7 Gitee Go 后置；D8 中文 README + PNG。
+- 决策：D1 MIT；D2 Production + HTTP + 构建期自签 pfx；D3 DemoSeed 工具；D4 `Demo:SeedAccounts` 配置开关；D5 只清理 HEAD、保留历史；D6 接入 Redis；D7 CI 后置；D8 中文 README + PNG。
 - 偏差：MinIO 控制台宿主端口改 `9002`（Windows 保留 9001）；Seq 注入 `ACCEPT_EULA=Y`。
-- 未做：Gitee Go 流水线、GIF、公网 HTTPS/域名。
+- 未做：CI 流水线（2026-10-29 补 GitHub Actions）、GIF、公网 HTTPS/域名。
 
 ---
 
@@ -199,7 +199,7 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 - [x] 评估报告与指标表进入仓库
 - [x] 仓库体积合理，`bin/obj/node_modules` 未入库（`git ls-files` 无命中）
 - [x] P4/P5 代码导读完成，阅读顺序可直接跟随
-- [ ] Gitee 仓库简介、标签、README 首屏信息完整（推送时填写）
+- [ ] GitHub 仓库简介、标签、README 首屏信息完整（推送时填写）
 
 ---
 
@@ -208,7 +208,7 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 | 风险/待决策 | 影响 | 处理方式 |
 |---|---|---|
 | 中文关键词检索方案未定 | P5-T1 无法开工 | P5-T0 先做小实验：Qdrant sparse / PG 全文 / OpenSearch 三者比较，冻结后写回本文档 |
-| Gitee Go 免费额度与功能限制 | CI 可能无法覆盖集成测试 | 只跑 build + 单测；集成测试保持本地执行 |
+| GitHub Actions 公共 runner 额度与镜像拉取耗时 | 集成测试 job 变慢 | 私有仓库每月 2000 分钟够用；集成测试独立 job 不阻塞后端与前端；必要时设 `KNOWVAULT_SKIP_MINIO=1` |
 | 评估需要真实调用产生费用 | 金标集回归有成本 | 固定 30 条小集合，按需运行；结果落仓库不重复跑 |
 | 不部署导致访客只能看截图 | 展示效果依赖素材质量 | P4 完成即开始积累截图/GIF，不拖到 P6 补拍 |
 | 范围膨胀 | 每期拖延 | 任何"顺手加"的功能先进 3.2 可选区，不插队 |
@@ -235,3 +235,4 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 |---|---|---|
 | 2026-10-24 | 初稿 | 确立"Gitee 开源作品展示、不部署上线"定位，冻结 P4–P6 范围与取舍 |
 | 2026-10-28 | P6 完成 | Compose 一键交付、演示数据、MIT License、README/截图、内部文档移出公开树；验收记录见 P6 实施计划 |
+| 2026-10-29 | 托管改为 GitHub | 开源作品展示从 Gitee 迁到 GitHub（定位段与本条为唯一口径变更，P4–P6 范围不变）；CI 从 Gitee Go `.workflow/ci.yml` 换成 GitHub Actions `.github/workflows/ci.yml`，覆盖面从「build + 单测」扩到集成测试与前端构建 |

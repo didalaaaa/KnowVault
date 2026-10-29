@@ -25,7 +25,7 @@
 | 本地编排 | **.NET Aspire** |
 | 测试 | **xUnit** + **Testcontainers** + FluentAssertions |
 | 前端 | **Vue 3** + Vite + **JS**（不用 TS）+ **Naive UI** + Pinia + Axios + ECharts |
-| DevOps | **Docker Compose**（CI 暂未接入，后续考虑 Gitee Go） |
+| DevOps | **Docker Compose** + **GitHub Actions**（build + 单测 + 集成测试 + 前端构建） |
 
 ---
 
@@ -120,7 +120,7 @@ KnowVault.slnx
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
 | **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘、知识库工作台 | ✅ 已完成（2026-10-26）：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)；代码导读见 [`docs/P4-代码导读.md`](docs/P4-代码导读.md) |
 | **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | ✅ 已完成（2026-10-27）：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)、[`docs/P5-代码导读.md`](docs/P5-代码导读.md)；三组评估结论见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)（本语料判为持平） |
-| **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | ✅ 已完成（2026-10-28）：见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)；部署见 [`docs/docker-compose.md`](docs/docker-compose.md)；Gitee Go 后置 |
+| **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、GitHub Actions CI | ✅ 已完成（2026-10-28）：见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)；部署见 [`docs/docker-compose.md`](docs/docker-compose.md)；GitHub Actions CI 已接入（2026-10-29） |
 
 ---
 
@@ -196,7 +196,7 @@ KnowVault.slnx
 - **文档生命周期**：`DELETE /api/app/document/{id}`（Qdrant points → chunks → document → MinIO 原文件；MinIO 失败只 warning）与 `POST /api/app/document/{id}/reprocess`（清旧向量/切片 → `MarkPending` → 提交后发消息）。`Document.IngestAttemptCount` 记录尝试次数。
 - **摄入重试**：`document-ingest` 端点显式 `UseMessageRetry(5 × 2s)`；Consumer 在**独立 UoW** 落 `Failed` 后 rethrow，耗尽后进 `document-ingest_error`。
 - **集成测试**：`tests/KnowVault.IntegrationTests` 用 Testcontainers 起 Postgres/RabbitMQ/MinIO/Qdrant；Embedding 与消息发布用 fake；`AbpIntegratedTest` 服务级测试，`AddAlwaysAllowAuthorization` 绕过授权拦截器但保留 ACL 真实校验。本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，集成测试不设该变量。
-- **CI**：暂未接入（不使用 GitHub Actions；后续考虑迁移到 Gitee Go）。
+- **CI**：GitHub Actions `.github/workflows/ci.yml`，push / PR 到 `main` 触发，三个并行 job：`backend`（`setup-dotnet` 装 .NET 10 SDK → restore → Release build → 单测 → IDE1006 格式检查）、`integration`（Testcontainers 四件套，运行器自带 Docker）、`frontend`（Node 24 + `npm ci` + `npm run build`）。CI 不注入模型 API Key，端到端验收在本地执行。
 - **执行计划**：见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`
 
 ### 9.4 文档去重定稿（2026-10-23）
@@ -232,7 +232,7 @@ KnowVault.slnx
 
 ### 9.7 P5 混合检索与用量（2026-10-27）
 
-- **执行计划**：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)；需求细化见 [`docs/driver/需求/需求分析-1027-P5.md`](docs/driver/需求/需求分析-1027-P5.md)
+- **执行计划**：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)；需求细化见 `docs/driver/需求/需求分析-1027-P5.md`（内部文档，仅本地保留，未纳入仓库）
 - **默认开关**：混合检索默认开，查询改写默认关；均支持请求级覆盖（`HybridEnabled` / `RewriteEnabled`）
 - **默认配置**：
 
@@ -331,7 +331,7 @@ KnowVault.slnx
 - **示例数据**：`tools/KnowVault.DemoSeed` 只调用公开 HTTP API：等待 `/health-status` → `POST /connect/token`（密码模式）→ 查找/创建「KnowVault 示例库」→ 逐份上传 `samples/kb-import/` 的 7 份文档 → 轮询文档状态到 Ready/Failed。无 `SILICONFLOW_API_KEY` 时只建库并提示重跑；同名文档跳过，可重复执行。
 - **配置与密钥**：所有可覆盖项在根目录 `.env`，模板为 `.env.example`；`.dockerignore` 排除 `.env*`、`appsettings.secrets.json`、`appsettings.Production.json`、`*.pfx`、`bin/obj/Logs`、`docs/tests/aspire/frontend/samples`；`DbMigrator.csproj` 对 `appsettings.secrets.json` 使用 `Condition="Exists(...)"`，干净克隆可直接构建。
 - **许可**：仓库 MIT；`THIRD-PARTY-LICENSES.md` 区分 NuGet/npm 代码依赖与容器服务镜像。代码依赖无 AGPL/SSPL；MinIO（AGPL-3.0）与 Redis（RSALv2/SSPLv1/AGPLv3）以未修改官方镜像运行，不与仓库代码静态链接。
-- **已知限制**：HTTP only、默认口令、演示账号均面向本地；未做 HTTPS/域名/限流/备份/高可用；Gitee Go CI 后置（D7）。P4 旧数据卷升级仍需按 §9.7.3 重建向量索引。
+- **已知限制**：HTTP only、默认口令、演示账号均面向本地；未做 HTTPS/域名/限流/备份/高可用；CI 覆盖构建、单测、IDE1006、集成测试与前端构建，但不注入模型 API Key，端到端验收仍需本地执行。P4 旧数据卷升级仍需按 §9.7.3 重建向量索引。
 - **验证命令**：`docker compose config`、`docker compose up -d --build`、`docker compose ps`、`docker compose logs -f demo-seed`、`docker compose down -v`；详细说明见 [`docs/docker-compose.md`](docs/docker-compose.md)，验收记录见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)。
 
 ## 10. P1 执行计划
@@ -355,14 +355,14 @@ KnowVault.slnx
 
 ## 14. P5 执行计划
 
-- 详见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)：含 T1–T9 文件级改动、A1–A17 端到端验收、评估方法与结论；需求见 [`docs/driver/需求/需求分析-1027-P5.md`](docs/driver/需求/需求分析-1027-P5.md)，按主题阅读见 [`docs/P5-代码导读.md`](docs/P5-代码导读.md)。
+- 详见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)：含 T1–T9 文件级改动、A1–A17 端到端验收、评估方法与结论；需求见 `docs/driver/需求/需求分析-1027-P5.md`（内部文档，仅本地保留，未纳入仓库），按主题阅读见 [`docs/P5-代码导读.md`](docs/P5-代码导读.md)。
 - **状态：已完成（2026-10-27）**：`dotnet build` 0 警告 0 错误、单测 109/109、集成测试 4/4、`npm run build` 通过；A1–A17 逐项实测（A2「关键词题命中提前」未复现，判为持平），三组评估检索指标相同（Recall@5 0.900、MRR@10 0.847、nDCG@5 0.858）。
 - **升级注意**：P4 旧 Qdrant collection 没有稀疏向量，必须由 Admin 调 `POST /api/app/maintenance/rebuild-vector-index` 重建，并等所有 Ready 文档重新处理完成；详见 §9.7.3。
 - **评估报告**：方法与复现命令见 [`docs/eval/README.md`](docs/eval/README.md)，2026-10-27 报告见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)。
 
 ## 15. P6 执行计划
 
-- 详见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)：含 D1–D8 决策、T1–T7 文件级改动、A1–A12 陌生人测试与风险登记；需求见 [`docs/driver/需求/需求分析-1028-P6.md`](docs/driver/需求/需求分析-1028-P6.md)。
+- 详见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)：含 D1–D8 决策、T1–T7 文件级改动、A1–A12 陌生人测试与风险登记；需求见 `docs/driver/需求/需求分析-1028-P6.md`（内部文档，仅本地保留，未纳入仓库）。
 - **状态：实施完成（2026-10-28）**：Compose/镜像、Redis、演示账号与 DemoSeed、LICENSE、README/架构图/截图、文档校订与 A1–A12 验收记录见该计划 §5。
 - **升级注意**：P4 旧数据卷仍需按 §9.7.3 重建向量索引；Compose 全新卷由 `migrator` 自动完成。
 - **入口**：快速开始见 [`README.md`](README.md)，部署细节见 [`docs/docker-compose.md`](docs/docker-compose.md)，交付说明见 [`docs/P6-交付说明.md`](docs/P6-交付说明.md)。
