@@ -41,6 +41,9 @@ jobs:
     name: 集成测试
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    # 仅用于失败时把日志推到 ci-diag 临时分支（排查完删除该分支与本段 permissions）
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -55,29 +58,25 @@ jobs:
       - name: Release 构建
         run: dotnet build KnowVault.slnx -c Release --no-restore
 
-      # 详细日志同时写文件，失败时由下一步导出到 Run 页面（Actions 日志需要登录才能看，Run 页面公开可读）
+      # 日志同时写文件：Actions 日志未登录看不到，失败时把文件推到 ci-diag 临时分支，用 raw.githubusercontent 读
       - name: 集成测试（PostgreSQL / RabbitMQ / MinIO / Qdrant）
         shell: bash
         run: |
           set -o pipefail
           dotnet test tests/KnowVault.IntegrationTests/KnowVault.IntegrationTests.csproj -c Release --no-build --logger "console;verbosity=detailed" 2>&1 | tee integration-test.log
 
-      - name: 失败时导出诊断摘要
+      - name: 失败时把日志推到 ci-diag 临时分支
         if: failure()
         shell: bash
         run: |
-          {
-            echo '### 集成测试失败诊断'
-            echo '#### dotnet test 日志（末尾 150 行）'
-            echo '```text'
-            tail -n 150 integration-test.log 2>/dev/null || echo '（没有日志文件）'
-            echo '```'
-            echo '#### Docker 环境'
-            echo '```text'
-            docker version --format '{{.Server.Version}}' 2>&1
-            docker ps -a --format '{{.Image}} | {{.Status}}' 2>&1
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          git config user.name "ci-diag"
+          git config user.email "ci-diag@users.noreply.github.com"
+          git switch -c ci-diag
+          head -c 500000 integration-test.log > ci-integration-log.txt
+          docker ps -a > docker-ps.txt 2>&1
+          git add -f ci-integration-log.txt docker-ps.txt
+          git commit -m "ci: 集成测试失败日志"
+          git push -f origin ci-diag
 
   frontend:
     name: 前端构建
