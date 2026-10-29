@@ -92,5 +92,7 @@ desktop.ini
 *.log
 logs/
 /.obsidian
-/.archify/architecture-knowvault-20261024-093355
+/.archify/
 /docs/driver/账密.md
+/docs/driver/问题/
+/docs/interview/

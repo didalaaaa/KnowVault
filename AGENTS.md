@@ -51,8 +51,11 @@ KnowVault.slnx
 ├─ frontend/                          // Vue3 + Vite + JS + Naive UI
 ├─ tests/                             // KnowVault.Tests（纯函数单测）+ KnowVault.IntegrationTests（P3 Testcontainers）
 ├─ tools/
+│  ├─ KnowVault.DemoSeed              // P6 示例数据导入：只调用公开 HTTP API
 │  └─ KnowVault.Eval                  // P5 检索评估控制台：语料 + 30 题金标集 + 三模式报告
+├─ samples/kb-import/                  // P6 7 份多格式示例文档
 └─ docs/                              // 设计 / 执行计划 / 代码导读 / 评估文档
+   ├─ assets/                         // 架构图与功能截图（README 引用）
    ├─ plans/                          // 每期冻结规格与执行计划
    └─ eval/                           // 评估语料、金标集与 docs/eval/reports/ 历史报告
 ```
@@ -224,6 +227,12 @@ KnowVault.slnx
 ## 五、构建 / 运行 / 测试
 
 ```bash
+# P6 一键交付：全部依赖 + API + 前端 + 示例数据（README 首屏路径）
+cp .env.example .env    # 填 DEEPSEEK_API_KEY / SILICONFLOW_API_KEY
+docker compose up -d --build
+# 打开 http://localhost:8080；演示账号 demo / 1q2w3E*（仅本地）
+# 重置数据：docker compose down -v
+
 # 后端（含 Aspire 一键编排启动 Postgres/Redis/Qdrant/MinIO/RabbitMQ/Seq）
 dotnet run --project aspire/KnowVault.AppHost
 
@@ -270,3 +279,4 @@ dotnet run --project tools/KnowVault.Eval -- \
 - **开源作品路线图（2026-10-24）**：项目定位调整为**不部署上线、在 Gitee 开源作作品展示**；功能范围与阶段以 `docs/plans/2026-10-24-knowvault-open-source-roadmap.md` 为准（P4 演示完整度 → P5 检索含金量 → P6 开源交付）。多租户、开放 API/API Key、限流/审计/备份、外部数据源、OCR、移动端明确不做；每期开工前另写文件级实施计划。
 - **P4 已完成（2026-10-26）**：账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘与知识库工作台（T1–T10）。15 项端到端验收逐项实测，`dotnet build` 0 警告、单测 35/35、集成测试 3/3。**资料库已并入知识库页**（`KnowledgeWorkspace` + `KnowledgeDocuments`），问答页只保留会话侧栏 + 聊天头部「提问范围」；验收期修复了「未评价消息被误显示为已点赞」的可空映射问题。按主题阅读见 `docs/P4-代码导读.md`，规格见 `docs/plans/2026-10-24-knowvault-p4-mvp.md`。
 - **P5 已完成（2026-10-27）**：混合检索（dense + Qdrant 命名稀疏向量 `text` + 应用层加权 RRF）、查询改写（默认关）、多库/全局问答、AI 用量与费用记录、仪表盘用量区、评估工具与 30 题金标集（T1–T9）。A1–A17 逐项实测留证（见计划 §5），`dotnet build` 0 警告、单测 109/109、集成测试 4/4、`npm run build` 通过；三组评估在本语料上持平（Recall@5 0.900 三者相同），结论见 `docs/eval/reports/2026-10-27-p5-eval.md`。**升级注意**：P4 的旧 Qdrant collection 没有稀疏向量，应用会抛 `VectorSchemaMismatchException` 并提示重建；执行 Admin `POST /api/app/maintenance/rebuild-vector-index` 后需等所有 Ready 文档重新处理完成，步骤见 `TECH_STACK.md` §9.7.3。`AskQuestionInput.KnowledgeBaseId` 已删除，改为 `KnowledgeBaseIds` + `AllKnowledgeBases`；检索开关走请求级 `HybridEnabled` / `RewriteEnabled`。按主题阅读见 `docs/P5-代码导读.md`，规格与验收记录见 `docs/plans/2026-10-27-knowvault-p5-mvp.md`。
+- **P6 已完成（2026-10-29）**：Docker Compose 一键启动（前端 nginx + API + PostgreSQL/Redis/Qdrant/MinIO/RabbitMQ/Seq + 一次性 migrator/demo-seed）、`tools/KnowVault.DemoSeed` 导入「KnowVault 示例库」与 7 份样例、MIT LICENSE + `THIRD-PARTY-LICENSES.md`、README/架构图/截图与 `docs/docker-compose.md`。演示账号 `admin` / `demo` / `viewer`，密码统一 `1q2w3E*`，**仅本地演示**；由 `Demo:SeedAccounts` 开关控制（默认关，Development 与 Compose 打开）。**新增业务约束**：`DemoSeed` 只走公开 HTTP API，不依赖 ABP；镜像内不得出现 `.env` / `appsettings.secrets.json` / `openiddict.pfx`。规格与验收记录见 `docs/plans/2026-10-28-knowvault-p6-mvp.md`，部署说明见 `docs/docker-compose.md`。A1–A12 逐项实测通过（干净副本 + 干净卷、十步陌生人流程、端口切换 8088/8089、`dotnet build` 0 警告、单测 109/109、集成 4/4、`npm run build` 通过）；验收期修复 frontend 健康检查 IPv4 与 Production 401 被改写成 302 两个问题，偏差见计划 §5.3。

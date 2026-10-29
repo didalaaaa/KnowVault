@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="860" viewBox="0 0 1500 860" role="img" aria-labelledby="title desc">
+  <title id="title">KnowVault 架构总览</title>
+  <desc id="desc">浏览器经 nginx 访问 ABP API；API 使用 PostgreSQL、Redis、Qdrant、MinIO、RabbitMQ、Seq，并调用 DeepSeek 与 SiliconFlow；RabbitMQ 驱动的 Ingest 消费队列完成解析、切片与向量化</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrow-dashed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ec4899"/>
+    </marker>
+    <style>
+      text { font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif; }
+      .title { font-size: 32px; font-weight: 700; fill: #0f172a; }
+      .subtitle { font-size: 16px; fill: #64748b; }
+      .box-title { font-size: 18px; font-weight: 600; fill: #0f172a; }
+      .box-sub { font-size: 13px; fill: #475569; }
+      .pill { font-size: 13px; fill: #312e81; }
+      .label { font-size: 12px; fill: #475569; }
+      .legend { font-size: 13px; fill: #475569; }
+    </style>
+  </defs>
+
+  <rect width="1500" height="860" fill="#ffffff"/>
+
+  <text x="60" y="56" class="title">KnowVault 架构总览</text>
+  <text x="60" y="88" class="subtitle">Vue 3 SPA → nginx → ABP API；文档摄入异步化，生成、向量化与重排分别路由到不同厂商</text>
+
+  <!-- 访问层 -->
+  <rect x="60" y="150" width="180" height="110" rx="12" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="150" y="188" text-anchor="middle" class="box-title">浏览器</text>
+  <text x="150" y="216" text-anchor="middle" class="box-sub">Vue 3 + Naive UI</text>
+  <text x="150" y="240" text-anchor="middle" class="box-sub">SignalR 流式问答</text>
+
+  <rect x="300" y="150" width="180" height="110" rx="12" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5"/>
+  <text x="390" y="188" text-anchor="middle" class="box-title">nginx</text>
+  <text x="390" y="216" text-anchor="middle" class="box-sub">SPA 静态资源</text>
+  <text x="390" y="240" text-anchor="middle" class="box-sub">反向代理 / WebSocket</text>
+
+  <!-- API -->
+  <rect x="560" y="120" width="420" height="200" rx="14" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+  <text x="770" y="154" text-anchor="middle" class="box-title">API 宿主（ABP / .NET 10）</text>
+
+  <rect x="580" y="174" width="180" height="38" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+  <text x="670" y="198" text-anchor="middle" class="pill">OpenIddict / Identity</text>
+
+  <rect x="780" y="174" width="180" height="38" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+  <text x="870" y="198" text-anchor="middle" class="pill">动态 API / AppService</text>
+
+  <rect x="580" y="224" width="180" height="38" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+  <text x="670" y="248" text-anchor="middle" class="pill">SignalR QaHub</text>
+
+  <rect x="780" y="224" width="180" height="38" rx="8" fill="#ffffff" stroke="#a5b4fc"/>
+  <text x="870" y="248" text-anchor="middle" class="pill">RAG 编排 / Semantic Kernel</text>
+
+  <text x="770" y="296" text-anchor="middle" class="box-sub">知识库 ACL · 会话与引用 · 用量与成本</text>
+
+  <!-- 外部模型 -->
+  <rect x="1080" y="120" width="360" height="85" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="1260" y="151" text-anchor="middle" class="box-title">DeepSeek</text>
+  <text x="1260" y="177" text-anchor="middle" class="box-sub">答案生成（deepseek-chat）</text>
+
+  <rect x="1080" y="225" width="360" height="85" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="1260" y="256" text-anchor="middle" class="box-title">SiliconFlow</text>
+  <text x="1260" y="282" text-anchor="middle" class="box-sub">bge-m3 向量化 / bge-reranker 重排</text>
+
+  <!-- 数据层 -->
+  <rect x="560" y="400" width="190" height="100" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+  <text x="655" y="435" text-anchor="middle" class="box-title">PostgreSQL</text>
+  <text x="655" y="462" text-anchor="middle" class="box-sub">业务数据 / 认证 / 权限</text>
+
+  <rect x="770" y="400" width="190" height="100" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+  <text x="865" y="435" text-anchor="middle" class="box-title">Redis</text>
+  <text x="865" y="462" text-anchor="middle" class="box-sub">ABP 分布式缓存</text>
+
+  <rect x="560" y="530" width="190" height="100" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+  <text x="655" y="565" text-anchor="middle" class="box-title">Qdrant</text>
+  <text x="655" y="592" text-anchor="middle" class="box-sub">dense + sparse 向量</text>
+
+  <rect x="770" y="530" width="190" height="100" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+  <text x="865" y="565" text-anchor="middle" class="box-title">MinIO</text>
+  <text x="865" y="592" text-anchor="middle" class="box-sub">文档原件</text>
+
+  <rect x="560" y="660" width="190" height="100" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text x="655" y="695" text-anchor="middle" class="box-title">Seq</text>
+  <text x="655" y="722" text-anchor="middle" class="box-sub">日志 / Trace</text>
+
+  <rect x="770" y="660" width="190" height="100" rx="10" fill="#ecfdf5" stroke="#10b981" stroke-width="1.5"/>
+  <text x="865" y="695" text-anchor="middle" class="box-title">RabbitMQ</text>
+  <text x="865" y="722" text-anchor="middle" class="box-sub">document-ingest 队列</text>
+
+  <!-- 摄入 Worker -->
+  <rect x="1080" y="440" width="260" height="110" rx="12" fill="#fce7f3" stroke="#ec4899" stroke-width="1.5"/>
+  <text x="1210" y="475" text-anchor="middle" class="box-title">KnowVault.Ingest</text>
+  <text x="1210" y="501" text-anchor="middle" class="box-sub">MassTransit Consumer</text>
+  <text x="1210" y="524" text-anchor="middle" class="box-sub">解析 → 切片 → 向量化（5×2s 重试）</text>
+
+  <!-- 同步箭头 -->
+  <line x1="240" y1="205" x2="296" y2="205" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="480" y1="205" x2="556" y2="205" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="518" y="192" text-anchor="middle" class="label">HTTP / WS</text>
+
+  <line x1="980" y1="162" x2="1076" y2="162" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1028" y="150" text-anchor="middle" class="label">Prompt</text>
+  <line x1="980" y1="267" x2="1076" y2="267" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1028" y="255" text-anchor="middle" class="label">向量化 / 重排</text>
+
+  <line x1="650" y1="320" x2="650" y2="396" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="664" y="362" class="label">EF Core</text>
+
+  <line x1="850" y1="320" x2="850" y2="396" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="864" y="362" class="label">缓存</text>
+
+  <!-- API 到 Qdrant / MinIO：沿左侧绕行 -->
+  <path d="M560 280 L500 280 L500 515" fill="none" stroke="#64748b" stroke-width="2"/>
+  <path d="M500 515 L620 515 L620 526" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <path d="M500 515 L860 515 L860 526" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="512" y="362" class="label">向量检索 / 读写切片</text>
+
+  <!-- API 到 Seq -->
+  <path d="M560 300 L460 300 L460 710 L556 710" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="448" y="500" text-anchor="end" class="label">Serilog</text>
+  <text x="448" y="518" text-anchor="end" class="label">OTLP</text>
+
+  <!-- API 发布队列 + Worker 消费 -->
+  <path d="M940 320 L940 375 L1020 375 L1020 680 L964 680" fill="none" stroke="#ec4899" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-dashed)"/>
+  <text x="1032" y="366" class="label">发布 document-ingest</text>
+
+  <path d="M960 730 L1040 730 L1040 500 L1076 500" fill="none" stroke="#ec4899" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-dashed)"/>
+  <text x="988" y="750" class="label">消费队列</text>
+
+  <!-- Worker 写入 Qdrant / MinIO -->
+  <path d="M1180 550 L1180 645 L650 645 L650 634" fill="none" stroke="#ec4899" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-dashed)"/>
+  <text x="668" y="666" class="label">写入切片与向量</text>
+  <path d="M1240 550 L1240 620 L964 620" fill="none" stroke="#ec4899" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arrow-dashed)"/>
+  <text x="1104" y="606" class="label">读取原件</text>
+
+  <!-- 图例 -->
+  <line x1="60" y1="790" x2="110" y2="790" stroke="#64748b" stroke-width="2"/>
+  <text x="120" y="795" class="legend">同步请求</text>
+  <line x1="230" y1="790" x2="280" y2="790" stroke="#ec4899" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="290" y="795" class="legend">异步消息 / 摄入</text>
+  <text x="60" y="826" class="legend">容器内服务通过 Compose 网络互通；浏览器只访问 nginx 的 8080 端口</text>
+</svg>

@@ -23,6 +23,7 @@ using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.Shared;
 using Volo.Abp.AspNetCore.Serilog;
 using Volo.Abp.Autofac;
+using Volo.Abp.Caching.StackExchangeRedis;
 using Volo.Abp.Modularity;
 using Volo.Abp.OpenIddict;
 using Volo.Abp.Security.Claims;
@@ -44,6 +45,7 @@ namespace KnowVault.HttpApi.Host
 		typeof(KnowVaultEntityFrameworkCoreModule),
 		typeof(KnowVaultIngestModule),
 		typeof(AbpAccountWebOpenIddictModule),
+		typeof(AbpCachingStackExchangeRedisModule),
 		typeof(AbpSwashbuckleModule),
 		typeof(AbpAspNetCoreSerilogModule)
 		)]
@@ -194,6 +196,17 @@ namespace KnowVault.HttpApi.Host
 		/// <param name="request">请求</param>
 		/// <returns>是 API 请求则为 true</returns>
 		private static bool IsApiRequest(HttpRequest request) => request.Path.StartsWithSegments("/api");
+
+		/// <summary>
+		/// 判断是否属于必须保留原始状态码的协议端点：API、SignalR 与 OpenIddict
+		/// </summary>
+		/// <param name="request">请求</param>
+		/// <returns>属于协议端点则为 true</returns>
+		private static bool IsApiOrProtocolRequest(HttpRequest request) =>
+			request.Path.StartsWithSegments("/api")
+			|| request.Path.StartsWithSegments("/signalr")
+			|| request.Path.StartsWithSegments("/connect")
+			|| request.Path.StartsWithSegments("/.well-known");
 
 		/// <summary>
 		/// 只写状态码、不做重定向
@@ -358,8 +371,11 @@ namespace KnowVault.HttpApi.Host
 
 			if (!env.IsDevelopment())
 			{
-				// 生产环境下，发生未处理异常时显示友好的错误页面（不含堆栈信息）
-				app.UseErrorPage();
+				// 生产环境的错误页跳转只用于页面请求；API / SignalR / OpenIddict 必须保留原始状态码，
+				// 否则前端收到 302 + HTML，无法识别 401 并回到登录态
+				app.UseWhen(
+					httpContext => !IsApiOrProtocolRequest(httpContext.Request),
+					branch => branch.UseErrorPage());
 			}
 
 			// 解析请求 URL，匹配到对应的端点（Endpoint），但不执行端点

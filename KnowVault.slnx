@@ -20,6 +20,7 @@
         <Project Path="tests/KnowVault.Tests/KnowVault.Tests.csproj" />
     </Folder>
     <Folder Name="/tools/">
+        <Project Path="tools/KnowVault.DemoSeed/KnowVault.DemoSeed.csproj" />
         <Project Path="tools/KnowVault.Eval/KnowVault.Eval.csproj" />
     </Folder>
 </Solution>

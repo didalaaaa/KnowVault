@@ -1,4 +1,5 @@
 using KnowVault.Domain.Shared;
+using Microsoft.Extensions.Configuration;
 using Volo.Abp;
 using Volo.Abp.Data;
 using Volo.Abp.DependencyInjection;
@@ -59,6 +60,7 @@ namespace KnowVault.Domain
 		private readonly IIdentityUserRepository _userRepository;
 		private readonly IdentityUserManager _userManager;
 		private readonly IPermissionManager _permissionManager;
+		private readonly IConfiguration _configuration;
 
 		/// <summary>
 		/// 构造函数
@@ -68,18 +70,21 @@ namespace KnowVault.Domain
 		/// <param name="userRepository">用户仓储</param>
 		/// <param name="userManager">用户管理器</param>
 		/// <param name="permissionManager">权限管理器</param>
+		/// <param name="configuration">配置（Demo:SeedAccounts 开关）</param>
 		public KnowVaultIdentityDataSeedContributor(
 			IdentityRoleManager roleManager,
 			IIdentityRoleRepository roleRepository,
 			IIdentityUserRepository userRepository,
 			IdentityUserManager userManager,
-			IPermissionManager permissionManager)
+			IPermissionManager permissionManager,
+			IConfiguration configuration)
 		{
 			_roleManager = roleManager;
 			_roleRepository = roleRepository;
 			_userRepository = userRepository;
 			_userManager = userManager;
 			_permissionManager = permissionManager;
+			_configuration = configuration;
 		}
 
 		/// <summary>
@@ -99,11 +104,12 @@ namespace KnowVault.Domain
 
 			await EnsureAdminUserInRoleAsync();
 
-#if DEBUG
-			// 仅开发环境：准备两个演示账号，便于验收「Member 可写 / Viewer 只读」的权限矩阵
-			await EnsureUserInRoleAsync("member", "member@knowvault.local", MemberRoleName);
-			await EnsureUserInRoleAsync("viewer", "viewer@knowvault.local", ViewerRoleName);
-#endif
+			// 演示账号由配置控制：本地开发与 Compose 打开，正式部署默认关闭
+			if (_configuration.GetValue<bool>("Demo:SeedAccounts"))
+			{
+				await EnsureUserInRoleAsync("demo", "demo@knowvault.local", MemberRoleName);
+				await EnsureUserInRoleAsync("viewer", "viewer@knowvault.local", ViewerRoleName);
+			}
 		}
 
 		private async Task EnsureUserInRoleAsync(string userName, string email, string roleName)

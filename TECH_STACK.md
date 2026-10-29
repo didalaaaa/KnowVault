@@ -120,7 +120,7 @@ KnowVault.slnx
 | **P3 深度/工程** | OpenTelemetry 全链路、Testcontainers 集成测试、角色+知识库权限 | ✅ 已实现（2026-10-18）：见 [`docs/plans/2026-10-18-knowvault-p3-mvp.md`](docs/plans/2026-10-18-knowvault-p3-mvp.md)；Seq/权限/重试需按该文档 §2 手工验收 |
 | **P4 演示完整度** | 账户体验、会话管理、引用原文、文档/切片预览、批量上传、反馈与重生成、库设置、轻量仪表盘、知识库工作台 | ✅ 已完成（2026-10-26）：见 [`docs/plans/2026-10-24-knowvault-p4-mvp.md`](docs/plans/2026-10-24-knowvault-p4-mvp.md)；代码导读见 [`docs/P4-代码导读.md`](docs/P4-代码导读.md) |
 | **P5 检索含金量** | 混合检索 + RRF、查询改写、多库问答、评估报告、成本统计 | ✅ 已完成（2026-10-27）：见 [`docs/plans/2026-10-27-knowvault-p5-mvp.md`](docs/plans/2026-10-27-knowvault-p5-mvp.md)、[`docs/P5-代码导读.md`](docs/P5-代码导读.md)；三组评估结论见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)（本语料判为持平） |
-| **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | 待实施（同上路线图） |
+| **P6 开源交付** | Docker Compose 一键启动、README/截图、LICENSE、示例数据、Gitee Go（可选） | ✅ 已完成（2026-10-28）：见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)；部署见 [`docs/docker-compose.md`](docs/docker-compose.md)；Gitee Go 后置 |
 
 ---
 
@@ -128,7 +128,8 @@ KnowVault.slnx
 
 - **.NET 10 SDK** + Node.js（Vite）
 - **Docker Desktop**（跑 Postgres / Redis / Qdrant / MinIO / RabbitMQ / Seq）
-  - 不用 Aspire 时（本机验收路径）：复用 P1 遗留的手工容器 `kv-postgres` / `kv-redis` / `kv-qdrant` / `kv-rabbitmq` / `kv-minio`，`docker start kv-*` 即可（数据在容器可写层）；**Postgres 映射在宿主 5433**；仓库内**没有** docker-compose 文件，配置走环境变量覆盖 `ConnectionStrings__Default` / `ConnectionStrings__rabbitmq` / `Minio__*` / `Redis__Configuration` / `Qdrant__Endpoint`
+  - **Compose 路径（P6，推荐给外部体验者）**：根目录 `docker-compose.yml` + `.env.example`，`docker compose up -d --build` 一键起全部依赖、迁移、示例数据与前端；说明见 [`docs/docker-compose.md`](docs/docker-compose.md)。
+  - 不用 Aspire / Compose 时（本机调试路径）：复用 P1 遗留的手工容器 `kv-postgres` / `kv-redis` / `kv-qdrant` / `kv-rabbitmq` / `kv-minio`，`docker start kv-*` 即可（数据在容器可写层）；**Postgres 映射在宿主 5433**，配置走环境变量覆盖 `ConnectionStrings__Default` / `ConnectionStrings__rabbitmq` / `Minio__*` / `Redis__Configuration` / `Qdrant__Endpoint`
 - **Aspire** 一键编排启动全部依赖
 - 模型：`DeepSeek` + `SiliconFlow` 的 **API Key**（环境变量，不进仓库）
 - **P5 升级注意（Qdrant schema）**：P4 的 collection 没有稀疏向量，升级后需 Admin 调 `POST /api/app/maintenance/rebuild-vector-index` 重建，并等所有 Ready 文档重新处理完成；否则检索抛 `VectorSchemaMismatchException`，不会静默降级。详见 §9.7.3。
@@ -319,6 +320,20 @@ KnowVault.slnx
 - **评估**：`tools/KnowVault.Eval`（`EvalRunner` / `GoldenSetLoader` / `EvaluationReportWriter`），语料与金标在 `docs/eval/`，报告写 `docs/eval/reports/`
 - **可观测**：沿用既有 `rag.retrieve` / `embedding.embed` / `rerank.rerank` / `llm.complete` span，稀疏召回与改写都在 `rag.retrieve` 之内，未新增 span 名
 
+#### 9.8 P6 开源交付实现
+
+- **拓扑**：`docker-compose.yml` 起 8 个常驻服务 + 2 个一次性任务。前端 nginx（宿主 8080）同源反代 `/api`、`/connect`、`/.well-known`、`/signalr`、`/health-status`、`/swagger` 到 `api:8080`；API 与 `migrator` 共用 `x-app-environment` 锚点。PostgreSQL 与 Redis 不暴露宿主端口，Qdrant 6333、MinIO 控制台 9002（Windows 保留 9001）、RabbitMQ 15672、Seq 5341 按需暴露。
+- **启动顺序**：依赖健康 → `migrator` 退出 0（迁移 + 种子）→ API 健康 → `frontend` 可用 → `demo-seed` 导入示例数据。一次性任务 `restart: "no"`，失败不阻塞 API/前端。
+- **镜像**：API 用 `sdk:10.0` 多阶段发布，构建期以 `AUTH_CERT_PASSPHRASE` 生成 `openiddict.pfx`（空口令直接失败），运行镜像安装 `curl` 供健康检查，非 root（`$APP_UID`）；DbMigrator 用 `runtime:10.0`；前端 `node:24-alpine` 构建 → `nginx:1.27-alpine`；DemoSeed 为纯 `HttpClient` 控制台。
+- **认证**：Compose 固定 `ASPNETCORE_ENVIRONMENT=Production`、`AuthServer__Authority=http://localhost:${KNOWVAULT_HTTP_PORT}`、`AuthServer__RequireHttpsMetadata=false`；OpenIddict 仍走生产证书分支并显式 `SetIssuer`，issuer 不随容器内部地址变化。改端口必须同步浏览器地址；改证书口令必须重建 API 镜像。
+- **缓存**：HttpApi.Host 接入 `Volo.Abp.Caching.StackExchangeRedis` 10.5.0 与 `AbpCachingStackExchangeRedisModule`；`Redis__Configuration` 由 Compose（`redis:6379`）与 Aspire 注入，不再静默回落到进程内缓存。
+- **演示账号**：`KnowVaultIdentityDataSeedContributor` 删除 `#if DEBUG`，改为 `Demo:SeedAccounts` 配置开关；Development 与 Compose 打开，其它环境默认关闭。`demo`（Member，示例库 Owner）与 `viewer`（Viewer）由种子创建，密码 `1q2w3E*` 仅限本地。
+- **示例数据**：`tools/KnowVault.DemoSeed` 只调用公开 HTTP API：等待 `/health-status` → `POST /connect/token`（密码模式）→ 查找/创建「KnowVault 示例库」→ 逐份上传 `samples/kb-import/` 的 7 份文档 → 轮询文档状态到 Ready/Failed。无 `SILICONFLOW_API_KEY` 时只建库并提示重跑；同名文档跳过，可重复执行。
+- **配置与密钥**：所有可覆盖项在根目录 `.env`，模板为 `.env.example`；`.dockerignore` 排除 `.env*`、`appsettings.secrets.json`、`appsettings.Production.json`、`*.pfx`、`bin/obj/Logs`、`docs/tests/aspire/frontend/samples`；`DbMigrator.csproj` 对 `appsettings.secrets.json` 使用 `Condition="Exists(...)"`，干净克隆可直接构建。
+- **许可**：仓库 MIT；`THIRD-PARTY-LICENSES.md` 区分 NuGet/npm 代码依赖与容器服务镜像。代码依赖无 AGPL/SSPL；MinIO（AGPL-3.0）与 Redis（RSALv2/SSPLv1/AGPLv3）以未修改官方镜像运行，不与仓库代码静态链接。
+- **已知限制**：HTTP only、默认口令、演示账号均面向本地；未做 HTTPS/域名/限流/备份/高可用；Gitee Go CI 后置（D7）。P4 旧数据卷升级仍需按 §9.7.3 重建向量索引。
+- **验证命令**：`docker compose config`、`docker compose up -d --build`、`docker compose ps`、`docker compose logs -f demo-seed`、`docker compose down -v`；详细说明见 [`docs/docker-compose.md`](docs/docker-compose.md)，验收记录见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)。
+
 ## 10. P1 执行计划
 
 - 详见 [`docs/plans/2026-10-05-knowvault-p1-mvp.md`](docs/plans/2026-10-05-knowvault-p1-mvp.md)：含冻结规格、14 个任务的文件级改动、完整代码与逐项验证命令、风险登记与完成定义。
@@ -344,3 +359,10 @@ KnowVault.slnx
 - **状态：已完成（2026-10-27）**：`dotnet build` 0 警告 0 错误、单测 109/109、集成测试 4/4、`npm run build` 通过；A1–A17 逐项实测（A2「关键词题命中提前」未复现，判为持平），三组评估检索指标相同（Recall@5 0.900、MRR@10 0.847、nDCG@5 0.858）。
 - **升级注意**：P4 旧 Qdrant collection 没有稀疏向量，必须由 Admin 调 `POST /api/app/maintenance/rebuild-vector-index` 重建，并等所有 Ready 文档重新处理完成；详见 §9.7.3。
 - **评估报告**：方法与复现命令见 [`docs/eval/README.md`](docs/eval/README.md)，2026-10-27 报告见 [`docs/eval/reports/2026-10-27-p5-eval.md`](docs/eval/reports/2026-10-27-p5-eval.md)。
+
+## 15. P6 执行计划
+
+- 详见 [`docs/plans/2026-10-28-knowvault-p6-mvp.md`](docs/plans/2026-10-28-knowvault-p6-mvp.md)：含 D1–D8 决策、T1–T7 文件级改动、A1–A12 陌生人测试与风险登记；需求见 [`docs/driver/需求/需求分析-1028-P6.md`](docs/driver/需求/需求分析-1028-P6.md)。
+- **状态：实施完成（2026-10-28）**：Compose/镜像、Redis、演示账号与 DemoSeed、LICENSE、README/架构图/截图、文档校订与 A1–A12 验收记录见该计划 §5。
+- **升级注意**：P4 旧数据卷仍需按 §9.7.3 重建向量索引；Compose 全新卷由 `migrator` 自动完成。
+- **入口**：快速开始见 [`README.md`](README.md)，部署细节见 [`docs/docker-compose.md`](docs/docker-compose.md)，交付说明见 [`docs/P6-交付说明.md`](docs/P6-交付说明.md)。

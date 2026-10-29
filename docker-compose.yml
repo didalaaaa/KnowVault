@@ -1,0 +1,224 @@
+name: knowvault
+
+# api 与 migrator 共用的运行时配置；端口与口令都可在 .env 覆盖
+x-app-environment: &app-environment
+  ASPNETCORE_ENVIRONMENT: Production
+  App__SelfUrl: http://localhost:${KNOWVAULT_HTTP_PORT:-8080}
+  App__CorsOrigins: http://localhost:${KNOWVAULT_HTTP_PORT:-8080}
+  App__DisablePII: "true"
+  # 容器内自探活必须用绝对地址：ASPNETCORE_URLS 的 + 会被解析成 [::]，相对地址拼不出合法请求
+  App__HealthUiCheckUrl: http://localhost:8080/health-status
+  AuthServer__Authority: http://localhost:${KNOWVAULT_HTTP_PORT:-8080}
+  AuthServer__RequireHttpsMetadata: "false"
+  AuthServer__CertificatePassPhrase: ${AUTH_CERT_PASSPHRASE:-knowvault-local-cert-change-me}
+  StringEncryption__DefaultPassPhrase: ${STRING_ENCRYPTION_PASSPHRASE:-knowvault-local-encryption-change-me}
+  ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-KnowVault};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-knowvault-local-password}"
+  Redis__Configuration: redis:6379
+  ConnectionStrings__rabbitmq: "amqp://${RABBITMQ_DEFAULT_USER:-knowvault}:${RABBITMQ_DEFAULT_PASS:-knowvault-local-password}@rabbitmq:5672/"
+  Qdrant__Endpoint: http://qdrant:6334
+  Qdrant__ApiKey: ""
+  Minio__Endpoint: minio:9000
+  Minio__AccessKey: ${MINIO_ROOT_USER:-minioadmin}
+  Minio__SecretKey: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  Minio__UseSsl: "false"
+  Seq__ServerUrl: http://seq:5341
+  Observability__OtlpEndpoint: http://seq:5341/ingest/otlp/v1/traces
+  Ai__DeepSeekApiKey: ${DEEPSEEK_API_KEY:-}
+  Ai__DeepSeekBaseUrl: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+  Ai__DeepSeekModel: ${DEEPSEEK_MODEL:-deepseek-chat}
+  Ai__SiliconFlowApiKey: ${SILICONFLOW_API_KEY:-}
+  Ai__SiliconFlowBaseUrl: ${SILICONFLOW_BASE_URL:-https://api.siliconflow.cn/v1}
+  Ai__SiliconFlowEmbeddingModel: ${SILICONFLOW_EMBEDDING_MODEL:-BAAI/bge-m3}
+  Ai__SiliconFlowRerankModel: ${SILICONFLOW_RERANK_MODEL:-BAAI/bge-reranker-v2-m3}
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-knowvault-local-password}
+      POSTGRES_DB: ${POSTGRES_DB:-KnowVault}
+    volumes:
+      - knowvault-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-KnowVault}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:8.6
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - knowvault-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.0
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+    volumes:
+      - knowvault-qdrant:/qdrant/storage
+    healthcheck:
+      # 镜像内没有 curl/wget，用 bash 的 /dev/tcp 探测 REST 端口
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      # 9001 在部分 Windows 机器上落在系统保留端口段，默认改用 9002
+      - "${MINIO_CONSOLE_PORT:-9002}:9001"
+    volumes:
+      - knowvault-minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      # 不用 guest：guest 默认只允许 localhost 登录，容器间访问会被拒绝
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-knowvault}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-knowvault-local-password}
+    ports:
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - knowvault-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+  seq:
+    image: datalust/seq:2025.1
+    restart: unless-stopped
+    environment:
+      # Seq 镜像未接受 EULA 会直接退出；单用户本地演示免费，详见 README
+      ACCEPT_EULA: "Y"
+    ports:
+      - "${SEQ_PORT:-5341}:80"
+    volumes:
+      - knowvault-seq:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  migrator:
+    build:
+      context: .
+      dockerfile: src/KnowVault.DbMigrator/Dockerfile
+    restart: "no"
+    environment:
+      <<: *app-environment
+      DOTNET_ENVIRONMENT: Production
+      Demo__SeedAccounts: ${DEMO_SEED_ACCOUNTS:-true}
+      OpenIddict__Applications__KnowVault_App__RootUrl: http://localhost:${KNOWVAULT_HTTP_PORT:-8080}/
+      OpenIddict__Applications__KnowVault_Swagger__RootUrl: http://localhost:${KNOWVAULT_HTTP_PORT:-8080}/
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: src/KnowVault.HttpApi.Host/Dockerfile
+      args:
+        AUTH_CERT_PASSPHRASE: ${AUTH_CERT_PASSPHRASE:-knowvault-local-cert-change-me}
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "${KNOWVAULT_API_PORT:-8081}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health-status"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 60s
+
+  demo-seed:
+    build:
+      context: .
+      dockerfile: tools/KnowVault.DemoSeed/Dockerfile
+    restart: "no"
+    environment:
+      API_BASE_URL: http://api:8080
+      DEMO_USERNAME: demo
+      DEMO_PASSWORD: 1q2w3E*
+      KNOWLEDGE_BASE_NAME: KnowVault 示例库
+      SAMPLES_DIR: /samples
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY:-}
+      WAIT_TIMEOUT_SECONDS: "120"
+      INGEST_TIMEOUT_SECONDS: "600"
+    volumes:
+      - ./samples/kb-import:/samples:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${KNOWVAULT_HTTP_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      # 容器内 localhost 可能解析到 ::1，而 nginx 只监听 IPv4，探活必须写 127.0.0.1
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  knowvault-postgres:
+  knowvault-redis:
+  knowvault-qdrant:
+  knowvault-minio:
+  knowvault-rabbitmq:
+  knowvault-seq:

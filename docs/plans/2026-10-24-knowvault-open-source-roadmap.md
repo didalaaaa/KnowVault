@@ -178,20 +178,28 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 - LICENSE 与依赖许可无冲突
 - 示例数据开箱即用
 
+**完成记录（2026-10-28）**
+
+- 规格与任务级验收：[`docs/plans/2026-10-28-knowvault-p6-mvp.md`](2026-10-28-knowvault-p6-mvp.md)；快速开始：[`README.md`](../../README.md)；部署说明：[`docs/docker-compose.md`](../docker-compose.md)；交付说明：[`docs/P6-交付说明.md`](../P6-交付说明.md)。
+- 已交付：Compose 一键启动（8 个常驻服务 + migrator/demo-seed）、Redis 缓存接线、演示账号与 7 份样例导入、MIT LICENSE + 第三方许可清单、中文 README + 架构图 + 7 张截图、内部文档移出公开树。
+- 决策：D1 MIT；D2 Production + HTTP + 构建期自签 pfx；D3 DemoSeed 工具；D4 `Demo:SeedAccounts` 配置开关；D5 只清理 HEAD、保留历史；D6 接入 Redis；D7 Gitee Go 后置；D8 中文 README + PNG。
+- 偏差：MinIO 控制台宿主端口改 `9002`（Windows 保留 9001）；Seq 注入 `ACCEPT_EULA=Y`。
+- 未做：Gitee Go 流水线、GIF、公网 HTTPS/域名。
+
 ---
 
 ## 五、开源前检查清单
 
-- [ ] 仓库无 `.env`、真实 API Key、个人密码、内部地址
-- [ ] LICENSE 落库，README 注明第三方依赖许可
-- [ ] 依赖许可核对：ABP（LGPL）、MassTransit 8.5.7（Apache-2.0）、FluentAssertions 7.x、PdfPig、ClosedXML、Markdig、HtmlAgilityPack；确认无 AGPL
-- [ ] 种子账号与密码写入 README，并注明仅限本地
-- [ ] 示例知识库与文档可公开分发，无版权风险
-- [ ] README 含架构图与至少 5 张功能截图或 GIF
-- [ ] 评估报告与指标表进入仓库
-- [ ] 仓库体积合理，`bin/obj/node_modules` 未入库
-- [ ] P4/P5 代码导读完成，阅读顺序可直接跟随
-- [ ] Gitee 仓库简介、标签、README 首屏信息完整
+- [x] 仓库无 `.env`、真实 API Key、个人密码、内部地址（2026-10-28 工作区 + 全部历史扫描无命中）
+- [x] LICENSE 落库，README 注明第三方依赖许可（MIT + `THIRD-PARTY-LICENSES.md`）
+- [x] 依赖许可核对：ABP（LGPL）、MassTransit 8.5.7（Apache-2.0）、FluentAssertions 7.x、PdfPig、ClosedXML、Markdig、HtmlAgilityPack；确认代码依赖无 AGPL
+- [x] 种子账号与密码写入 README，并注明仅限本地
+- [x] 示例知识库与文档可公开分发，无版权风险（`samples/kb-import/` 为自写样例）
+- [x] README 含架构图与至少 5 张功能截图（7 张 PNG）
+- [x] 评估报告与指标表进入仓库
+- [x] 仓库体积合理，`bin/obj/node_modules` 未入库（`git ls-files` 无命中）
+- [x] P4/P5 代码导读完成，阅读顺序可直接跟随
+- [ ] Gitee 仓库简介、标签、README 首屏信息完整（推送时填写）
 
 ---
 
@@ -226,3 +234,4 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 | 日期 | 变更 | 说明 |
 |---|---|---|
 | 2026-10-24 | 初稿 | 确立"Gitee 开源作品展示、不部署上线"定位，冻结 P4–P6 范围与取舍 |
+| 2026-10-28 | P6 完成 | Compose 一键交付、演示数据、MIT License、README/截图、内部文档移出公开树；验收记录见 P6 实施计划 |
