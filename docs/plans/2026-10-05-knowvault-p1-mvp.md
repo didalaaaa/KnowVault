@@ -94,7 +94,7 @@ Rerank、多轮对话历史加载、混合检索(BM25)、知识库管理界面�
 dotnet build KnowVault.slnx
 dotnet test  tests\KnowVault.Tests\KnowVault.Tests.csproj   # Task 2 之后
 dotnet format style --verify-no-changes --diagnostics IDE1006 --project KnowVault.slnx
-git -C . add -A; git -C . commit -m "<type>: <subject>"
+git add -A; git commit -m "<type>: <subject>"
 ```
 
 ---
@@ -161,8 +161,8 @@ foreach ($p in @('TECH_STACK.md','AGENTS.md','.env.example','docs/plans/2026-10-
 **Step 5：提交**
 
 ```powershell
-git -C . add -A
-git -C . commit -m "docs: 冻结 P1 需求规格与实施计划，同步 MassTransit/MinIO/Qdrant 定稿"
+git add -A
+git commit -m "docs: 冻结 P1 需求规格与实施计划，同步 MassTransit/MinIO/Qdrant 定稿"
 ```
 
 ---
@@ -3862,8 +3862,8 @@ async function customRequest({ file, onFinish, onError }) {
 **Step 3：收尾提交**
 
 ```powershell
-git -C . add -A
-git -C . commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切片→向量化→检索→生成→引用）"
+git add -A
+git commit -m "feat: 打通 P1 最小问答闭环（上传→解析→切片→向量化→检索→生成→引用）"
 ```
 
 ---

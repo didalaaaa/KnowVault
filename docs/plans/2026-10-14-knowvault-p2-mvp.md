@@ -93,7 +93,7 @@ dotnet build KnowVault.slnx
 dotnet test  tests\KnowVault.Tests\KnowVault.Tests.csproj
 dotnet format style --verify-no-changes --diagnostics IDE1006 --project KnowVault.slnx
 # 逐文件行尾自查（CRLF 与 loneLF 必须有一个为 0）
-git -C . add -A; git -C . commit -m "<type>: <subject>"
+git add -A; git commit -m "<type>: <subject>"
 ```
 
 ---

@@ -262,15 +262,15 @@ api（Production，http://+:8080，非 root）
 - `LICENSE`（新增）
 - `THIRD-PARTY-LICENSES.md`（新增）
 - `.gitignore`（修改）
-- `docs/driver/问题/*`（移出工作树）
-- `docs/interview/`（移出工作树）
+- `docs/driver/问题/*`（从仓库与历史移除）
+- `docs/interview/`（从仓库排除，从未入库）
 
 ### Steps
 
 1. LICENSE：MIT，版权行 `Copyright (c) 2026 KnowVault contributors`。
 2. 第三方许可清单：直接依赖 + 服务镜像 + 运行时；注明 MassTransit 8.x、FluentAssertions 7.x、MinIO/Redis 服务镜像与代码许可的区别。
 3. `.gitignore`：新增 `docs/interview/`、`docs/driver/问题/`、`/.archify/`。
-4. 将 `docs/driver/问题/` 与 `docs/interview/` 移动到仓库外 `本地私有目录/`，再 `git rm --cached`（保留历史）。
+4. 将 `docs/driver/问题/` 与 `docs/interview/` 移出工作树并加入 `.gitignore`，再用 `git filter-branch` 从全部历史中清除（含已删除文件的提交）。
 5. 密钥扫描：工作区 + 全部 git 历史；复核命中项；构建后扫描镜像。
 6. 仓库体积：`git count-objects -vH`、`git ls-files` 检查 bin/obj/node_modules/dist。
 
