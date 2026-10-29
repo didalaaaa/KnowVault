@@ -247,7 +247,7 @@ dotnet format style --verify-no-changes --diagnostics IDE1006
 
 ### 持续集成
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 是 GitHub Actions 流水线：push / PR 到 `main` 触发，三个并行 job——后端（.NET 10 构建 + 单测 + IDE1006 格式检查）、集成测试（Testcontainers 拉起 PostgreSQL / RabbitMQ / MinIO / Qdrant）、前端（Node 24 + `npm ci` + 生产构建）。CI 不注入 DeepSeek / SiliconFlow Key，端到端问答验收仍需本地执行。
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 是 GitHub Actions 流水线：push / PR 到 `main` 触发，三个并行 job——后端（.NET 10 构建 + 单测 + IDE1006 格式检查）、集成测试（Testcontainers 拉起 PostgreSQL / RabbitMQ / Qdrant，MinIO 在 CI 上用 `KNOWVAULT_SKIP_MINIO=1` 走内存实现兜底）、前端（Node 24 + `npm ci` + 生产构建）。CI 不注入 DeepSeek / SiliconFlow Key，端到端问答验收仍需本地执行。
 
 ## 文档索引
 

@@ -208,7 +208,7 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 | 风险/待决策 | 影响 | 处理方式 |
 |---|---|---|
 | 中文关键词检索方案未定 | P5-T1 无法开工 | P5-T0 先做小实验：Qdrant sparse / PG 全文 / OpenSearch 三者比较，冻结后写回本文档 |
-| GitHub Actions 公共 runner 额度与镜像拉取耗时 | 集成测试 job 变慢 | 私有仓库每月 2000 分钟够用；集成测试独立 job 不阻塞后端与前端；必要时设 `KNOWVAULT_SKIP_MINIO=1` |
+| GitHub Actions 公共 runner 额度与镜像拉取耗时 | 集成测试 job 变慢 | 私有仓库每月 2000 分钟够用；集成测试独立 job 不阻塞后端与前端；**2026-10-29 实测命中拉取问题**：Runner 匿名拉 `minio/minio` 被 Docker Hub 拒绝（`pull access denied`），集成测试 job 固定设 `KNOWVAULT_SKIP_MINIO=1` 用内存假存储兜底，MinIO 真容器验证放本机与 Compose |
 | 评估需要真实调用产生费用 | 金标集回归有成本 | 固定 30 条小集合，按需运行；结果落仓库不重复跑 |
 | 不部署导致访客只能看截图 | 展示效果依赖素材质量 | P4 完成即开始积累截图/GIF，不拖到 P6 补拍 |
 | 范围膨胀 | 每期拖延 | 任何"顺手加"的功能先进 3.2 可选区，不插队 |
@@ -236,3 +236,4 @@ KnowVault 是一个可本地运行、可完整演示的多格式文档 RAG 知�
 | 2026-10-24 | 初稿 | 确立"Gitee 开源作品展示、不部署上线"定位，冻结 P4–P6 范围与取舍 |
 | 2026-10-28 | P6 完成 | Compose 一键交付、演示数据、MIT License、README/截图、内部文档移出公开树；验收记录见 P6 实施计划 |
 | 2026-10-29 | 托管改为 GitHub | 开源作品展示从 Gitee 迁到 GitHub（定位段与本条为唯一口径变更，P4–P6 范围不变）；CI 从 Gitee Go `.workflow/ci.yml` 换成 GitHub Actions `.github/workflows/ci.yml`，覆盖面从「build + 单测」扩到集成测试与前端构建 |
+| 2026-10-29 | GitHub Actions 三 job 全绿 | 首次运行集成测试 job 因 Runner 无法匿名拉取 `minio/minio` 失败，改为 `KNOWVAULT_SKIP_MINIO=1`（内存假存储）后后端 / 集成 / 前端三个 job 全部通过；本地仍以真 MinIO 容器跑 4/4 |

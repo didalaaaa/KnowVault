@@ -196,7 +196,7 @@ KnowVault.slnx
 - **文档生命周期**：`DELETE /api/app/document/{id}`（Qdrant points → chunks → document → MinIO 原文件；MinIO 失败只 warning）与 `POST /api/app/document/{id}/reprocess`（清旧向量/切片 → `MarkPending` → 提交后发消息）。`Document.IngestAttemptCount` 记录尝试次数。
 - **摄入重试**：`document-ingest` 端点显式 `UseMessageRetry(5 × 2s)`；Consumer 在**独立 UoW** 落 `Failed` 后 rethrow，耗尽后进 `document-ingest_error`。
 - **集成测试**：`tests/KnowVault.IntegrationTests` 用 Testcontainers 起 Postgres/RabbitMQ/MinIO/Qdrant；Embedding 与消息发布用 fake；`AbpIntegratedTest` 服务级测试，`AddAlwaysAllowAuthorization` 绕过授权拦截器但保留 ACL 真实校验。本机 MinIO 镜像不可达时可设 `KNOWVAULT_SKIP_MINIO=1` 用内存存储兜底，集成测试不设该变量。
-- **CI**：GitHub Actions `.github/workflows/ci.yml`，push / PR 到 `main` 触发，三个并行 job：`backend`（`setup-dotnet` 装 .NET 10 SDK → restore → Release build → 单测 → IDE1006 格式检查）、`integration`（Testcontainers 四件套，运行器自带 Docker）、`frontend`（Node 24 + `npm ci` + `npm run build`）。CI 不注入模型 API Key，端到端验收在本地执行。
+- **CI**：GitHub Actions `.github/workflows/ci.yml`，push / PR 到 `main` 触发，三个并行 job：`backend`（`setup-dotnet` 装 .NET 10 SDK → restore → Release build → 单测 → IDE1006 格式检查）、`integration`（Testcontainers 拉起 PostgreSQL / RabbitMQ / Qdrant，MinIO 用 `KNOWVAULT_SKIP_MINIO=1` 走内存假存储兜底——公共 Runner 匿名拉取 `minio/minio` 被 Docker Hub 拒绝；本机仍是真 MinIO 容器）、`frontend`（Node 24 + `npm ci` + `npm run build`）。CI 不注入模型 API Key，端到端验收在本地执行。
 - **执行计划**：见 `docs/plans/2026-10-18-knowvault-p3-mvp.md`
 
 ### 9.4 文档去重定稿（2026-10-23）
